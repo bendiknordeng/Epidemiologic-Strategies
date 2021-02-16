@@ -5,4 +5,3 @@ dependencies:
   - python==3.8
   - seaborn
   - plotly
-prefix: C:\Users\sandergn\Anaconda3\envs\epidemics
