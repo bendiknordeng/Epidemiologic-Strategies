@@ -12,4 +12,4 @@ to activate (a created) environment:
 >conda activate [name]
 
 to update environment, when activated:
->conda env create -f env.yml
+>conda env update -f env.yml

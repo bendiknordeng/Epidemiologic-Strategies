@@ -191,7 +191,6 @@ class Case:
             Y0[5 + i * comps] = float(self.regions[i].M[begin_ix])
 
         self.update_params()
-
         if self.regional:
             Y = odeint(self.g, Y0, tspan, args=(self.rates_extended,))
         elif old:
@@ -396,7 +395,7 @@ class Case:
     def calculate_distance(area1, area2):
         coords1 = (area1.latitude, area1.longitude)
         coords2 = (area2.latitude, area2.longitude)
-        dist = geopy.distance.vincenty(coords1, coords2).km
+        dist = geopy.distance.geodesic(coords1, coords2).km
         return dist
 
     @staticmethod
