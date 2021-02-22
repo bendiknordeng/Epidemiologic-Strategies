@@ -435,7 +435,7 @@ class MarkovDecisionProcess:
         self.state = self.path[0]
         self.path = [self.state]
         self.costs = np.zeros(int(self.horizon + 1))
-        policy_df = pd.read_csv('../data/haiti_custom_policy.csv')
+        policy_df = pd.read_csv('mwo/data/haiti_custom_policy.csv')
         for i in tqdm(range(int(self.horizon))):
             decision = np.zeros(shape=(self.num_regions,self.num_intervention_types), dtype=int)
             decision_df = policy_df[policy_df['Time'] == i]
@@ -790,19 +790,19 @@ class MarkovDecisionProcess:
         decision = self.two_opt_swap(decision=decision, delta=delta, step_size=step_size)
         return decision
 
-    def save_value_function(self, path='../models/trained_vfa_models/model_v6.pth'):
+    def save_value_function(self, path='mwo/models/trained_vfa_models/model_v6.pth'):
         torch.save(self.value_function, path)
         print('SAVED SCALER')
         print(type(self.mean))
         print(type(self.std))
         print(self.mean)
         print(self.std)
-        with open('../models/trained_vfa_models/scaler_v6.txt', 'w') as f:
+        with open('mwo/models/trained_vfa_models/scaler_v6.txt', 'w') as f:
             f.write(str(self.mean.numpy()))
             f.write(str(self.std.numpy()))
 
     def load_value_function(self, path):
-        directory = '../models/trained_vfa_models/'
+        directory = 'mwo/models/trained_vfa_models/'
         vfa_path = directory + 'model_' + path +'.pth'
         scaler_path = directory + 'scaler_' + path + '.txt'
         self.value_function = torch.load(vfa_path)

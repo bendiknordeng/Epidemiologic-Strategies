@@ -10,7 +10,7 @@ if __name__ == '__main__':
 
     #computational_study = 'Model Training'
     #computational_study = 'Value Function Tuning and Convergence'
-    #computational_study = 'Base Case'
+    computational_study = 'Base Case'
     #computational_study = 'Kit Size'
     #computational_study = 'Early Vaccines'
     #computational_study = 'Additional Vaccines'

@@ -810,20 +810,20 @@ class Instance:
         #case_path = '../data/yemen_parameters.csv'
         #case_params = pd.read_csv(case_path, delimiter=',')
         if hypothetical:
-            case_path = '../data/hypothetical_haiti_parameters.csv'
+            case_path = 'mwo/data/hypothetical_haiti_parameters.csv'
         else:
-            case_path = '../data/haiti_parameters.csv'
+            case_path = 'mwo/data/haiti_parameters.csv'
         case_params = pd.read_csv(case_path, delimiter=',')
 
         if hypothetical:
-            with open('../data/hypothetical_epidemic_parameters.json', 'r') as f:
+            with open('mwo/data/hypothetical_epidemic_parameters.json', 'r') as f:
                 epidemic_params = json.load(f)
         else:
-            with open('../data/epidemic_parameters.json', 'r') as f:
+            with open('mwo/data/epidemic_parameters.json', 'r') as f:
                 epidemic_params = json.load(f)
 
         if resource_path is None:
-            resource_path = '../data/haiti_resource_allocation_parameters.json'
+            resource_path = 'mwo/data/haiti_resource_allocation_parameters.json'
 
         with open(resource_path, 'r') as f:
             resource_allocation_params = json.load(f)
