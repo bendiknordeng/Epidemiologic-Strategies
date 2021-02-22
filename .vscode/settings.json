@@ -1,3 +1,7 @@
 {
+<<<<<<< HEAD
     "python.pythonPath": "/Users/bendiknordeng/opt/anaconda3/bin/python"
+=======
+    "python.pythonPath": "c:\\Users\\peder\\anaconda3\\envs\\epidemics\\python.exe"
+>>>>>>> 4d6350e36d9a41578859f770a7d78ba3d2110c64
 }
