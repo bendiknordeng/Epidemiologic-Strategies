@@ -1,0 +1,22 @@
+{
+  "total_personnel" : 23344,
+  "facility_types" : ["CTC", "CTU", "ORP"],
+  "intervention_types" : ["vaccines", "disinfectant", "rehydration", "antibiotics"],
+  "resources_available" : [0, 360, 200, 100],
+  "facility_intervention_capacity" : [[1000, 1000, 100, 100],
+                                      [1000, 1000, 30, 30],
+                                      [1000, 1000, 2, 0]],
+  "intervention_personnel_capacity" : [0.001, 0.001, 0.07, 0.07],
+  "facility_personnel_capacity" : [75, 16, 2],
+  "aggregation_constant" : 1000,
+  "epsilon" : 1.0,
+  "learning_rate" : 0.001,
+  "hidden_dims" : [40, 30, 20, 10],
+  "exogenous_information_elements" : [],
+  "exogenous_information_probabilities" : [],
+  "time_dependent_resources" : {"13" :  [600, 0, 0, 0],
+  "20" :  [0, 0, 0, 0],
+  "30" :  [0, 0, 0, 0],
+  "40" :  [0, 0, 0, 0],
+  "50" :  [0, 0, 0, 0]}
+}

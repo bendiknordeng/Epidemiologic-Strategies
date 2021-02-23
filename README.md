@@ -3,10 +3,13 @@ Repository for our masters thesis at NTNU, 2021. Evaluating different vaccine di
 
 
 to export environment:
->conda env export --from-history > env.yml
+> conda env export --from-history > env.yml
+
 to create environment:
->conda env create -f env.yml
+> conda env create -f env.yml
+
 to activate (a created) environment:
->conda activate [name]
+> conda activate [name]
+
 to update environment, when activated:
->conda env create -f env.yml
+>conda env update -f env.yml

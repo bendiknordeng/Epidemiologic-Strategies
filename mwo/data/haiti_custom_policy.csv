@@ -1,0 +1,121 @@
+﻿Region,Intervention,Time,Amount
+Ouest,Vaccine,0,1000
+Ouest,Disinfectant,0,1000
+Ouest,Rehydration,0,1000
+Ouest,Antibiotics,0,1000
+Sud-Est,Vaccine,0,0
+Sud-Est,Disinfectant,0,0
+Sud-Est,Rehydration,0,0
+Sud-Est,Antibiotics,0,0
+Nord,Vaccine,0,0
+Nord,Disinfectant,0,0
+Nord,Rehydration,0,0
+Nord,Antibiotics,0,0
+Nord-Est,Vaccine,0,0
+Nord-Est,Disinfectant,0,0
+Nord-Est,Rehydration,0,0
+Nord-Est,Antibiotics,0,0
+Artibonite,Vaccine,0,1000
+Artibonite,Disinfectant,0,1000
+Artibonite,Rehydration,0,1000
+Artibonite,Antibiotics,0,1000
+Centre,Vaccine,0,0
+Centre,Disinfectant,0,0
+Centre,Rehydration,0,0
+Centre,Antibiotics,0,0
+Sud,Vaccine,0,0
+Sud,Disinfectant,0,0
+Sud,Rehydration,0,0
+Sud,Antibiotics,0,0
+Grande Anse,Vaccine,0,0
+Grande Anse,Disinfectant,0,0
+Grande Anse,Rehydration,0,0
+Grande Anse,Antibiotics,0,0
+Nord-Ouest,Vaccine,0,0
+Nord-Ouest,Disinfectant,0,0
+Nord-Ouest,Rehydration,0,0
+Nord-Ouest,Antibiotics,0,0
+Nippes,Vaccine,0,0
+Nippes,Disinfectant,0,0
+Nippes,Rehydration,0,0
+Nippes,Antibiotics,0,0
+Ouest,Vaccine,10,1000
+Ouest,Disinfectant,10,1000
+Ouest,Rehydration,10,1000
+Ouest,Antibiotics,10,1000
+Sud-Est,Vaccine,10,0
+Sud-Est,Disinfectant,10,0
+Sud-Est,Rehydration,10,0
+Sud-Est,Antibiotics,10,0
+Nord,Vaccine,10,0
+Nord,Disinfectant,10,0
+Nord,Rehydration,10,0
+Nord,Antibiotics,10,0
+Nord-Est,Vaccine,10,0
+Nord-Est,Disinfectant,10,0
+Nord-Est,Rehydration,10,0
+Nord-Est,Antibiotics,10,0
+Artibonite,Vaccine,10,1000
+Artibonite,Disinfectant,10,1000
+Artibonite,Rehydration,10,1000
+Artibonite,Antibiotics,10,1000
+Centre,Vaccine,10,0
+Centre,Disinfectant,10,0
+Centre,Rehydration,10,0
+Centre,Antibiotics,10,0
+Sud,Vaccine,10,0
+Sud,Disinfectant,10,0
+Sud,Rehydration,10,0
+Sud,Antibiotics,10,0
+Grande Anse,Vaccine,10,0
+Grande Anse,Disinfectant,10,0
+Grande Anse,Rehydration,10,0
+Grande Anse,Antibiotics,10,0
+Nord-Ouest,Vaccine,10,0
+Nord-Ouest,Disinfectant,10,0
+Nord-Ouest,Rehydration,10,0
+Nord-Ouest,Antibiotics,10,0
+Nippes,Vaccine,10,0
+Nippes,Disinfectant,10,0
+Nippes,Rehydration,10,0
+Nippes,Antibiotics,10,0
+Ouest,Vaccine,20,1000
+Ouest,Disinfectant,20,1000
+Ouest,Rehydration,20,1000
+Ouest,Antibiotics,20,1000
+Sud-Est,Vaccine,20,0
+Sud-Est,Disinfectant,20,0
+Sud-Est,Rehydration,20,0
+Sud-Est,Antibiotics,20,0
+Nord,Vaccine,20,0
+Nord,Disinfectant,20,0
+Nord,Rehydration,20,0
+Nord,Antibiotics,20,0
+Nord-Est,Vaccine,20,0
+Nord-Est,Disinfectant,20,0
+Nord-Est,Rehydration,20,0
+Nord-Est,Antibiotics,20,0
+Artibonite,Vaccine,20,1000
+Artibonite,Disinfectant,20,1000
+Artibonite,Rehydration,20,1000
+Artibonite,Antibiotics,20,1000
+Centre,Vaccine,20,0
+Centre,Disinfectant,20,0
+Centre,Rehydration,20,0
+Centre,Antibiotics,20,0
+Sud,Vaccine,20,0
+Sud,Disinfectant,20,0
+Sud,Rehydration,20,0
+Sud,Antibiotics,20,0
+Grande Anse,Vaccine,20,0
+Grande Anse,Disinfectant,20,0
+Grande Anse,Rehydration,20,0
+Grande Anse,Antibiotics,20,0
+Nord-Ouest,Vaccine,20,0
+Nord-Ouest,Disinfectant,20,0
+Nord-Ouest,Rehydration,20,0
+Nord-Ouest,Antibiotics,20,0
+Nippes,Vaccine,20,0
+Nippes,Disinfectant,20,0
+Nippes,Rehydration,20,0
+Nippes,Antibiotics,20,0
