@@ -61,20 +61,35 @@
 #'   N = 1
 #' )
 
+import datatest as dt
+import pandas as pd
 
-
-
-def asymmetric_mobility_se1e2iiar(se1e2iiar_pop, mobility_matrix, dynamic_seeds, betas, inputSeed, 
+def asymmetric_mobility_se1e2iiar(se1e2iiar_2strains_pop, mobility_matrix, dynamic_seeds, betas, inputSeed, 
                                 latent_period, presymptomatic_period, infectious_period, presymptomatic_relative_infectiousness, 
                                 asymptomatic_prob, asymptomatic_relative_infectiousness, N):
     
     # Parameters used in epidemiological model
-    a1 = 1 / latent_period             #  Finn ut av dette
-    a2 = 1 / presymptomatic_period     #  Finn ut av dette
-    gamma = 1 / infectious_period      #  Finn ut av dette
+    a1 = 1 / latent_period             
+    a2 = 1 / presymptomatic_period     
+    gamma = 1 / infectious_period      
+    days_simulation = df["day"].nunique()
+
+    # validate column data
+    dt.validate(betas.columns, {"location_code", "day", "time", "beta"})
+    dt.validate(se1e2iiar_2strains_pop.columns, {"location_code", "S", "E1", "E2", "I", "Ia", "R", "E1_b", "E2_b", "I_b", "Ia_b"})
 
     # create seed_matrix from dynamic_seeds
-    location_codes = ...
+    location_codes = se1e2iiar_2strains_pop['location_code']
+    dynamic_seeds_a = dynamic_seeds['n_b']
+    dynamic_seeds_b = dynamic_seeds['n']
+    
+
+
+
+
+
+
+
     
     # location_codes <- se1e2iiar_2strains_pop$location_code
     # if(!is.null(dynamic_seeds)){
@@ -107,7 +122,7 @@ def asymmetric_mobility_se1e2iiar(se1e2iiar_pop, mobility_matrix, dynamic_seeds,
     #     times = c(0, 6, 12, 18)
     # )
 
-
+def 
 
 
 def main():
@@ -129,14 +144,5 @@ def main():
                                     latent_period, presymptomatic_period, infectious_period, presymptomatic_relative_infectiousness, 
                                     asymptomatic_prob, asymptomatic_relative_infectiousness, N)
     
-
-
-
-
-
-
-
-
-def rda_to_csv(rda):
     
-    return csv
+
