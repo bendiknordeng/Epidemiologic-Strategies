@@ -7,14 +7,15 @@ class SIR:
     def __init__(self, **kwargs):
         """ Initializes and construct a SIR instance
         Args: 
-            beta: effective contact rate
-            gamma: recovery rate
-            p: probability of disease transmission in a contact between a suceptible and infectious subject 
-            sigma: average number of contacts per person per time
-            y0: initial number of subjects in each compartment
-            time_steps: length of simulation period
-            dt: length of simulation time steps
-            kwargs: keyword arguments
+            **kwargs: keyword arguments {
+                beta: effective contact rate
+                gamma: recovery rate
+                p: probability of disease transmission in a contact between a suceptible and infectious subject 
+                sigma: average number of contacts per person per time
+                y0: initial number of subjects in each compartment
+                time_steps: length of simulation period
+                dt: length of simulation time steps
+                }
         Returns: 
             A SIR instance
         """
