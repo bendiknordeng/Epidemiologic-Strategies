@@ -1,4 +1,5 @@
-from SIR import SIR
+#from SIR import SIR
+from spread import SIR
 import numpy as np
 
 class Region:
@@ -16,11 +17,20 @@ class Region:
         self.longitude = longitude
         self.latitude = latitude
 
-        # SIR-model 
-        self.sir_model = SIR()
+        # SIR-model
+        kwargs = {"beta":1, 
+            "p":0.05, 
+            "sigma":0.1, 
+            "time_steps":100, 
+            "dt":1,
+            "y0":[10000, 100, 0] # S0, I0, R0 
+            }
+     
+        self.sir_model = SIR(**kwargs)
     
     
     def model_outbreak(self):
-        self.sir_model.outbreak(self.s0, self.i0, self.r0)
-        self.sir_model.plot_outbreak()
+        self.sir_model
+        self.sir_model.simulate_epidemic()
+        self.sir_model.plot_simulation()
     
