@@ -15,12 +15,10 @@ class Region:
         self.longitude = longitude
         self.latitude = latitude
 
-        # Rates 
-        sir_model = SIR()
-        
-        
-if __name__ == '__main__':
-
-    import os
-    cwd = os.getcwd()
-    print(cwd)   
+        # SIR-model 
+        self.sir_model = SIR()
+    
+    def model_outbreak(self):
+        self.sir_model.outbreak(self.s0, self.i0, self.r0)
+        self.sir_model.plot_outbreak()
+    

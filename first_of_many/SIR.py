@@ -7,7 +7,28 @@ class SIR:
         self.beta = beta
         self.gamma = gamma
 
-    def transition(state, beta, gamma):
+    def outbreak(self, s0, i0, r0, T=200):
+        S, I, R = s0, i0, r0
+        Y= [(S,I,R)]
+        for n in range(T):
+            beta = 0.5*(I/(S+I+R))
+            
+            new_infected = np.random.binomial(S, beta)
+            new_recovered = np.random.binomial(I, self.gamma)
+            
+            S,I,R = (S-new_infected, I+new_infected-new_recovered, R+new_recovered)
+            Y.append((S,I,R))
+        self.last_Y=Y
+
+    def plot_outbreak(self):
+        print("plot")
+        plt.plot(self.last_Y)
+        plt.ylabel('Number of individuals')
+        plt.xlabel('Steps')
+        plt.legend(('Susceptible', 'Infected', 'Recovered'))
+        plt.show()
+"""
+    def transition(self, state, beta, gamma):
         prob = random.uniform(0,1)
         if state == 0:
             return prob <= beta
@@ -16,7 +37,7 @@ class SIR:
         elif state == 2:
             return False
 
-    def next_state(initial, N):
+    def next_state(self, initial, N):
         transition_times = []
         for i in range(N):
             next_state = False
@@ -26,36 +47,8 @@ class SIR:
                 next_state = self.transition(initial, self.beta, self.gamma)
             transition_times.append(counter)
         return sum(transition_times)/N
-
-
-    
-
-    #print("Average transition time S -> I:", next_state(0,1000, beta, gamma))
-    #print("Average transition time I -> R:", next_state(1,1000, beta, gamma))
-
-
-    def outbreak(T, Y_0, N, gamma):
-        Y = [Y_0]
-        for n in range(N):
-            S, I, R = Y[n]
-            beta = 0.5*(I/T)
-            
-            new_infected = np.random.binomial(S, beta)
-            new_recovered = np.random.binomial(I, gamma)
-            
-            Y_next = (S-new_infected, I+new_infected-new_recovered, R+new_recovered)
-            Y.append(Y_next)
-
-        return Y
-
-    def plot_outbreak(Y):
-        plt.plot(Y)
-        plt.ylabel('Number of individuals')
-        plt.xlabel('Steps')
-        plt.legend(('Susceptible', 'Infected', 'Recovered'))
-        plt.show()
-
-
+"""
+if __name__ == '__main__':
     T = 1000
     Y_0 = (950, 50, 0)
     N = 200
