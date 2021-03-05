@@ -27,6 +27,8 @@ class SIR:
         plt.xlabel('Steps')
         plt.legend(('Susceptible', 'Infected', 'Recovered'))
         plt.show()
+
+
 """
     def transition(self, state, beta, gamma):
         prob = random.uniform(0,1)
@@ -48,30 +50,4 @@ class SIR:
             transition_times.append(counter)
         return sum(transition_times)/N
 """
-if __name__ == '__main__':
-    T = 1000
-    Y_0 = (950, 50, 0)
-    N = 200
-    gamma = 0.2
-
-    Y = outbreak(T, Y_0, N, gamma)
-    plot_outbreak(Y)
-
-
-    T = 1000
-    Y_0 = (950, 50, 0)
-    N = 200
-    gamma = 0.2
-
-    steps_until_max = []
-    I_max = []
-    for i in range(1000):
-        Y = outbreak(T, Y_0, N, gamma)
-        I_n = [value[1] for value in Y]
-        max_value = max(I_n)
-        I_max.append(max_value)
-        steps_until_max.append(I_n.index(max_value))
-
-    print('Expected maximum of infected people:', sum(I_max)/1000)
-    print('Expected time at maximum:', sum(steps_until_max)/1000)
 
