@@ -16,22 +16,22 @@ class SIR:
         elif state == 2:
             return False
 
-    def next_state(initial, N, beta, gamma):
+    def next_state(initial, N):
         transition_times = []
         for i in range(N):
             next_state = False
             counter = 0
             while not next_state:
                 counter += 1
-                next_state = self.transition(initial, beta, gamma)
+                next_state = self.transition(initial, self.beta, self.gamma)
             transition_times.append(counter)
         return sum(transition_times)/N
 
 
     
 
-    print("Average transition time S -> I:", next_state(0,1000, beta, gamma))
-    print("Average transition time I -> R:", next_state(1,1000, beta, gamma))
+    #print("Average transition time S -> I:", next_state(0,1000, beta, gamma))
+    #print("Average transition time I -> R:", next_state(1,1000, beta, gamma))
 
 
     def outbreak(T, Y_0, N, gamma):
