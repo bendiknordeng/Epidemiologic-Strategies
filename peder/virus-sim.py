@@ -1,28 +1,35 @@
 import numpy as np
 from collections import namedtuple
+import matplotlib.pyplot as plt
 
 Param = namedtuple('Param', 'R0 DE DI I0 HospitalisationRate HospitalIters')
 # I0 is the distribution of infected people at time t=0, if None then randomly choose inf number of people
 
-
 def seir(par, distr, flow, alpha, iterations, inf):
-    """
-    parameters:
-        - par: parameters
+    """ Simulates an epidemic
+    Parameters:
+        - par: parameters {
+                R0: Basic reproduction number (e.g 2.4)
+                DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
+                DI: Infectious period (e.g 5.2 * 12)
+                I0: In(eitial infectiouns .g initial)
+                HospitalisationRate: Percentage of people that will be hospitalized (e.g 0.1)
+                HospitalIters: Length of hospitalization (e.g 15*12) }
         - distr: population distribution
         - flow: OD matrices with dimensions r x n x n (i.e., 84 x 549 x 549).  flow[t mod r] is the desired OD matrix at time t. Use mod in order to only need one week of OD- matrices. 
         - alpha: strength of lock down measures/movement restriction. value of 1 - normal flow, 0 - no flow 
         - iterations: number of simulations/ duration of simulation
         - inf: number of infections
-    returns: 
+    Returns: 
         - res: matrix of shape (#iterations, #compartments" + 1(hospitalized people))
         - history: matrix with the number of subjects in each compartment [sim_it, compartment_id, num_cells]
     """
     
-    r = flow.shape[0]
-    n = flow.shape[1]
-    N = distr[0].sum() # total population, we assume that N = sum(flow)
-    
+    r = flow.shape[0]  # Number of OD matrices - Ex. 84  
+    n = flow.shape[1]  # Number of regions - Ex. 549
+    N = distr[0].sum() # Total population. Assumes that N = sum(flow) 
+
+    # Initialize compartments
     Svec = distr[0].copy()
     Evec = np.zeros(n)
     Ivec = np.zeros(n)
@@ -37,7 +44,7 @@ def seir(par, distr, flow, alpha, iterations, inf):
                 initial[loc] += 1.0      
     else:
         initial = par.I0
-    assert ((Svec < initial).sum() == 0)
+    assert ((Svec < initial).sum() == 0) # Make sure that number of suceptible > infected for every region
     
     Svec -= initial
     Ivec += initial
@@ -45,7 +52,8 @@ def seir(par, distr, flow, alpha, iterations, inf):
     res = np.zeros((iterations, 5))
     res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0]
     
-    # Normalise the flows and then multiply them by the alpha values. OBS: alpha actually represents non-linear action!
+    # Normalise the flows and then multiply them by the alpha values. 
+    # Alpha is just a conceptual measure that reduce the mobility flow
     realflow = flow.copy()
     realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]    
     realflow = alpha * realflow 
@@ -62,6 +70,8 @@ def seir(par, distr, flow, alpha, iterations, inf):
     for iter in range(0, iterations - 1):
         realOD = realflow[iter % r]  # Stays within one week using modelo
         
+        d = distr[iter % r] + 1  # At least one person in each cell. To avoid normalization problems. 
+
         # Partial differential equations
         newE = Svec * Ivec / d * (par.R0 / par.DI)
         newI = Evec / par.DE
@@ -97,8 +107,21 @@ def seir(par, distr, flow, alpha, iterations, inf):
         history[iter + 1,0,:] = Svec
         history[iter + 1,1,:] = Evec
         history[iter + 1,2,:] = Ivec
-        history[iter + 1,3,:] = Rvec
-        
-        
+        history[iter + 1,3,:] = Rvec    
     return res, history
+
+
+def seir_plot(res):
+    """ Plots the epidemiological curves
+    Parameters:
+        res: [3D matrix, compartment_id]
+    """
+    plt.plot(res[::12, 0], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
+    plt.plot(res[::12, 1], color='g', label='E')
+    plt.plot(res[::12, 2], color='b', label='I')
+    plt.plot(res[::12, 3], color='y', label='R')
+    plt.plot(res[::12, 4], color='c', label='H')
+    plt.legend()
+    plt.show()
+
 
