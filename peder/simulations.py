@@ -174,23 +174,23 @@ alpha = np.ones(OD_matrices.shape)
 iterations = 3000
 res = {}  # dictionary where the results for different cases will be found
 inf = 50
-res['baseline'] = seir(model, pop, OD_matrices, alpha, iterations, inf)  #baseline == no quarantine
+res['baseline'], history = seir(model, pop, OD_matrices, alpha, iterations, inf)  #baseline == no quarantine
 
 print("Max number of hospitalised people: ", int(res["baseline"][0][:,4].max()),
 "\n",
 "Day with max hospitalised people: ", int(res["baseline"][0][:,4].argmax()/12))
 # plot result
+print(res['baseline'])
 seir_plot(res["baseline"][0])
-
-
+print(history)
 
 
 # ---------------------------- Spatial Visualization -------------------------------
+"""
 # import libraries
 import pandas as pd
 import geopandas as gpd
 import contextily as ctx
-
 from pyproj import CRS
 
 crs = CRS.from_epsg(4326)
@@ -201,7 +201,7 @@ yerevan_gdf.crs = {'init':'epsg:4326'}
 yerevan_gdf.crs = crs
 yerevan_gdf.head()
 
-"""
+
 
 # convert to crs used by contextily
 yerevan_gdf_3857 = yerevan_gdf.to_crs(epsg=3857)
@@ -240,8 +240,6 @@ map_object = LinearSegmentedColormap.from_list(name="Reds_transp", colors=color_
 # register the colormap object
 plt.register_cmap(cmap=map_object)
 
-
-
 # plot some example data
 fig, ax = plt.subplots()
 h = ax.imshow(np.random.rand(100,100), cmap='Reds_transp')
@@ -264,7 +262,6 @@ print("baseline dimensions: ", baseline.shape)
 print("hosp dimensions: ", hosp.shape)
 
 baseline[0, 1, :]
-
 
 params = {"axes.labelcolor":"slategrey"}
 plt.rcParams.update(params)
