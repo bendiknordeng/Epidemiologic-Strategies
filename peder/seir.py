@@ -77,6 +77,7 @@ def seir(par, distr, flow, alpha, iterations, inf):
                + np.matmul(Svec.reshape(1,n), realOD)
                - Svec * realOD.sum(axis=1)
                 )
+                
         Evec = Evec + newE - newI
         Evec = (Evec 
                + np.matmul(Evec.reshape(1,n), realOD)
