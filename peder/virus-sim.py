@@ -15,6 +15,24 @@ Param = namedtuple('Param', 'R0 DE DI I0 HospitalisationRate HospitalIters')
 # flow[t mod r] is the desired OD matrix at time t.
 
 def seir(par, distr, flow, alpha, iterations, inf):
+    """ Simulates an epidemic
+    Parameters:
+        - par: parameters {
+                R0: Basic reproduction number (e.g 2.4)
+                DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
+                DI: Infectious period (e.g 5.2 * 12)
+                I0: In(eitial infectiouns .g initial)
+                HospitalisationRate: Percentage of people that will be hospitalized (e.g 0.1)
+                HospitalIters: Length of hospitalization (e.g 15*12) }
+        - distr: population distribution
+        - flow: OD matrices with dimensions r x n x n (i.e., 84 x 549 x 549).  flow[t mod r] is the desired OD matrix at time t. Use mod in order to only need one week of OD- matrices. 
+        - alpha: strength of lock down measures/movement restriction. value of 1 - normal flow, 0 - no flow 
+        - iterations: number of simulations/ duration of simulation
+        - inf: number of infections
+    Returns: 
+        - res: matrix of shape (#iterations, #compartments" + 1(hospitalized people))
+        - history: matrix with the number of subjects in each compartment [sim_it, compartment_id, num_cells]
+    """
     
     r = flow.shape[0]
     n = flow.shape[1]
@@ -44,16 +62,6 @@ def seir(par, distr, flow, alpha, iterations, inf):
     res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0]
     
     realflow = flow.copy() # copy!
-    
-#     for j in range(r):
-#         for i in range(n):
-#             realflow[j][i] /= realflow[j][i].sum()
-
-    # The two lines below normalise the flows and then multiply them by the alpha values. 
-    # This is actually the "wrong" the way to do it because alpha will not be a *linear* measure 
-    # representing lockdown strength but a *nonlinear* one.
-    # The normalisation strategy has been chosen for demonstration purposes of numpy functionality.
-    # (Optional) can you rewrite this part so that alpha remains a linear measure of lockdown strength? :)
     realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]    
     realflow = alpha * realflow 
     
@@ -74,8 +82,7 @@ def seir(par, distr, flow, alpha, iterations, inf):
         if ((d>N+1).any()): #assertion!
             print("Houston, we have a problem!")
             return res, history
-        # N =  S + E + I + R
-        
+            
         newE = Svec * Ivec / d * (par.R0 / par.DI)
         newI = Evec / par.DE
         newR = Ivec / par.DI
@@ -115,3 +122,15 @@ def seir(par, distr, flow, alpha, iterations, inf):
         
     return res, history
 
+    def seir_plot(res):
+        """ Plots the epidemiological curves
+        Parameters:
+            res: [3D matrix, compartment_id]
+        """
+        plt.plot(res[::12, 0], color='r', label='S')
+        plt.plot(res[::12, 1], color='g', label='E')
+        plt.plot(res[::12, 2], color='b', label='I')
+        plt.plot(res[::12, 3], color='y', label='R')
+        plt.plot(res[::12, 4], color='c', label='H')
+        plt.legend()
+        plt.show()
