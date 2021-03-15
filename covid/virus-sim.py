@@ -17,7 +17,21 @@ Param = namedtuple('Param', 'R0 DE DI I0 HospitalisationRate HospitalIters eff')
 # flow is a 3D matrix of dimensions r x n x n (i.e., 84 x 549 x 549),
 # flow[t mod r] is the desired OD matrix at time t.
 
-def seir(par, distr, flow, alpha, iterations, inf, vacc):
+def scale_flow(flow, alpha):
+    """scales realflow
+    Parameters:
+        flow: 3D array with flows
+        alpha: array of scalers that adjust flows for a given compartment and region
+    Return:
+        Scaled realflow
+    """
+    realflow = flow.copy() # copy!
+    realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize the flow
+    realflow = alpha * realflow 
+    return realflow
+
+
+def seir(par, distr, flow, alphas, iterations, inf, vacc):
     """ Simulates an epidemic
     Parameters:
         - par: parameters {
@@ -30,7 +44,7 @@ def seir(par, distr, flow, alpha, iterations, inf, vacc):
                 eff: vaccine efficacy (e.g 0.95)
         - distr: population distribution
         - flow: OD matrices with dimensions r x n x n (i.e., 84 x 549 x 549).  flow[t mod r] is the desired OD matrix at time t. Use mod in order to only need one week of OD- matrices. 
-        - alpha: strength of lock down measures/movement restriction. value of 1 - normal flow, 0 - no flow 
+        - alphas: [alpha_s, alpha_e, alpha_i, alpha_r] strength of lock down measures/movement restriction. value of 1 - normal flow, 0 - no flow 
         - iterations: number of simulations/ duration of simulation
         - inf: number of infections
     Returns: 
@@ -67,9 +81,12 @@ def seir(par, distr, flow, alpha, iterations, inf, vacc):
     res = np.zeros((iterations, k))
     res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
     
-    realflow = flow.copy() # copy!
-    realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize the flow
-    realflow = alpha * realflow 
+    # Realflows for different compartments 
+    alpha_s, alpha_e, alpha_i, alpha_r = alphas
+    realflow_s = scale_flow(flow.copy(), alpha_s)
+    realflow_e = scale_flow(flow.copy(), alpha_e)
+    realflow_i = scale_flow(flow.copy(), alpha_i)
+    realflow_r = scale_flow(flow.copy(), alpha_r)
     
     history = np.zeros((iterations, k, n))
     history[0,0,:] = Svec
@@ -83,7 +100,10 @@ def seir(par, distr, flow, alpha, iterations, inf, vacc):
     
     # run simulation
     for iter in range(0, iterations - 1):
-        realOD = realflow[iter % r]
+        realOD_s = realflow_s[iter % r]
+        realOD_e = realflow_e[iter % r]
+        realOD_i = realflow_i[iter % r]
+        realOD_r = realflow_r[iter % r]
         
         v = vacc[iter % r] + 1
         v = np.minimum(v, Svec)[0] # Ensure that no people are vaccinated if they are not suceptible
@@ -101,26 +121,26 @@ def seir(par, distr, flow, alpha, iterations, inf, vacc):
         
         Svec -= newE
         Svec = (Svec 
-               + np.matmul(Svec.reshape(1,n), realOD)
-               - Svec * realOD.sum(axis=1)
+               + np.matmul(Svec.reshape(1,n), realOD_s)
+               - Svec * realOD_s.sum(axis=1)
                - newV
                 )
         Evec = Evec + newE - newI
         Evec = (Evec 
-               + np.matmul(Evec.reshape(1,n), realOD)
-               - Evec * realOD.sum(axis=1)
+               + np.matmul(Evec.reshape(1,n), realOD_e)
+               - Evec * realOD_e.sum(axis=1)
                 )
                 
         Ivec = Ivec + newI - newR
         Ivec = (Ivec 
-               + np.matmul(Ivec.reshape(1,n), realOD)
-               - Ivec * realOD.sum(axis=1)
+               + np.matmul(Ivec.reshape(1,n), realOD_i)
+               - Ivec * realOD_i.sum(axis=1)
                 )
                 
         Rvec += newR
         Rvec = (Rvec 
-               + np.matmul(Rvec.reshape(1,n), realOD)
-               - Rvec * realOD.sum(axis=1)
+               + np.matmul(Rvec.reshape(1,n), realOD_r)
+               - Rvec * realOD_r.sum(axis=1)
                + newV
                 )
 
