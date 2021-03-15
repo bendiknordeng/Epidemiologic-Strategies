@@ -47,6 +47,7 @@ def seir(par, distr, flow, alphas, iterations, inf, vacc):
         - alphas: [alpha_s, alpha_e, alpha_i, alpha_r] strength of lock down measures/movement restriction. value of 1 - normal flow, 0 - no flow 
         - iterations: number of simulations/ duration of simulation
         - inf: number of infections
+        - vacc: 
     Returns: 
         - res: matrix of shape (#iterations, #compartments" + 1(hospitalized people))
         - history: matrix with the number of subjects in each compartment [sim_it, compartment_id, num_cells]
