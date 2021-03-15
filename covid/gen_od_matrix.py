@@ -1,4 +1,4 @@
-import pickle
+import pickle as pkl
 import numpy as np
 
 num_areas = 356
@@ -19,10 +19,11 @@ for m in range(num_time_steps):
 
 arr = np.array(a)
 
-with open('data/data_municipalities/od_municipalities.pkl','wb') as f:
-    pickle.dump(arr, f)
+filepath = 'data/data_municipalities/od_municipalities.pkl'
+with open(filepath ,'wb') as f:
+    pkl.dump(arr, f)
     
-with open('data/data_municipalities/od_municipalities.pkl','rb') as f:
-     x = pickle.load(f)
+with open(filepath,'rb') as f:
+     x = pkl.load(f)
      print(x[0])
      print(x.shape)
