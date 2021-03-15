@@ -63,8 +63,8 @@ def main():
     # print(x.shape)
 
 
-    v = 'covid/data/data_counties/vaccines_counties.pkl'
-    m = generate_vaccine_matrix()
+    v = 'data/data_municipalities/vaccines_municipalities.pkl'
+    m = generate_vaccine_matrix(num_counties=356)
     write_pickle(v, m)
     y = read_pickle(v)
     # print(y)
