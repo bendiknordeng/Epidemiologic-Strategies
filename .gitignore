@@ -3,3 +3,9 @@
 
 #User specific pycaches
 __pycache__/
+
+#data files
+covid/data/*
+
+#plots
+covid/plots/*
