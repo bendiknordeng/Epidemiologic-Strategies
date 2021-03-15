@@ -5,7 +5,10 @@
 __pycache__/
 
 #data files
-data/
+data
 
 #plots
-plots/
+covid/plots
+
+#checkpoints
+covid/.ipynb_checkpoints/
