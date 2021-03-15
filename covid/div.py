@@ -1,7 +1,7 @@
 import pickle
 import numpy as np
 
-def generate_od_matrix(num_counties=11, num_time_steps=84):
+def generate_od_matrix(num_time_steps, num_counties):
     """ generate an OD-matrix used for illustrative purposes only
     Paramters:
         num_counties:
@@ -56,17 +56,31 @@ def read_pickle(filepath):
 
 def main():
     # f = 'covid/data/data_counties/od_counties.pkl'
-    # od = generate_od_matrix()
+    # od = generate_od_matrix(84, 11)
     # write_pickle(f, od)
     # x = read_pickle(f)
     # print(x[0])
     # print(x.shape)
 
+    f = 'covid/data/data_municipalities/od_municipalities.pkl'
+    od = generate_od_matrix(84, 356)
+    write_pickle(f, od)
+    x = read_pickle(f)
+    print(x[0])
+    print(x.shape)
 
+<<<<<<< HEAD
     v = 'data/data_municipalities/vaccines_municipalities.pkl'
     m = generate_vaccine_matrix(num_counties=356)
     write_pickle(v, m)
     y = read_pickle(v)
+=======
+
+    # v = 'covid/data/data_counties/vaccines_counties.pkl'
+    # m = generate_vaccine_matrix()
+    # write_pickle(v, m)
+    # y = read_pickle(v)
+>>>>>>> 272ec5e85870afc762cbbb4f9b99e744ac8a67cd
     # print(y)
     # print(y.shape)
 
