@@ -1,6 +1,8 @@
 import pickle as pkl
 import numpy as np
 
+# In[ ]:
+
 def generate_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
     Paramters:
@@ -77,4 +79,4 @@ def main():
     print(y.shape)
 
 if __name__ == '__main__':
-    main()
+    pass
