@@ -9,5 +9,5 @@ To use epidemics environment:
 To activate (a created) environment:
 > conda activate epidemics
 
-to update environment, when activated:
+To update environment, when activated:
 > conda env update -f env.yml
