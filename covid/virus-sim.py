@@ -114,7 +114,7 @@ def seir(par, distr, flow, alphas, iterations, inf, vacc):
         if ((d>N+1).any()): #assertion!
             print("Population does not stay constant!")
             return res, history
-            
+        print(par.R0)    
         newE = Svec * Ivec / d * (par.R0 / par.DI)
         newI = Evec / par.DE
         newR = Ivec / par.DI

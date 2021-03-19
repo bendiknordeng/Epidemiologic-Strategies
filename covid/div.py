@@ -55,6 +55,27 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
+import pandas as pd
+import numpy as np
+
+def transform_res_to__df(res, column_names, region_names, region_population):
+    """ Transform a 3D maattrix that is the result from SEIR modelling to a pandas dataframe
+    Paramters:
+        res: 3D matrix e.g (250, 6, 11)
+        coloumn_names: string that represents the column names (e.g 'SEIRHQ').  Should have the same length as res[1]
+        region_names: list with strings that represents all the regions. Should have the same length as res[2]
+    Returns:
+        df: dataframe that represents the 3D matrix (2750 (res[0]*res[2]), 6 (res[1]))
+    """
+    A = res.transpose(0,2,1)
+    (a,b,c) = A.shape 
+    B = A.reshape(-1,c) 
+    df = pd.DataFrame(B, columns=list(column_names))
+    df['Region'] = np.tile(np.array(region_names), a)
+    df['Population'] = np.tile(np.array(region_population), a)
+    df['Day'] = np.floor_divide(df.index.values, b)
+    return df 
+
 
 def main():
     # f = 'covid/data/data_counties/od_counties.pkl'
