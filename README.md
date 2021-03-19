@@ -11,3 +11,6 @@ To activate (a created) environment:
 
 To update environment, when activated:
 > conda env update -f env.yml
+
+To export environment:
+> conda env export --from-history > env.yml
