@@ -295,6 +295,7 @@ def create_gif():
 
 
 if __name__ == '__main__':
+    """
     OD_matrices = load_od_matrices()
     pop, befolkning = create_population()
     seir = initialize_seir(OD_matrices.shape[0], pop.shape[1], sum(pop[0]), 50)
@@ -316,4 +317,5 @@ if __name__ == '__main__':
 
     max_exp_ind, max_exp_val = find_max_exposed(baseline, befolkning)
     plot_simulation(kommuner_geometry)
+    """
     create_gif()
