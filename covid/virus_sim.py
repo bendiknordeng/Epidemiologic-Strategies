@@ -13,7 +13,7 @@ class SEIR:
 
     def __init__(self, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, I0=356, HospitalisationRate=0.1, eff=0.95, HospitalIters=15*12):
         param = namedtuple('param', 'R0 DE DI I0 HospitalisationRate HospitalIters eff')
-        self.par = param(R0=R0, DE= DE, DI= DI, I0=I0, HospitalisationRate=HospitalisationRate, eff=eff, HospitalIters=HospitalIters)
+        self.par = param(R0=R0, DE=DE, DI=DI, I0=I0, HospitalisationRate=HospitalisationRate, eff=eff, HospitalIters=HospitalIters)
 
     # I0 is the distribution of infected people at time t=0, if None then randomly choose inf number of people
 
@@ -163,30 +163,4 @@ class SEIR:
 
         return res, history
 
-    def seir_plot_one_cell(res, cellid):
-        """ Plots SIR for a single cell
-        self.parameters:
-        res: [3D array, comself.partment_id]
-        """
-        plt.plot(res[::12, 0, cellid], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
-        plt.plot(res[::12, 1, cellid], color='g', label='E')
-        plt.plot(res[::12, 2, cellid], color='b', label='I')
-        plt.plot(res[::12, 3, cellid], color='y', label='R')
-        plt.plot(res[::12, 4, cellid], color='c', label='H')
-        plt.plot(res[::12, 5, cellid], color='m', label='V')
-        plt.legend()
-        plt.show()
-
-    def seir_plot(res):
-        """ Plots the epidemiological curves
-        self.parameters:
-        res: [3D array, comself.partment_id]
-        """
-        plt.plot(res[::12, 0], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
-        plt.plot(res[::12, 1], color='g', label='E')
-        plt.plot(res[::12, 2], color='b', label='I')
-        plt.plot(res[::12, 3], color='y', label='R')
-        plt.plot(res[::12, 4], color='c', label='H')
-        plt.plot(res[::12, 5], color='m', label='V')
-        plt.legend()
-        plt.show()
+    
