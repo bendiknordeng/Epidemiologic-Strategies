@@ -13,7 +13,7 @@ import re
 from os import listdir
 import imageio
 from virus_sim import SEIR
-from div import *
+from utils import *
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -55,7 +55,7 @@ def create_population():
     pop = np.asarray([befolkningsarray for _ in range(84)])
     return pop, befolkning
 
-def initialize_seir(data_period, num_regions, tot_population, num_infected=50):
+def initialize_seir(config, data_period, num_regions, tot_population, num_infected=50):
     """ initialize seir model 
     Paramters: 
         data_period: number of periods the mobility data represents
@@ -65,14 +65,20 @@ def initialize_seir(data_period, num_regions, tot_population, num_infected=50):
     Returns:
         a SEIR-object, found in virus_sim.py
     """
-    r = data_period  # Simulation period 
-    n = num_regions          # Number of regions 
-    N = tot_population           # Total population 
-    initialInd = [0]          # Initial index of region(s) infected
-    initial = np.zeros(n)
+    r = data_period             # Simulation period 
+    n = num_regions             # Number of regions 
+    N = tot_population          # Total population 
+    initialInd = config.initialInd            # Initial index of region(s) infected
+    initial = np.zeros(n)       # Create initial infected array
     initial[initialInd] = num_infected  # Number of infected people in each of the initial counties infected
-
-    return SEIR(R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, I0=initial, HospitalisationRate=0.1, eff=0.95, HospitalIters=15*12)
+    seir = SEIR(R0=config.R0,
+                DE= config.DE* config.periods_per_day,
+                DI= config.DI* config.periods_per_day,
+                I0=initial,
+                HospitalisationRate=config.HospitalisationRate,
+                eff=config.eff,
+                HospitalIters=config.HospitalIters*config.periods_per_day)
+    return seir
 
 def load_vaccination_programme(data_period, num_regions):
     """ load vaccination programme, e.g. how vaccines should be allocated to different regions
@@ -145,11 +151,6 @@ def create_geopandas(geopandas_from_pkl=True):
     kommuner_geometry.crs = crs_kommune
     print(kommuner_geometry.crs)
 
-    #uncomment when ctx is used
-
-    #norge_geojson_3857 = norge_geojson.to_crs(epsg=3857)  # Convert to epsg=3857 to use contextily
-    #west, south, east, north = norge_geojson_3857.unary_union.bounds
-    west, south, east, north = kommuner_geometry.unary_union.bounds
     return kommuner_geometry
 
 def find_max_exposed(baseline, befolkning):
@@ -194,7 +195,10 @@ def plot_simulation(kommuner_geometry):
     cmap = plt.get_cmap('Reds_transp')
     new_cmap = trunc_colormap(cmap, 0.0, .9)
 
+    #uncomment when ctx is used
+    kommuner_geometry = kommuner_geometry.to_crs(epsg=3857)  # Convert to epsg=3857 to use contextily
     west, south, east, north = kommuner_geometry.unary_union.bounds
+
     params = {"axes.labelcolor":"slategrey"}
     plt.rcParams.update(params)
     cmap = plt.cm.get_cmap("Blues")
@@ -214,7 +218,7 @@ def plot_simulation(kommuner_geometry):
         kommuner_geometry.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=2)
         kommuner_geometry.plot(ax=ax, column='exposed_per_100k', cmap=new_cmap, zorder=3)
         # add background
-        # ctx.add_basemap(ax, attribution="", source=ctx.sources.ST_TONER_LITE, zoom='auto', alpha=0.6)
+        ctx.add_basemap(ax, attribution="", source=ctx.sources.ST_TONER_LITE, zoom='auto', alpha=0.6)
         
         ax.set_xlim(west, east)
         ax.set_ylim(south, north)
@@ -293,29 +297,3 @@ def create_gif():
             image = imageio.imread('plots/plots_municipalities/{}'.format(filename))
             writer.append_data(image)
 
-
-if __name__ == '__main__':
-    """
-    OD_matrices = load_od_matrices()
-    pop, befolkning = create_population()
-    seir = initialize_seir(OD_matrices.shape[0], pop.shape[1], sum(pop[0]), 50)
-    vacc = load_vaccination_programme(OD_matrices.shape[0], pop.shape[1])
-    res = {}                            # Dictionary with results for different cases 
-    res['baseline'] = simulate(seir, pop, OD_matrices, vacc)
-    kommuner_geometry = create_geopandas(geopandas_from_pkl=True)
-    # Print hospitalized information
-    print("Max number of hospitalised people: ", int(res["baseline"][0][:,4].max()))
-    print("Day with max hospitalised people: ", int(res["baseline"][0][:,4].argmax()/12)) # Divide by
-    seir_plot(res["baseline"][0])
-    # declare baseline array storing the dynamics of the compartments 
-    baseline = res['baseline'][1][::12, :, :]
-    print(baseline.shape)
-
-    # declare hopsitalisation array storing the dynamics of the hospitalised 
-    hosp = res['baseline'][0][::12, 4]
-    print(hosp.shape)
-
-    max_exp_ind, max_exp_val = find_max_exposed(baseline, befolkning)
-    plot_simulation(kommuner_geometry)
-    """
-    create_gif()

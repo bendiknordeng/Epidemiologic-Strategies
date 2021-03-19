@@ -1,7 +1,17 @@
-import pickle as pkl
+import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import pickle as pkl
+import ast
+from collections import namedtuple
 
-# In[ ]:
+def read_config(filepath="configs/baseline.txt"):
+    file = open(filepath, "r")
+    contents = file.read()
+    dictionary = ast.literal_eval(contents)
+    file.close()
+    return namedtuple('Config', dictionary.keys())(**dictionary)
+    # dicts_from_file now contains the dictionaries created from the text file
 
 def generate_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
@@ -55,9 +65,6 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
-import pandas as pd
-import numpy as np
-
 def transform_res_to__df(res, column_names, region_names, region_population):
     """ Transform a 3D maattrix that is the result from SEIR modelling to a pandas dataframe
     Paramters:
@@ -76,28 +83,30 @@ def transform_res_to__df(res, column_names, region_names, region_population):
     df['Day'] = np.floor_divide(df.index.values, b)
     return df 
 
+def seir_plot_one_cell(res, cellid):
+        """ Plots SIR for a single cell
+        self.parameters:
+        res: [3D array, comself.partment_id]
+        """
+        plt.plot(res[::12, 0, cellid], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
+        plt.plot(res[::12, 1, cellid], color='g', label='E')
+        plt.plot(res[::12, 2, cellid], color='b', label='I')
+        plt.plot(res[::12, 3, cellid], color='y', label='R')
+        plt.plot(res[::12, 4, cellid], color='c', label='H')
+        plt.plot(res[::12, 5, cellid], color='m', label='V')
+        plt.legend()
+        plt.show()
 
-def main():
-    # f = 'covid/data/data_counties/od_counties.pkl'
-    # od = generate_od_matrix(84, 11)
-    # write_pickle(f, od)
-    # x = read_pickle(f)
-    # print(x[0])
-    # print(x.shape)
-
-    # f = 'covid/data/data_municipalities/od_municipalities.pkl'
-    # od = generate_od_matrix(84, 356)
-    # write_pickle(f, od)
-    # x = read_pickle(f)
-    # print(x[0])
-    # print(x.shape)
-
-    v = 'covid/data/data_municipalities/vaccines_municipalities.pkl'
-    m = generate_vaccine_matrix(84, 356)
-    write_pickle(v, m)
-    y = read_pickle(v)
-    print(y)
-    print(y.shape)
-
-if __name__ == '__main__':
-    pass
+def seir_plot(res):
+    """ Plots the epidemiological curves
+    self.parameters:
+    res: [3D array, comself.partment_id]
+    """
+    plt.plot(res[::12, 0], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
+    plt.plot(res[::12, 1], color='g', label='E')
+    plt.plot(res[::12, 2], color='b', label='I')
+    plt.plot(res[::12, 3], color='y', label='R')
+    plt.plot(res[::12, 4], color='c', label='H')
+    plt.plot(res[::12, 5], color='m', label='V')
+    plt.legend()
+    plt.show()
