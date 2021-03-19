@@ -10,5 +10,8 @@ data/
 #plots
 covid/plots
 
+#gifs
+covid/gifs
+
 #checkpoints
 covid/.ipynb_checkpoints/
