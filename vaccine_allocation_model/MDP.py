@@ -1,6 +1,10 @@
 
-class mdp:
-    
+class MarkovDecisionProcess:
+    def __init__():
+
+        self.state = State()
+        self.vaccine_supply = 
+
     def get_action(self, state, policy):
         """ finds the action accoriding to a given policy at time t
         Parameters:

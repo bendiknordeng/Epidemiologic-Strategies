@@ -1,6 +1,6 @@
 
 
-class valueApproximation():
+class ValueFunctionApproximation():
         
 
     def get_state_value(self, state):
