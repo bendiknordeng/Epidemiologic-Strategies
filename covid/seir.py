@@ -28,11 +28,10 @@ class SEIR:
         Return:
             Scaled realflow
         """
-        realflow = flow.copy() # copy!
-        realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize the flow
+        realflow = flow.copy() 
+        realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
         realflow = alpha * realflow 
         return realflow
-
 
     def seir(self, distr, flow, alphas, iterations, inf, vacc):
         """ Simulates an epidemic
@@ -163,4 +162,8 @@ class SEIR:
 
         return res, history
 
+
+
+if __name__ == '__main__':
+    print("Hello")
     
