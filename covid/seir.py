@@ -2,17 +2,25 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-
 import numpy as np
 from collections import namedtuple
 import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
-from utils import write_pickle, read_pickle
 
 class SEIR:
-
     def __init__(self, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, I0=356, HospitalisationRate=0.1, eff=0.95, HospitalIters=15*12):
+        """ 
+        Parameters
+        - self.par: parameters {
+                    R0: Basic reproduction number (e.g 2.4)
+                    DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
+                    DI: Infectious period (e.g 5.2 * 12)
+                    I0: Array with the distribution of infected people at time t=0
+                    HospitalisationRate: Percentage of people that will be hospitalized (e.g 0.1)
+                    HospitalIters: Length of hospitalization (e.g 15*12) }
+                    eff: vaccine efficacy (e.g 0.95)
+         """
         param = namedtuple('param', 'R0 DE DI I0 HospitalisationRate HospitalIters eff')
         self.par = param(R0=R0, DE=DE, DI=DI, I0=I0, HospitalisationRate=HospitalisationRate, eff=eff, HospitalIters=HospitalIters)
 
@@ -23,10 +31,10 @@ class SEIR:
 
     def scale_flow(self, flow, alpha):
         """scales realflow
-        parameters:
+        Parameters
             flow: 3D array with flows
             alpha: array of scalers that adjust flows for a given compartment and region
-        Return:
+        Returns
             Scaled realflow
         """
         realflow = flow.copy() 
@@ -34,17 +42,24 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def seir(self, distr, flow, alphas, iterations, inf, vacc, from_history=False, history=None, save_history=True):
+    def simulate(seir, pop, mobility, vacc, time_delta, days, comp_values, information):
+        """  
+        Parameters:
+            seir: simulation model
+            pop: population in each region (1, 356)
+            mobility: mobility matrices (28, 356, 356)
+            vacc: vaccines available in each period (1, 356)
+            time_delta: increment for simulation time
+            comp_values: dict of calues for each compartment (S, E, I, R)
+            information: dict of exogenous information for each region (28, 356, 356)
+        Returns:
+
+        """
+
+
+    def seir(self, distr, flow, alphas, iterations, inf, vacc):
         """ Simulates an epidemic
-        parameters:
-            - self.par: parameters {
-                    R0: Basic reproduction number (e.g 2.4)
-                    DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
-                    DI: Infectious period (e.g 5.2 * 12)
-                    I0: Array with the distribution of infected people at time t=0
-                    HospitalisationRate: Percentage of people that will be hospitalized (e.g 0.1)
-                    HospitalIters: Length of hospitalization (e.g 15*12) }
-                    eff: vaccine efficacy (e.g 0.95)
+        Parameters:
             - distr: population distribution
             - flow: OD matrices with dimensions r x n x n (i.e., 84 x 549 x 549).  flow[t mod r] is the desired OD matrix at time t. Use mod in order to only need one week of OD- matrices. 
             - alphas: [alpha_s, alpha_e, alpha_i, alpha_r] strength of lock down measures/movement restriction. value of 1 - normal flow, 0 - no flow 
@@ -56,39 +71,36 @@ class SEIR:
             - history: matrix with the number of subjects in each compartment [sim_it, compartment_id, num_cells]
         """
         
-        if not from_history: # if simulation is starting from the "birth" of the epidemic/pandemic
-            k = 6 # Num of compartments
-            r = flow.shape[0]
-            n = flow.shape[1]
-            N = distr[0].sum() # total population, we assume that N = sum(flow)
-            
-            Svec = distr[0].copy()
-            Evec = np.zeros(n)
-            Ivec = np.zeros(n)
-            Rvec = np.zeros(n)
-            Vvec = np.zeros(n)
-            
-            if self.par.I0 is None:
-                initial = np.zeros(n)
-                # randomly choose inf infections
-                for i in range(inf):
-                    loc = np.random.randint(n)
-                    if (Svec[loc] > initial[loc]):
-                        initial[loc] += 1.0
+        k = 6 # Num of compartments
+        r = flow.shape[0]
+        n = flow.shape[1]
+        N = distr[0].sum() # total population, we assume that N = sum(flow)
+        
+        Svec = distr[0].copy()
+        Evec = np.zeros(n)
+        Ivec = np.zeros(n)
+        Rvec = np.zeros(n)
+        Vvec = np.zeros(n)
+        
+        if self.par.I0 is None:
+            initial = np.zeros(n)
+            # randomly choose inf infections
+            for i in range(inf):
+                loc = np.random.randint(n)
+                if (Svec[loc] > initial[loc]):
+                    initial[loc] += 1.0
 
-            else:
-                initial = self.par.I0
-            assert ((Svec < initial).sum() == 0)
-            
-            Svec -= initial
-            Ivec += initial
-        else: # if the simulation is a continuation of a former simulation
-            pass
-
+        else:
+            initial = self.par.I0
+        assert ((Svec < initial).sum() == 0)
+        
+        Svec -= initial
+        Ivec += initial
+        
         res = np.zeros((iterations, k))
         res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
         
-        # Realflows for different compartments 
+        # Realflows for different comself.partments 
         alpha_s, alpha_e, alpha_i, alpha_r = alphas
         realflow_s = self.scale_flow(flow.copy(), alpha_s)
         realflow_e = self.scale_flow(flow.copy(), alpha_e)
@@ -105,8 +117,6 @@ class SEIR:
         
         eachIter = np.zeros(iterations + 1)
         
-        print("State, ", Svec, Evec, Ivec, Rvec, Vvec)
-
         # run simulation
         for iter in range(0, iterations - 1):
             realOD_s = realflow_s[iter % r]
@@ -165,9 +175,6 @@ class SEIR:
             history[iter + 1,3,:] = Rvec
             history[iter + 1,5,:] = Vvec
 
-        if save_history:
-            write_pickle("covid/data/data_municipalities/history.pkl", history)
-        print("State, ", Svec.shape, Evec.shape, Ivec.shape, Rvec.shape, Vvec.shape)
 
         return res, history
 
