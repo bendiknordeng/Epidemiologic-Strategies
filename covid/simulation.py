@@ -1,3 +1,5 @@
+import sys, os
+sys.path.append(os.getcwd() + "/covid") # when main is one level above this file.
 import numpy as np
 import pickle as pkl
 import matplotlib.pyplot as plt
@@ -92,7 +94,7 @@ def load_vaccination_programme(data_period, num_regions, fpath_municipalities_v)
     pkl_file.close()
     return vacc
 
-def simulate(seir, pop, OD_matrices, vacc, number_of_simulations=250, num_infections=50):
+def simulate(seir, pop, OD_matrices, vacc, number_of_simulations=50, num_infections=50):
     """  
     Parameters
         seir:

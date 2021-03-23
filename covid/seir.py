@@ -8,6 +8,7 @@ from collections import namedtuple
 import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
+from utils import write_pickle, read_pickle
 
 class SEIR:
 
@@ -33,7 +34,7 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def seir(self, distr, flow, alphas, iterations, inf, vacc):
+    def seir(self, distr, flow, alphas, iterations, inf, vacc, from_history=False, history=None, save_history=True):
         """ Simulates an epidemic
         parameters:
             - self.par: parameters {
@@ -55,36 +56,39 @@ class SEIR:
             - history: matrix with the number of subjects in each compartment [sim_it, compartment_id, num_cells]
         """
         
-        k = 6 # Num of compartments
-        r = flow.shape[0]
-        n = flow.shape[1]
-        N = distr[0].sum() # total population, we assume that N = sum(flow)
-        
-        Svec = distr[0].copy()
-        Evec = np.zeros(n)
-        Ivec = np.zeros(n)
-        Rvec = np.zeros(n)
-        Vvec = np.zeros(n)
-        
-        if self.par.I0 is None:
-            initial = np.zeros(n)
-            # randomly choose inf infections
-            for i in range(inf):
-                loc = np.random.randint(n)
-                if (Svec[loc] > initial[loc]):
-                    initial[loc] += 1.0
+        if not from_history: # if simulation is starting from the "birth" of the epidemic/pandemic
+            k = 6 # Num of compartments
+            r = flow.shape[0]
+            n = flow.shape[1]
+            N = distr[0].sum() # total population, we assume that N = sum(flow)
+            
+            Svec = distr[0].copy()
+            Evec = np.zeros(n)
+            Ivec = np.zeros(n)
+            Rvec = np.zeros(n)
+            Vvec = np.zeros(n)
+            
+            if self.par.I0 is None:
+                initial = np.zeros(n)
+                # randomly choose inf infections
+                for i in range(inf):
+                    loc = np.random.randint(n)
+                    if (Svec[loc] > initial[loc]):
+                        initial[loc] += 1.0
 
-        else:
-            initial = self.par.I0
-        assert ((Svec < initial).sum() == 0)
-        
-        Svec -= initial
-        Ivec += initial
-        
+            else:
+                initial = self.par.I0
+            assert ((Svec < initial).sum() == 0)
+            
+            Svec -= initial
+            Ivec += initial
+        else: # if the simulation is a continuation of a former simulation
+            pass
+
         res = np.zeros((iterations, k))
         res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
         
-        # Realflows for different comself.partments 
+        # Realflows for different compartments 
         alpha_s, alpha_e, alpha_i, alpha_r = alphas
         realflow_s = self.scale_flow(flow.copy(), alpha_s)
         realflow_e = self.scale_flow(flow.copy(), alpha_e)
@@ -101,6 +105,8 @@ class SEIR:
         
         eachIter = np.zeros(iterations + 1)
         
+        print("State, ", Svec, Evec, Ivec, Rvec, Vvec)
+
         # run simulation
         for iter in range(0, iterations - 1):
             realOD_s = realflow_s[iter % r]
@@ -159,6 +165,9 @@ class SEIR:
             history[iter + 1,3,:] = Rvec
             history[iter + 1,5,:] = Vvec
 
+        if save_history:
+            write_pickle("covid/data/data_municipalities/history.pkl", history)
+        print("State, ", Svec.shape, Evec.shape, Ivec.shape, Rvec.shape, Vvec.shape)
 
         return res, history
 
