@@ -4,6 +4,7 @@ from covid.utils import read_config
 
 
 if __name__ == '__main__':
+<<<<<<< HEAD:main.py
     # filepaths 
     fpath_config                     = 'configs/baseline.txt'
     fpath_od                         = 'data/data_municipalities/od_municipalities.pkl'
@@ -17,15 +18,19 @@ if __name__ == '__main__':
     config = read_config(fpath_config)
     
 
+=======
+    # read filepaths 
+    paths = read_config('filepaths.txt')
+>>>>>>> main:covid/main.py
 
     """
     # read in data from filepaths 
-    config = read_config(fpath_config)
-    OD_matrices = load_od_matrices(fpath_od)
-    pop, befolkning = create_population(fpath_muncipalities_names, fpath_muncipalities_pop)
+    config = read_config(paths.config)
+    OD_matrices = load_od_matrices(paths.od)
+    pop, befolkning = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     seir = initialize_seir(config, pop.shape[1], 50)
-    vacc = load_vaccination_programme(OD_matrices.shape[0], pop.shape[1], fpath_municipalities_v)
-    kommuner_geometry = create_geopandas(True, befolkning, fpath_municipalities_geo_pkl, fpath_municipalities_geo_geojson)
+    vacc = load_vaccination_programme(OD_matrices.shape[0], pop.shape[1], paths.municipalities_v)
+    kommuner_geometry = create_geopandas(True, befolkning, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
     
     # simulate seir 
     res = {}   # Dictionary with the results for all cases {}                         
@@ -41,8 +46,12 @@ if __name__ == '__main__':
     hosp = res['baseline'][0][::12, 4]
 
     # geospatial plots 
-    plot_simulation(baseline, befolkning, hosp, kommuner_geometry)
+    plot_simulation(baseline, befolkning, hosp, kommuner_geometry, paths.municipality_plots)
 
     # generate gif 
+<<<<<<< HEAD:main.py
     create_gif(fpath_municipality_gif)
     """
+=======
+    create_gif(paths.municipality_gif,paths.municipality_plots)
+>>>>>>> main:covid/main.py
