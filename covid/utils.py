@@ -5,8 +5,22 @@ import pickle as pkl
 import ast
 from collections import namedtuple
 
+def read_paths(path):
+    """ generate a namedtuple from a txt file
+    Parameters
+        path: file path to .txt file
+    Returns
+        A namedtuple representing each path needed for system execution
+    """
+    file = open(path, "r")
+    contents = file.read()
+    dictionary = ast.literal_eval(contents)
+    file.close()
+    return namedtuple('Config', dictionary.keys())(**dictionary)
+    # dicts_from_file now contains the dictionaries created from the text file
+
 def read_config(fpath_config):
-    """ generate an namedtuple from a config file
+    """ generate a namedtuple from a config file
     Parameters
         fpath_config: file path to .txt config file
     Returns

@@ -190,7 +190,7 @@ def print_hospitalized_information(res):
     print("Max number of hospitalised people: ", int(res["baseline"][0][:,4].max()))
     print("Day with max hospitalised people: ", int(res["baseline"][0][:,4].argmax()/12)) # Divide by
 
-def plot_simulation(baseline, befolkning, hosp, kommuner_geometry):
+def plot_simulation(baseline, befolkning, hosp, kommuner_geometry, path_plots):
     """
     Parameters
         baseline:
@@ -297,7 +297,7 @@ def plot_simulation(baseline, befolkning, hosp, kommuner_geometry):
         inset_ax.tick_params(axis='y', colors='darkslategrey')
         plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
         plt.title("Norway Covid-19 spreading on day: {}".format(time_step), fontsize=18, color= 'dimgray')
-        plt.savefig("covid/plots/plots_municipalities/flows_{}.jpg".format(time_step), dpi=fig.dpi)
+        plt.savefig(path_plots + "flows_{}.jpg".format(time_step), dpi=fig.dpi)
         plt.close()
 
 def sort_in_order(l):
@@ -309,16 +309,16 @@ def sort_in_order(l):
     alphanumeric_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
     return sorted(l, key=alphanumeric_key)
 
-def create_gif(fpath_municipality_gif):
+def create_gif(path_gif, path_plots):
     """ generate a gif
     Parameters
         fpath_municipality_gif: 
     """
-    filenames = listdir("covid/plots/plots_municipalities/")
+    filenames = listdir(path_plots)
     filenames = sort_in_order(filenames)
 
-    with imageio.get_writer(fpath_municipality_gif, mode='I', fps=4) as writer:
+    with imageio.get_writer(path_gif, mode='I', fps=4) as writer:
         for filename in tqdm(filenames):
-            image = imageio.imread('covid/plots/plots_municipalities/{}'.format(filename))
+            image = imageio.imread(path_plots + '{}'.format(filename))
             writer.append_data(image)
 
