@@ -4,26 +4,9 @@ from covid.utils import read_config
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD:main.py
-    # filepaths 
-    fpath_config                     = 'configs/baseline.txt'
-    fpath_od                         = 'data/data_municipalities/od_municipalities.pkl'
-    fpath_muncipalities_names        = 'data/data_municipalities/Kommunenummer_navn_2020.csv'
-    fpath_muncipalities_pop          = 'data/data_municipalities/Folkemengde_kommuner.csv'
-    fpath_municipalities_v           = 'data/data_municipalities/vaccines_municipalities.pkl'
-    fpath_municipalities_geo_pkl     = 'data/data_municipalities/norge_geojson.pkl'
-    fpath_municipalities_geo_geojson = 'data/data_municipalities/Basisdata_0000_Norge_25833_Kommuner_GEOJSON.geojson'
-    fpath_municipality_gif           = 'gifs/gifs_municipalities/Covid_19_municipalities.gif'
-    
-    config = read_config(fpath_config)
-    
-
-=======
     # read filepaths 
     paths = read_config('filepaths.txt')
->>>>>>> main:covid/main.py
-
-    """
+    
     # read in data from filepaths 
     config = read_config(paths.config)
     OD_matrices = load_od_matrices(paths.od)
@@ -49,9 +32,4 @@ if __name__ == '__main__':
     plot_simulation(baseline, befolkning, hosp, kommuner_geometry, paths.municipality_plots)
 
     # generate gif 
-<<<<<<< HEAD:main.py
-    create_gif(fpath_municipality_gif)
-    """
-=======
     create_gif(paths.municipality_gif,paths.municipality_plots)
->>>>>>> main:covid/main.py
