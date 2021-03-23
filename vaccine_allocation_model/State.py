@@ -1,10 +1,13 @@
 import numpy as np
 
 class State:
-    def __init__(demand, infected, vaccines, time):
-        self.demand = demand
-        self.infected = infected
-        self.vaccines = vaccines
+    def __init__(S, E, I, R, H, vaccines_available, time):
+        self.S = S
+        self.E = E
+        self.I = I
+        self.R = R
+        self.H = H
+        self.vaccines_available = vaccines_available
         self.time = time
         self.post_decision_state = False
 
@@ -24,3 +27,8 @@ class State:
         self.demands = np.array([susceptible_demand, susceptible_demand, infected_demand, infected_demand], dtype='int64').transpose()
         self.fatalities = new_epidemic_state[-1, 5]
         self.post_decision_state = False
+
+    def make_copy(self):
+        class Copy(self):
+            pass
+        return Copy

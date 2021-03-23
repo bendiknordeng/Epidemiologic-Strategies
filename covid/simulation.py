@@ -94,25 +94,6 @@ def load_vaccination_programme(data_period, num_regions, fpath_municipalities_v)
     pkl_file.close()
     return vacc
 
-def simulate(seir, pop, OD_matrices, vacc, time_delta, days, comp_values, information):
-    """  
-    Parameters
-        seir: simulation model
-        pop: population in each region (1, 356)
-        OD_matrices: mobility matrices (28, 356, 356)
-        vacc: vaccines available in each period (1, 356)
-        time_delta: increment for simulation time
-        comp_values: dict of calues for each compartment (S, E, I, R)
-        information: dict of exogenous information for each region (28, 356, 356)
-    Returns
-
-    """
-
-    alphas = [np.ones(OD_matrices.shape) for x in range(4)]  # One == no quarantene influence. Multiplied by real flow.
-    iterations = time_delta * days                   # multiplied by number of periods per day (resolution of data)
-    inf = num_infections                                     # Number of random infections
-    return seir.seir(pop, OD_matrices, alphas, iterations, inf, vacc)
-
 def seir_plot(res):
     """ plots the epidemiological curves
     Parameters

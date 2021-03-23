@@ -48,6 +48,4 @@ if __name__ == '__main__':
     vacc = load_vaccination_programme(OD_matrices.shape[0], pop.shape[1], paths.municipalities_v)
 
     horizon = 100 
-    time_delta = 6
-    mdp = MarkovDecisionProcess(horizon=horizon, time_delta=time_delta, seir=seir, vaccine_supply=vacc)
-    
+    mdp = MarkovDecisionProcess(config=config, horizon=horizon, vaccine_supply=vacc)
