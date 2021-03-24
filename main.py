@@ -48,9 +48,12 @@ if __name__ == '__main__':
     pop, _ = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     seir = initialize_seir(OD_matrices, pop, config)
     
-    horizon = 100 # number of weeks
+    horizon = 50 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, pop, seir, vaccine_supply, horizon, 28)
 
     path, state = mdp.run_policy("random")
+
+    infection = [x.new_infected for x in path]
+    print(infection, sum(infection))
     import pdb; pdb.set_trace()
     

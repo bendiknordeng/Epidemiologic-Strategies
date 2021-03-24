@@ -4,6 +4,7 @@ import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
 from covid import utils
+import os
 
 class SEIR:
     def __init__(self, OD, pop, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
@@ -48,7 +49,7 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def simulate(self, state, decision, decision_period, information):
+    def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
         """  
         Parameters:
             state: State object with values for each compartment
@@ -65,15 +66,15 @@ class SEIR:
         n = self.par.OD.shape[1]
         N = self.par.pop.sum()
         
-        Svec = state.S
-        Evec = state.E
-        Ivec = state.I
-        Rvec = state.R
-        Hvec = state.H
-        Vvec = state.V
+        S_vec = state.S
+        E_vec = state.E
+        I_vec = state.I
+        R_vec = state.R
+        H_vec = state.H
+        V_vec = state.V
         
-        res = np.zeros((decision_period, k))
-        res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
+        result = np.zeros((decision_period, k))
+        result[0,:] = [S_vec.sum(), E_vec.sum(), I_vec.sum(), R_vec.sum(), 0, V_vec.sum()]
         
         # Realflows for different comself.partments 
         alpha_s, alpha_e, alpha_i, alpha_r = information['alphas']
@@ -83,67 +84,77 @@ class SEIR:
         realflow_r = self.scale_flow(self.par.OD.copy(), alpha_r)
         
         history = np.zeros((decision_period, k, n))
-        history[0,0,:] = Svec
-        history[0,1,:] = Evec
-        history[0,2,:] = Ivec
-        history[0,3,:] = Rvec
-        history[0,4,:] = Hvec
-        history[0,5,:] = Vvec
+        history[0,0,:] = S_vec
+        history[0,1,:] = E_vec
+        history[0,2,:] = I_vec
+        history[0,3,:] = R_vec
+        history[0,4,:] = H_vec
+        history[0,5,:] = V_vec
 
-        eachIter = np.zeros(decision_period + 1)
+        total_new_infected = np.zeros(decision_period+1)
         
         # run simulation
-        for iter in range(0, decision_period - 1):
-            realOD_s = realflow_s[iter % r]
-            realOD_e = realflow_e[iter % r]
-            realOD_i = realflow_i[iter % r]
-            realOD_r = realflow_r[iter % r]
-            realOD_v = decision[iter % r]
+        for i in range(0, decision_period - 1):
+            realOD_s = realflow_s[i % r]
+            realOD_e = realflow_e[i % r]
+            realOD_i = realflow_i[i % r]
+            realOD_r = realflow_r[i % r]
+            realOD_v = decision[i % r]
 
-            newE = Svec * Ivec / self.par.pop * (self.par.R0 / self.par.DI)
-            newI = Evec / self.par.DE
-            newR = Ivec / self.par.DI
+            newE = S_vec * I_vec / self.par.pop * (self.par.R0 / self.par.DI)
+            newI = E_vec / self.par.DE
+            newR = I_vec / self.par.DI
             newV = realOD_v * self.par.eff
             
-            Svec -= newE
-            Svec = (Svec 
-                + np.matmul(Svec.reshape(1,n), realOD_s)
-                - Svec * realOD_s.sum(axis=1)
+            S_vec -= newE
+            S_vec = (S_vec 
+                + np.matmul(S_vec.reshape(1,n), realOD_s)
+                - S_vec * realOD_s.sum(axis=1)
                 - newV
                     )
-            Evec = Evec + newE - newI
-            Evec = (Evec 
-                + np.matmul(Evec.reshape(1,n), realOD_e)
-                - Evec * realOD_e.sum(axis=1)
+            E_vec = E_vec + newE - newI
+            E_vec = (E_vec 
+                + np.matmul(E_vec.reshape(1,n), realOD_e)
+                - E_vec * realOD_e.sum(axis=1)
                     )
                     
-            Ivec = Ivec + newI - newR
-            Ivec = (Ivec 
-                + np.matmul(Ivec.reshape(1,n), realOD_i)
-                - Ivec * realOD_i.sum(axis=1)
+            I_vec = I_vec + newI - newR
+            I_vec = (I_vec 
+                + np.matmul(I_vec.reshape(1,n), realOD_i)
+                - I_vec * realOD_i.sum(axis=1)
                     )
                     
-            Rvec += newR
-            Rvec = (Rvec 
-                + np.matmul(Rvec.reshape(1,n), realOD_r)
-                - Rvec * realOD_r.sum(axis=1)
+            R_vec += newR
+            R_vec = (R_vec 
+                + np.matmul(R_vec.reshape(1,n), realOD_r)
+                - R_vec * realOD_r.sum(axis=1)
                 + newV
                     )
 
-            Vvec += newV   
+            V_vec += newV   
             
-            res[iter + 1,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(),  Hvec.sum(), Vvec.sum()]
-            eachIter[iter + 1] = newI.sum()
-            res[iter + 1, 4] = eachIter[max(0, iter - self.par.hospital_duration) : iter].sum() * self.par.hospitalisation_rate
+            result[i + 1,:] = [S_vec.sum(), E_vec.sum(), I_vec.sum(), R_vec.sum(),  H_vec.sum(), V_vec.sum()]
+            total_new_infected[i + 1] = newI.sum()
+            result[i + 1, 4] = total_new_infected[max(0, i - self.par.hospital_duration) : i].sum() * self.par.hospitalisation_rate
             
-            history[iter + 1,0,:] = Svec
-            history[iter + 1,1,:] = Evec
-            history[iter + 1,2,:] = Ivec
-            history[iter + 1,3,:] = Rvec
-            history[iter + 1,5,:] = Vvec
+            history[i + 1,0,:] = S_vec
+            history[i + 1,1,:] = E_vec
+            history[i + 1,2,:] = I_vec
+            history[i + 1,3,:] = R_vec
+            history[i + 1,5,:] = V_vec
 
+        if write_to_csv:
+            if write_weekly:
+                latest_df = utils.transform_history_to_df(state.time_step, np.expand_dims(history[-1], axis=0), "SEIRHV")
+                if os.path.exists("weekly.csv"):
+                    latest_df.to_csv("weekly.csv", mode="a", header=False)
+                else:
+                    latest_df.to_csv("weekly.csv")
+            else:
+                history_df = utils.transform_history_to_df(state.time_step, history, "SEIRHV")
+                if os.path.exists("history.csv"):
+                    history_df.to_csv("history.csv", mode="a", header=False)
+                else:
+                    history_df.to_csv("history.csv")
         
-        history_df = utils.transform_history_to_df(history, "SEIRHV")
-        history_df.to_csv("history_df.csv")
-
-        return res, history
+        return result, total_new_infected.sum(), history
