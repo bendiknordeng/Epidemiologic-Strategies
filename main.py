@@ -55,5 +55,4 @@ if __name__ == '__main__':
 
     infection = [x.new_infected for x in path]
     print(infection, sum(infection))
-    import pdb; pdb.set_trace()
     
