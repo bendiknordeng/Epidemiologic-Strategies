@@ -47,18 +47,18 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def simulate(self, state, decision, days, information):
+    def simulate(self, state, decision, decision_period, information):
         """  
         Parameters:
             state: State object with values for each compartment
-            decision: vaccine allocation for each period for each region (24/time_delta * days, 356)
+            decision: vaccine allocation for each period for each region (24/time_delta * decision_period, 356)
             comp_values: dict of values for each compartment (S, E, I, R)
-            information: dict of exogenous information for each region (time_delta * days, 356, 356)
+            information: dict of exogenous information for each region (24/time_delta * decision_period, 356, 356)
         Returns:
             res: accumulated SEIR values for the whole country
             history: SEIRHV for each region for each time step
         """
-        iterations = 24/self.par.time_delta * days
+        iterations = 24/self.par.time_delta * decision_period
         k = 6 # Num of compartments
         r = flow.shape[0]
         n = flow.shape[1]

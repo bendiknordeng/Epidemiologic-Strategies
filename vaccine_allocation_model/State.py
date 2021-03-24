@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(S, E, I, R, H, V, vaccines_available, time):
+    def __init__(S, E, I, R, H, V, vaccines_available, time_step):
         self.S = S
         self.E = E
         self.I = I
@@ -9,27 +9,17 @@ class State:
         self.H = H
         self.V = V
         self.vaccines_available = vaccines_available
-        self.time = time
-        self.post_decision_state = False
+        self.time_step = time_step
 
-    def transition(self, decisions, information, epidemic_function):
-        self.decision_transition(decisions)
-        self.information_transition(decisions, information, epidemic_function)
-        self.time += 1
 
-    def decision_transition(self, decisions):
-        self.resources -= np.sum(decisions.astype(dtype='int64'), axis=0)
-        self.post_decision_state = True
+    def get_transition(self, decision, information, epidemic_function, decision_period):
+        vaccines_available = self.vaccines_available - np.sum(decision.astype(dtype='int64'), axis=0)
+        try:
+            vaccines_available += sum(information['vaccine_supply'][self.time_step:self.time_step+decision_period])
+        except:
+            vaccines_available += sum(information['vaccine_supply'][self.time_step:])
+            
+        _, history = epidemic_function(self, decision, decision_period, information)
+        S, E, I, R, H, V = history[-1]
 
-    def information_transition(self, decisions, information, epidemic_function):
-        new_epidemic_state = epidemic_function(decisions, information, time=self.time)
-        susceptible_demand = new_epidemic_state[:, 0]
-        infected_demand = new_epidemic_state[:, 2]
-        self.demands = np.array([susceptible_demand, susceptible_demand, infected_demand, infected_demand], dtype='int64').transpose()
-        self.fatalities = new_epidemic_state[-1, 5]
-        self.post_decision_state = False
-
-    def make_copy(self):
-        class Copy(self):
-            pass
-        return Copy
+        return State(S, E, I, R, H, V, vaccines_available, time_step=self.time_step+decision_period)
