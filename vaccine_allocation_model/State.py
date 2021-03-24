@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(S, E, I, R, H, V, vaccines_available, time):
+    def __init__(self,S, E, I, R, H, V, vaccines_available, time):
         self.S = S
         self.E = E
         self.I = I

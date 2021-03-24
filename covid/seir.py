@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 class SEIR:
-    def __init__(self, OD, pop, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, initial_infected=[0]*356, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
+    def __init__(self, OD, pop, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
         """ 
         Parameters
         - self.par: parameters {
@@ -18,7 +18,7 @@ class SEIR:
                     eff: vaccine efficacy (e.g 0.95)
                     time_delta: time increment.
          """
-        param = namedtuple('param', 'R0 DE DI initial_infected hospitalisation_rate hospital_duration eff time_delta OD pop')
+        param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff time_delta OD pop')
         self.par = param(R0=R0,
                         DE=DE,
                         DI=DI,
@@ -42,7 +42,7 @@ class SEIR:
         Returns
             Scaled realflow
         """
-        realflow = flow.copy() 
+        realflow = self.par.OD.copy() 
         realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
         realflow = alpha * realflow 
         return realflow
@@ -60,8 +60,8 @@ class SEIR:
         """
         iterations = 24/self.par.time_delta * days
         k = 6 # Num of compartments
-        r = flow.shape[0]
-        n = flow.shape[1]
+        r = self.par.OD.shape[0]
+        n = self.par.OD.shape[1]
         N = self.par.pop.sum()
         
         Svec = state.S
@@ -76,10 +76,10 @@ class SEIR:
         
         # Realflows for different comself.partments 
         alpha_s, alpha_e, alpha_i, alpha_r = information['alpha']
-        realflow_s = self.scale_flow(flow.copy(), alpha_s)
-        realflow_e = self.scale_flow(flow.copy(), alpha_e)
-        realflow_i = self.scale_flow(flow.copy(), alpha_i)
-        realflow_r = self.scale_flow(flow.copy(), alpha_r)
+        realflow_s = self.scale_flow(self.par.OD.copy(), alpha_s)
+        realflow_e = self.scale_flow(self.par.OD.copy(), alpha_e)
+        realflow_i = self.scale_flow(self.par.OD.copy(), alpha_i)
+        realflow_r = self.scale_flow(self.par.OD.copy(), alpha_r)
         
         history = np.zeros((iterations, k, n))
         history[0,0,:] = Svec
