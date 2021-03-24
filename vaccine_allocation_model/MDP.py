@@ -31,18 +31,36 @@ class MarkovDecisionProcess:
         Returns:
             array with number of vaccines to allocate to each of the municipalities at time_step t (decision_period, 356)
         """
+
         n = len(self.pop)
-        vaccine_allocation = [np.zeros(n) for _ in range(self.decision_period)]
+        vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
         
         if policy.equals('random'):
-            random.seed(10)
+            np.random.seed(10)
+            demand = self.state.S
             vacc_available = self.state.vaccines_available
             while vacc_available > 0:
-                period, region = np.random.randint(decision_period), np.random.randint(n)
-                if (self.state.S[region] >= sum(vaccine_allocation[:][loc])):
-                    vaccine_allocation[period][loc] += 1.0
+                period, region = np.random.randint(28), np.random.randint(n)
+                if demand[region] > 0:
+                    vacc_available -= 1
+                    vaccine_allocation[period][region] += 1
+                    demand[region] -= 1
 
         return vaccine_allocation
+
+    import numpy as np
+    import random
+    n = 356
+    vaccine_allocation = [np.zeros(n) for _ in range(28)]
+    S = [random.randint(300) for _ in range(n)]
+    
+    random.seed(10)
+    vacc_available = 10000
+    while vacc_available > 0:
+        period, region = np.random.randint(28), np.random.randint(n)
+        if (S[region] >= sum(vaccine_allocation[:][loc])):
+            vaccine_allocation[period][loc] += 1.0
+    print(vaccine_allocation)
 
     def get_exogenous_information(self):
         """ recieves the exogenous information at time_step t
