@@ -44,12 +44,12 @@ if __name__ == '__main__':
     # read in data from filepaths 
     config = read_config(paths.config)
     OD_matrices = read_pickle(paths.od)
-    pop, befolkning = create_population(paths.muncipalities_names, paths.muncipalities_pop)
-    seir = initialize_seir(OD_matrices, pop, config)
     vaccine_supply = read_pickle(paths.municipalities_v)
-
-    horizon = 100 # this is number_of_days * periods_per_day 
-    mdp = MarkovDecisionProcess(OD_matrices, pop, befolkning, seir, vaccine_supply, horizon, 28)
+    pop, _ = create_population(paths.muncipalities_names, paths.muncipalities_pop)
+    seir = initialize_seir(OD_matrices, pop, config)
+    
+    horizon = 100 # number of weeks
+    mdp = MarkovDecisionProcess(OD_matrices, pop, seir, vaccine_supply, horizon, 28)
 
     path, state = mdp.run_policy("random")
     import pdb; pdb.set_trace()

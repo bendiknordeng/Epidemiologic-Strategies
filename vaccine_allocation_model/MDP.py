@@ -6,11 +6,10 @@ from tqdm import tqdm
 import random
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, pop, befolkning, seir, vaccine_supply, horizon, decision_period):
+    def __init__(self, OD_matrices, pop, seir, vaccine_supply, horizon, decision_period):
         self.horizon = horizon
         self.OD_matrices = OD_matrices
         self.pop = pop
-        self.befolkning = befolkning
         self.vaccine_supply = vaccine_supply
         self.seir = seir
         self.state = self.initialize_state(None, 50, 1000)

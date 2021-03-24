@@ -19,41 +19,28 @@ from . import utils
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 
-
-def load_od_matrices(fpath_od):
-    """ load OD-matrices representing movement between regions
-    Parameters
-        fpath_od: filepath to OD-matrices (.pkl file)
-    Returns
-        3d-array e.g (28, 256, 256)
-    """
-    pkl_file = open(fpath_od, 'rb')
-    OD_matrices = pkl.load(pkl_file)
-    pkl_file.close()
-    return OD_matrices
-
 def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     """ load population information into dataframes
     Parameters
         fpath_muncipalities_names: file path to region names
         fpath_muncipalities_pop: file path to population data
     Returns
-        (pop, befolkning), where pop is a matrix of dimensions (84, 356) and befolkning is a dataframe with region_id, region_name and population
+        (pop, population), where pop is a matrix of dimensions (84, 356) and population is a dataframe with region_id, region_name and population
     """
-    kommunenavn = pd.read_csv(fpath_muncipalities_names, delimiter=",").drop_duplicates()
-    kommunenavn.rename(columns={"Kommunenr. 2020": "kommunenummer", "Kommunenavn 2020": "kommunenavn"}, inplace=True)
-    kommunenavn.kommunenummer = kommunenavn.kommunenummer.astype(int)
+    region = pd.read_csv(fpath_muncipalities_names, delimiter=",").drop_duplicates()
+    region.rename(columns={"Kommunenr. 2020": "id", "Kommunenavn 2020": "region"}, inplace=True)
+    region.id = region.id.astype(int)
 
     # create population 
-    kommunenummer_befolkning = pd.read_csv(fpath_muncipalities_pop, delimiter=";", skiprows=1)
-    kommune_id = []
-    for id_name in kommunenummer_befolkning.region.str.split(" "):
-        kommune_id.append(int(id_name[0]))
-    kommunenummer_befolkning["kommunenummer"] = kommune_id
-    kommunenummer_befolkning = kommunenummer_befolkning[["kommunenummer", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "befolkning"})
-    befolkning = pd.merge(kommunenummer_befolkning, kommunenavn, on='kommunenummer', sort=True)
-    pop = befolkning.befolkning.to_numpy(dtype='float64')
-    return pop, befolkning
+    region_population = pd.read_csv(fpath_muncipalities_pop, delimiter=";", skiprows=1)
+    region_ids = []
+    for r in region_population.region.str.split(" "):
+        region_ids.append(int(r[0]))
+    region_population["id"] = region_ids
+    region_population = region_population[["id", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "population"})
+    population_df = pd.merge(region_population, region, on='id', sort=True)
+    pop = population_df.population.to_numpy(dtype='float64')
+    return pop, population_df
 
 def initialize_seir(OD, pop, config):
     """ initialize seir model 
@@ -74,22 +61,6 @@ def initialize_seir(OD, pop, config):
                 hospital_duration=config.hospital_duration*config.periods_per_day)
     return seir
 
-def load_vaccination_programme(data_period, num_regions, fpath_municipalities_v):
-    """ load vaccination programme i.e how vaccines should be allocated to different regions
-    Parameters 
-        data_period: number of periods the mobility data represents
-        num_regions: number of regions between which you travel
-    Returns
-        a matrix of dimension (data_period, num_regions), for each time period how many vaccines should be allocated.
-    """
-    m = utils.generate_vaccine_matrix(data_period)
-    utils.write_pickle(fpath_municipalities_v, m)
-    # load vaccine schedule
-    pkl_file = open(fpath_municipalities_v, 'rb')
-    vacc = pkl.load(pkl_file)
-    pkl_file.close()
-    return vacc
-
 def seir_plot(res):
     """ plots the epidemiological curves
     Parameters
@@ -104,7 +75,7 @@ def seir_plot(res):
     plt.legend()
     plt.show()
 
-def create_geopandas(geopandas_from_pkl, befolkning, fpath_municipalities_geo_pkl, fpath_municipalities_geo_geojson):
+def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath_region_geo_geojson):
     """ creates geopandas dataframe used to plot 
     Parameters
         geopandas_from_pkl: Bool, True if you have a geopandas DataFrame in pickle format to read from
@@ -112,36 +83,36 @@ def create_geopandas(geopandas_from_pkl, befolkning, fpath_municipalities_geo_pk
         a dataframe in geopandas format, containing population and geometry information about regions.
     """
     # epsg from kartverket data
-    kommune_json = pd.read_json(fpath_municipalities_geo_geojson)
+    kommune_json = pd.read_json(fpath_region_geo_geojson)
     epsg_kommune = int(kommune_json["administrative_enheter.kommune"].loc["crs"]["properties"]["name"].split(":")[1]) 
     crs_kommune = CRS.from_epsg(epsg_kommune)
 
     # Load geojson data
     if geopandas_from_pkl: # Set to True if you have a norge_geojson.pkl in your data folder
-        norge_geojson = utils.read_pickle(fpath_municipalities_geo_pkl)
+        norge_geojson = utils.read_pickle(fpath_region_geo_pkl)
     else:
-        norge_geojson = gpd.read_file(fpath_municipalities_geo_geojson, layer='administrative_enheter.kommune')
-        utils.write_pickle(fpath_municipalities_geo_pkl, norge_geojson)
-    norge_geojson.kommunenummer = norge_geojson.kommunenummer.astype(int) # Ensure right epsg
+        norge_geojson = gpd.read_file(fpath_region_geo_geojson, layer='administrative_enheter.kommune')
+        utils.write_pickle(fpath_region_geo_pkl, norge_geojson)
+    norge_geojson.region_id = norge_geojson.region_id.astype(int) # Ensure right epsg
        
     # merge population and geopandas 
-    kommuner_geometry = pd.merge(norge_geojson, befolkning, on='kommunenummer', sort=True).reset_index().drop_duplicates(["kommunenummer"])
-    kommuner_geometry.index = kommuner_geometry.kommunenummer
-    kommuner_geometry = kommuner_geometry[["kommunenavn", "befolkning", "geometry"]]
+    kommuner_geometry = pd.merge(norge_geojson, population, on='region_id', sort=True).reset_index().drop_duplicates(["region_id"])
+    kommuner_geometry.index = kommuner_geometry.region_id
+    kommuner_geometry = kommuner_geometry[["region", "population", "geometry"]]
     
     kommuner_geometry.crs = {'init':f'epsg:{epsg_kommune}'}
     kommuner_geometry.crs = crs_kommune
     return kommuner_geometry
 
-def find_exposed_limits(baseline, befolkning):
+def find_exposed_limits(baseline, population):
     """ calculates min and max number of infected people per 100k inhabitants
     Parameters
         baseline: 3D matrix e.g (#timesteps, #compartments, #regions)
-        befolkning: dataframe, information about population in and name of all regions
+        population: dataframe, information about population in and name of all regions
     Returns
         min and max number of infected people per 100k inhabitants
     """
-    df = utils.transform_res_to__df(baseline, 'SEIRHV', befolkning.kommunenavn.to_numpy(str), befolkning.befolkning.to_numpy(int))
+    df = utils.transform_res_to__df(baseline, 'SEIRHV', population.region.to_numpy(str), population.population.to_numpy(int))
     df["exposed_per_100k"] = 100000*df.E/df.Population
 
     min_exp_val = df.exposed_per_100k.min()
@@ -169,7 +140,7 @@ def print_hospitalized_information(res):
     print("Max number of hospitalised people: ", int(res["baseline"][0][:,4].max()))
     print("Day with max hospitalised people: ", int(res["baseline"][0][:,4].argmax()/12)) # Divide by
 
-def plot_simulation(baseline, befolkning, hosp, kommuner_geometry, path_plots):
+def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
     """
     Parameters
         baseline:
@@ -206,13 +177,13 @@ def plot_simulation(baseline, befolkning, hosp, kommuner_geometry, path_plots):
 
     # Used for colorbar 
     fig, ax = plt.subplots()
-    min_exp_val, max_exp_val = find_exposed_limits(baseline, befolkning)
+    min_exp_val, max_exp_val = find_exposed_limits(baseline, population)
     h = ax.imshow(np.random.uniform(low=min_exp_val, high=max_exp_val, size=(10,10)), cmap=new_cmap)
 
 
     for time_step in tqdm(range(1,250)):
         
-        kommuner_geometry['exposed_per_100k'] = 100000*baseline[time_step-1, 1, :]/befolkning.befolkning.to_numpy(int)
+        kommuner_geometry['exposed_per_100k'] = 100000*baseline[time_step-1, 1, :]/population.population.to_numpy(int)
         #plot
         fig, ax = plt.subplots(figsize=(14,14), dpi=72)
         kommuner_geometry.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=2)
@@ -291,7 +262,7 @@ def sort_in_order(l):
 def create_gif(path_gif, path_plots):
     """ generate a gif
     Parameters
-        fpath_municipality_gif: 
+        fpath_region_gif: 
     """
     filenames = listdir(path_plots)
     filenames = sort_in_order(filenames)
