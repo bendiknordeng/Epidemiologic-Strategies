@@ -43,10 +43,10 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = read_config(paths.config)
-    OD_matrices = load_od_matrices(paths.od)
+    OD_matrices = read_pickle(paths.od)
     pop, befolkning = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     seir = initialize_seir(OD_matrices, pop, config)
-    vaccine_supply = load_vaccination_programme(OD_matrices.shape[0], len(pop), paths.municipalities_v)
+    vaccine_supply = read_pickle(paths.municipalities_v)
 
     horizon = 100 # this is number_of_days * periods_per_day 
     mdp = MarkovDecisionProcess(OD_matrices, pop, befolkning, seir, vaccine_supply, horizon, 28)
