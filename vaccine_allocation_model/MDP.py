@@ -56,8 +56,7 @@ class MarkovDecisionProcess:
             returns a vector of alphas indicating the mobility flow at time_step t
         """
         alphas = [np.ones(self.OD_matrices.shape) for x in range(4)]
-        vaccines_available = sum(self.vaccine_supply[self.state.time_step:self.state.time_step:self.decision_period])
-        information = {'alphas': alphas, 'vaccine_supply': vaccines_available}
+        information = {'alphas': alphas, 'vaccine_supply': self.vaccine_supply}
         return information
     
     def update_state(self, decision_period=28):

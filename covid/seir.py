@@ -3,6 +3,7 @@ from collections import namedtuple
 import pickle
 import pandas as pd
 import matplotlib.pyplot as plt
+from covid import utils
 
 class SEIR:
     def __init__(self, OD, pop, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
@@ -58,7 +59,7 @@ class SEIR:
             res: accumulated SEIR values for the whole country
             history: SEIRHV for each region for each time step
         """
-        iterations = 24/self.par.time_delta * decision_period
+        
         k = 6 # Num of compartments
         r = self.par.OD.shape[0]
         n = self.par.OD.shape[1]
@@ -71,17 +72,17 @@ class SEIR:
         Hvec = state.H
         Vvec = state.V
         
-        res = np.zeros((iterations, k))
+        res = np.zeros((decision_period, k))
         res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
         
         # Realflows for different comself.partments 
-        alpha_s, alpha_e, alpha_i, alpha_r = information['alpha']
+        alpha_s, alpha_e, alpha_i, alpha_r = information['alphas']
         realflow_s = self.scale_flow(self.par.OD.copy(), alpha_s)
         realflow_e = self.scale_flow(self.par.OD.copy(), alpha_e)
         realflow_i = self.scale_flow(self.par.OD.copy(), alpha_i)
         realflow_r = self.scale_flow(self.par.OD.copy(), alpha_r)
         
-        history = np.zeros((iterations, k, n))
+        history = np.zeros((decision_period, k, n))
         history[0,0,:] = Svec
         history[0,1,:] = Evec
         history[0,2,:] = Ivec
@@ -89,10 +90,10 @@ class SEIR:
         history[0,4,:] = Hvec
         history[0,5,:] = Vvec
 
-        eachIter = np.zeros(iterations + 1)
+        eachIter = np.zeros(decision_period + 1)
         
         # run simulation
-        for iter in range(0, iterations - 1):
+        for iter in range(0, decision_period - 1):
             realOD_s = realflow_s[iter % r]
             realOD_e = realflow_e[iter % r]
             realOD_i = realflow_i[iter % r]
@@ -142,7 +143,7 @@ class SEIR:
             history[iter + 1,5,:] = Vvec
 
         
-        history_df = pd.DataFrame(history)
-        history_df.to_csv("history.csv")
+        history_df = utils.transform_history_to_df(history, "SEIRHV")
+        history_df.to_csv("history_df.csv")
 
         return res, history

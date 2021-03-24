@@ -85,7 +85,7 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
-def transform_res_to__df(res, column_names, region_names, region_population):
+def transform_history_to_df(history, column_names):
     """ transforms a 3D matrix that is the result from SEIR modelling to a pandas dataframe
     Parameters
         res: 3D matrix e.g (250, 6, 11)
@@ -94,13 +94,13 @@ def transform_res_to__df(res, column_names, region_names, region_population):
     Returns
         df: dataframe that represents the 3D matrix e.g (2750 (res[0]*res[2]), 6 (res[1]))
     """
-    A = res.transpose(0,2,1)
+    A = history.transpose(0,2,1)
     (a,b,c) = A.shape 
     B = A.reshape(-1,c) 
     df = pd.DataFrame(B, columns=list(column_names))
-    df['Region'] = np.tile(np.array(region_names), a)
-    df['Population'] = np.tile(np.array(region_population), a)
-    df['Day'] = np.floor_divide(df.index.values, b)
+    region_numbers = [x for x in range(356)]
+    df['Region'] = np.tile(np.array(region_numbers), a)
+    df['Timestep'] = np.floor_divide(df.index.values, b)
     return df 
 
 def seir_plot_one_cell(res, cellid):
