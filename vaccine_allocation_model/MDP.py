@@ -6,44 +6,27 @@ from tqdm import tqdm
 import random
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, pop, seir, vaccine_supply, horizon, decision_period):
+    def __init__(self, OD_matrices, pop, seir, vaccine_supply, horizon, decision_period, policy):
         self.horizon = horizon
         self.OD_matrices = OD_matrices
         self.pop = pop
         self.vaccine_supply = vaccine_supply
         self.seir = seir
-        self.state = self.initialize_state(None, 50, 1000)
+        self.state = self._initialize_state(None, 50, 1000)
         self.path = [self.state]
         self.decision_period = decision_period
 
-    def run_policy(self, policy):
+        policies = {
+            "random": self._random_policy,
+            "population_based": self._population_based_policy
+        }
+
+        self.policy = policies[policy]
+
+    def run(self):
         for t in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
-        return self.path, self.state
-
-    def get_action(self, policy='random'):
-        """ finds the action according to a given state using a given policy 
-        Parameters:
-            state: current state of type State
-            policy: string, name of policy chosen
-        Returns:
-            array with number of vaccines to allocate to each of the municipalities at time_step t (decision_period, 356)
-        """
-
-        n = len(self.pop)
-        vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
-        if policy=='random':
-            np.random.seed(10)
-            demand = self.state.S
-            vacc_available = self.state.vaccines_available
-            while vacc_available > 0:
-                period, region = np.random.randint(28), np.random.randint(n)
-                if demand[region] > 0:
-                    vacc_available -= 1
-                    vaccine_allocation[period][region] += 1
-                    demand[region] -= 1
-
-        return vaccine_allocation
+        return self.path
 
     def get_exogenous_information(self):
         """ recieves the exogenous information at time_step t
@@ -63,12 +46,12 @@ class MarkovDecisionProcess:
         Returns:
             returns a vector of alphas indicatinig the mobility flow at time_step t
         """
-        decision = self.get_action()
+        decision = self.policy()
         information = self.get_exogenous_information()
         self.path.append(self.state)
         self.state = self.state.get_transition(decision, information, self.seir.simulate, decision_period)
 
-    def initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
+    def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
         """ initializes a state 
         Parameters
             initial_infected: array of initial infected (1,356)
@@ -87,7 +70,6 @@ class MarkovDecisionProcess:
         H = np.zeros(n)
 
         # Initialize I
-
         if initial_infected is None:
             random.seed(10)
             initial = np.zeros(n)
@@ -107,4 +89,33 @@ class MarkovDecisionProcess:
 
         return State(S, E, I, R, H, V, vaccines_available, time_step) 
 
+    def _random_policy(self):
+        n = len(self.pop)
+        vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
+        np.random.seed(10)
+        demand = self.state.S
+        vacc_available = self.state.vaccines_available
+        while vacc_available > 0:
+            period, region = np.random.randint(28), np.random.randint(n)
+            if demand[region] > 0:
+                vacc_available -= 1
+                vaccine_allocation[period][region] += 1
+                demand[region] -= 1
+        
+        return vaccine_allocation
+
+    def _population_based_policy(self):
+        n = len(self.pop)
+        pop_weight = self.pop/np.sum(self.pop)
+        demand = self.state.S
+        region_allocation = pop_weight * self.state.vaccines_available
+        for i in range(len(region_allocation)):
+            region_allocation[i] = min(region_allocation[i], demand[i]) # throw away unused vaccines (temporary)
+
+        vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
+        for period in range(self.decision_period):
+            for i, region in enumerate(region_allocation):
+                vaccine_allocation[period][i] = region/self.decision_period
+
+        return vaccine_allocation
 

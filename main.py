@@ -49,9 +49,9 @@ if __name__ == '__main__':
     seir = initialize_seir(OD_matrices, pop, config)
     
     horizon = 50 # number of weeks
-    mdp = MarkovDecisionProcess(OD_matrices, pop, seir, vaccine_supply, horizon, 28)
+    mdp = MarkovDecisionProcess(OD_matrices, pop, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
 
-    path, state = mdp.run_policy("random")
+    path = mdp.run()
 
     infection = [x.new_infected for x in path]
     print(infection, sum(infection))

@@ -14,15 +14,13 @@ class State:
 
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
-        vaccines_available = self.vaccines_available - np.sum(decision)
-        try:
-            vaccines_available += np.sum(information['vaccine_supply'][self.time_step:self.time_step+decision_period])
-        except:
-            vaccines_available += np.sum(information['vaccine_supply'][self.time_step:])
-            
         result, new_infected, history = epidemic_function(self, decision, decision_period, information, write_to_csv=True, write_weekly=True)
         self.new_infected = new_infected
         S, E, I, R, H, V = history[-1]
-         
+
+        vaccines_left = self.vaccines_available - np.sum(decision)
+        new_vaccines = np.sum(information['vaccine_supply'])
+
+        vaccines_available = vaccines_left + new_vaccines
 
         return State(S, E, I, R, H, V, vaccines_available, time_step=self.time_step+decision_period)
