@@ -1,51 +1,53 @@
-import .covid.simulation as sim
-import .covid.utils as utils
-from state import State
+from covid import simulation as sim
+from covid.seir import SEIR
+from vaccine_allocation_model.State import State
+import numpy as np
+import random
 
 class MarkovDecisionProcess:
-    def __init__(self, config, horizon, vaccine_supply):
+    def __init__(self, OD_matrices, pop, befolkning, seir, vaccine_supply, horizon):
         self.horizon = horizon
-        self.OD_matrices = sim.load_od_matrices(paths.od)
-        self.pop, self.befolkning = utils.create_population(paths.muncipalities_names, paths.muncipalities_pop)
-        self.vaccine_supply = utils.load_vaccination_programme(OD_matrices.shape[0], pop.shape[1], paths.municipalities_v)
-
-        self.seir = SEIR(R0=config.R0,
-                DE= config.DE* config.periods_per_day,
-                DI= config.DI* config.periods_per_day,
-                I0=initial,
-                hospitalisation_rate=config.hospitalisation_rate,
-                eff=config.eff,
-                hospital_duration=config.hospital_duration*config.periods_per_day,
-                time_delta=config.time_delta
-                OD = self.OD_matrices, 
-                pop = self.pop)
-
-        self.state = State()
+        self.OD_matrices = OD_matrices
+        self.pop = pop
+        self.befolkning = befolkning
+        self.vaccine_supply = vaccine_supply
+        self.seir = seir
+        self.state = self.initialize_state(pop, None, 50, vaccine_supply)
         self.path = [self.state]
         self.time = 0
 
-    def run_policy(self, policy)
+    def run_policy(self, policy):
         for t in range(self.time, self.horizon, self.time_delta):
             decision = self.get_action(self.state, policy)
             information = self.get_exogenous_information(self.state)
             self.update_state(decision, information, 7)
 
-    def get_action(self, state, policy):
-        """ finds the action accoriding to a given policy at time t
+    def get_action(self, state, policy='random'):
+        """ finds the action according to a given state using a given policy 
         Parameters:
-            state:
-            policy: 
+            state: current state of type State
+            policy: string, name of policy chosen
         Returns:
-            number of vaccines to allocate to each of the municipalities at time t
+            array with number of vaccines to allocate to each of the municipalities at time t
         """
-        return policies[policy](state)
+        n = len(self.pop)
+        vaccine_allocation = np.zeros(n)
+        
+        if policy.equals('random'):
+            random.seed(10)
+            for i in range(state.vaccines_available):
+                loc = np.random.randint(n)
+                if (state.S[loc] > vaccine_allocation[loc]):
+                    vaccine_allocation[loc] += 1.0
+
+        return vaccine_allocation
 
     def get_exogenous_information(self, state):
         """ recieves the exogenous information at time t
         Parameters:
             t: time step
         Returns:
-            returns a vector of alphas indicatinig the mobility flow at time t
+            returns a vector of alphas indicating the mobility flow at time t
         """
         alphas = [np.ones(self.OD_matrices.shape) for x in range(4)]
         information = {'alphas': alphas}
@@ -64,6 +66,40 @@ class MarkovDecisionProcess:
         self.time += days
         self.state = State(S, E, I, R, H, V, self.time)
 
- 
+def initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time=0):
+        """ initializes a state 
+        Parameters
+            initial_infected: array of initial infected (1,356)
+            num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
+            vaccines_available: int, number of vaccines available at time
+            time: timeperiod in which state is initialized in the range (0, time_timedelta*7-1)
+        Returns
+            an initialized state object
+        """
+        n = len(self.pop)
+
+        S = self.pop.copy()
+        E = np.zeros(n)
+        I = np.zeros(n)
+        R = np.zeros(n)
+        V = np.zeros(n)
+        H = np.zeros(n)
+
+        # Initialize I
+        if initial_infected is None:
+            random.seed(10)
+            initial = np.zeros(n)
+            for i in range(num_initial_infected):
+                loc = np.random.randint(n)
+                if (S[loc] > initial[loc]):
+                    initial[loc] += 1.0
+        else:
+            initial = initial_infected
+        assert ((S < initial).sum() == 0)
+        
+        S -= initial
+        I += initial
+
+        return State(S, E, I, R, H, V, vaccines_available, time) 
 
 

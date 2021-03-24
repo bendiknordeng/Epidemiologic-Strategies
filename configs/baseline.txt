@@ -2,7 +2,7 @@
 "periods_per_day":12,
 "DE":5.6,
 "DI":5.2,
-"initialInd": [0],
+"initial_infected_indices": [0],
 "hospitalisation_rate":0.1,
 "eff":0.95,
 "hospital_duration":15,

@@ -1,12 +1,13 @@
 import numpy as np
 
 class State:
-    def __init__(S, E, I, R, H, vaccines_available, time):
+    def __init__(S, E, I, R, H, V, vaccines_available, time):
         self.S = S
         self.E = E
         self.I = I
         self.R = R
         self.H = H
+        self.V = V
         self.vaccines_available = vaccines_available
         self.time = time
         self.post_decision_state = False

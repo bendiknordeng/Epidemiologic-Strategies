@@ -14,8 +14,8 @@ from tqdm import tqdm
 import re
 from os import listdir
 import imageio
-from seir import SEIR
-from utils import *
+from .seir import SEIR
+from . import utils
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 
@@ -56,7 +56,7 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     pop = np.asarray([befolkningsarray for _ in range(84)])
     return pop, befolkning
 
-def initialize_seir(config, num_regions, num_infected=50):
+def initialize_seir(OD, pop, config, num_regions, num_infected=50):
     """ initialize seir model 
     Parameters
         config: namedtuple with seir parameters
@@ -65,17 +65,14 @@ def initialize_seir(config, num_regions, num_infected=50):
     Returns
         a SEIR-object, found in virus_sim.py
     """
-    n = num_regions                     # Number of regions 
-    initialInd = config.initialInd      # Initial index of region(s) infected
-    initial = np.zeros(n)               # Create initial infected array
-    initial[initialInd] = num_infected  # Number of infected people in each of the initial counties infected
-    seir = SEIR(R0=config.R0,
+    seir = SEIR(OD,
+                pop,
+                R0=config.R0,
                 DE= config.DE* config.periods_per_day,
                 DI= config.DI* config.periods_per_day,
-                I0=initial,
-                HospitalisationRate=config.HospitalisationRate,
+                hospitalisation_rate=config.hospitalisation_rate,
                 eff=config.eff,
-                HospitalIters=config.HospitalIters*config.periods_per_day)
+                hospital_duration=config.hospital_duration*config.periods_per_day)
     return seir
 
 def load_vaccination_programme(data_period, num_regions, fpath_municipalities_v):
@@ -86,8 +83,8 @@ def load_vaccination_programme(data_period, num_regions, fpath_municipalities_v)
     Returns
         a matrix of dimension (data_period, num_regions), for each time period how many vaccines should be allocated.
     """
-    m = generate_vaccine_matrix(data_period, num_regions)
-    write_pickle(fpath_municipalities_v, m)
+    m = utils.generate_vaccine_matrix(data_period, num_regions)
+    utils.write_pickle(fpath_municipalities_v, m)
     # load vaccine schedule
     pkl_file = open(fpath_municipalities_v, 'rb')
     vacc = pkl.load(pkl_file)
@@ -122,10 +119,10 @@ def create_geopandas(geopandas_from_pkl, befolkning, fpath_municipalities_geo_pk
 
     # Load geojson data
     if geopandas_from_pkl: # Set to True if you have a norge_geojson.pkl in your data folder
-        norge_geojson = read_pickle(fpath_municipalities_geo_pkl)
+        norge_geojson = utils.read_pickle(fpath_municipalities_geo_pkl)
     else:
         norge_geojson = gpd.read_file(fpath_municipalities_geo_geojson, layer='administrative_enheter.kommune')
-        write_pickle(fpath_municipalities_geo_pkl, norge_geojson)
+        utils.write_pickle(fpath_municipalities_geo_pkl, norge_geojson)
     norge_geojson.kommunenummer = norge_geojson.kommunenummer.astype(int) # Ensure right epsg
        
     # merge population and geopandas 
@@ -138,14 +135,14 @@ def create_geopandas(geopandas_from_pkl, befolkning, fpath_municipalities_geo_pk
     return kommuner_geometry
 
 def find_exposed_limits(baseline, befolkning):
-    """ calculates maximum number of infected people per 100k inhabitants
+    """ calculates min and max number of infected people per 100k inhabitants
     Parameters
-        geopandas_from_pkl: Bool, True if you have a geopandas DataFrame in pickle format to read from
-        befolkning: 
+        baseline: 3D matrix e.g (#timesteps, #compartments, #regions)
+        befolkning: dataframe, information about population in and name of all regions
     Returns
-        a dataframe in geopandas format, containing population and geometry information about regions.
+        min and max number of infected people per 100k inhabitants
     """
-    df = transform_res_to__df(baseline, 'SEIRHV', befolkning.kommunenavn.to_numpy(str), befolkning.befolkning.to_numpy(int))
+    df = utils.transform_res_to__df(baseline, 'SEIRHV', befolkning.kommunenavn.to_numpy(str), befolkning.befolkning.to_numpy(int))
     df["exposed_per_100k"] = 100000*df.E/df.Population
 
     min_exp_val = df.exposed_per_100k.min()
