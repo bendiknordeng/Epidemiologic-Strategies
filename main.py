@@ -1,8 +1,9 @@
 from covid.simulation import *
+from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from collections import namedtuple
 from covid.utils import read_config, read_paths
 
-
+""" 
 if __name__ == '__main__':
     # read filepaths 
     paths = read_paths('filepaths.txt')
@@ -32,4 +33,19 @@ if __name__ == '__main__':
     plot_simulation(baseline, befolkning, hosp, kommuner_geometry, paths.municipality_plots)
 
     # generate gif 
-    create_gif(paths.municipality_gif,paths.municipality_plots)
+    create_gif(paths.municipality_gif,paths.municipality_plots) """
+
+
+if __name__ == '__main__':
+    # read filepaths 
+    paths = read_config('filepaths.txt')
+    
+    # read in data from filepaths 
+    config = read_config(paths.config)
+    OD_matrices = load_od_matrices(paths.od)
+    pop, befolkning = create_population(paths.muncipalities_names, paths.muncipalities_pop)
+    seir = initialize_seir(config, pop.shape[1], 50)
+    vacc = load_vaccination_programme(OD_matrices.shape[0], pop.shape[1], paths.municipalities_v)
+
+    horizon = 100 
+    mdp = MarkovDecisionProcess(config=config, horizon=horizon, vaccine_supply=vacc)

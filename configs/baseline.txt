@@ -3,6 +3,7 @@
 "DE":5.6,
 "DI":5.2,
 "initialInd": [0],
-"HospitalisationRate":0.1,
+"hospitalisation_rate":0.1,
 "eff":0.95,
-"HospitalIters":15}
+"hospital_duration":15,
+"time_delta":6}
