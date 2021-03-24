@@ -48,4 +48,7 @@ if __name__ == '__main__':
     vaccine_supply = load_vaccination_programme(OD_matrices.shape[0], len(pop), paths.municipalities_v)
 
     horizon = 400 # this is number_of_days * periods_per_day 
-    mdp = MarkovDecisionProcess(OD_matrices, pop, befolkning, seir, vaccine_supply, horizon=horizon)
+    mdp = MarkovDecisionProcess(OD_matrices, pop, befolkning, seir, vaccine_supply, horizon, 28)
+    
+
+    mdp.update_state()

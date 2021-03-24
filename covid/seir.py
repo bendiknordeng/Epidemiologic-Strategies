@@ -141,4 +141,8 @@ class SEIR:
             history[iter + 1,3,:] = Rvec
             history[iter + 1,5,:] = Vvec
 
+        
+        history_df = pd.DataFrame(history)
+        history_df.to_csv("history.csv")
+
         return res, history
