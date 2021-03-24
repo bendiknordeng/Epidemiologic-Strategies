@@ -44,10 +44,8 @@ if __name__ == '__main__':
     config = read_config(paths.config)
     OD_matrices = load_od_matrices(paths.od)
     pop, befolkning = create_population(paths.muncipalities_names, paths.muncipalities_pop)
-    seir = initialize_seir(config, pop.shape[1], 50)
-    vacc = load_vaccination_programme(OD_matrices.shape[0], pop.shape[1], paths.municipalities_v)
+    seir = initialize_seir(OD_matrices, pop, config)
+    vaccine_supply = load_vaccination_programme(OD_matrices.shape[0], len(pop), paths.municipalities_v)
 
-    horizon = 100 
-    mdp = MarkovDecisionProcess(config=config, horizon=horizon, vaccine_supply=vacc)
-    path, final_state = mdp.run_policy("random")
-
+    horizon = 400 # this is number_of_days * periods_per_day 
+    mdp = MarkovDecisionProcess(OD_matrices, pop, befolkning, seir, vaccine_supply, horizon=horizon)

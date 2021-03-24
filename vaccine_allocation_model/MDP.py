@@ -12,7 +12,7 @@ class MarkovDecisionProcess:
         self.befolkning = befolkning
         self.vaccine_supply = vaccine_supply
         self.seir = seir
-        self.state = self.initialize_state(pop, None, 50, vaccine_supply)
+        self.state = self.initialize_state(None, 50, vaccine_supply)
         self.path = [self.state]
         self.decision_period = decision_period
 
@@ -63,41 +63,45 @@ class MarkovDecisionProcess:
             returns a vector of alphas indicatinig the mobility flow at time_step t
         """
         self.path.append(self.state)
-        self.state = self.state.get_transition(decision, information, self.seir.simulate, decision_period)
+        self.time += days
+        self.state = State(S, E, I, R, H, V, self.time_step)
 
-def initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
-        """ initializes a state 
-        Parameters
-            initial_infected: array of initial infected (1,356)
-            num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
-            vaccines_available: int, number of vaccines available at time
-            time_step: timeperiod in which state is initialized in the range (0, horizon)
-        Returns
-            an initialized state object
-        """
-        n = len(self.pop)
+    def initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
+            """ initializes a state 
+            Parameters
+                initial_infected: array of initial infected (1,356)
+                num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
+                vaccines_available: int, number of vaccines available at time
+                time_step: timestep in which state is initialized in the range (0, time_timedelta*7-1)
+            Returns
+                an initialized state object
+            """
+            n = len(self.pop)
+            S = self.pop.copy()
+            E = np.zeros(n)
+            I = np.zeros(n)
+            R = np.zeros(n)
+            V = np.zeros(n)
+            H = np.zeros(n)
 
-        S = self.pop.copy()
-        E = np.zeros(n)
-        I = np.zeros(n)
-        R = np.zeros(n)
-        V = np.zeros(n)
-        H = np.zeros(n)
+            # Initialize I
 
-        # Initialize I
-        if initial_infected is None:
-            random.seed(10)
-            initial = np.zeros(n)
-            for i in range(num_initial_infected):
-                loc = np.random.randint(n)
-                if (S[loc] > initial[loc]):
-                    initial[loc] += 1.0
-        else:
-            initial = initial_infected
-        assert ((S < initial).sum() == 0)
-        
-        S -= initial
-        I += initial
+            if initial_infected is None:
+                random.seed(10)
+                initial = np.zeros(n)
+                for i in range(num_initial_infected):
+                    loc = np.random.randint(n)
+                    if i < 5:
+                        S[loc]
+                        initial[loc]
+                    if (S[loc] > initial[loc]):
+                        initial[loc] += 1.0
+            else:
+                initial = initial_infected
+            assert ((S < initial).sum() == 0)
+
+            S -= initial
+            I += initial
 
         return State(S, E, I, R, H, V, vaccines_available, time_step) 
 

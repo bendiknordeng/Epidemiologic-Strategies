@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(S, E, I, R, H, V, vaccines_available, time_step):
+    def __init__(self, S, E, I, R, H, V, vaccines_available, time_step):
         self.S = S
         self.E = E
         self.I = I
@@ -18,7 +18,7 @@ class State:
             vaccines_available += sum(information['vaccine_supply'][self.time_step:self.time_step+decision_period])
         except:
             vaccines_available += sum(information['vaccine_supply'][self.time_step:])
-            
+
         _, history = epidemic_function(self, decision, decision_period, information)
         S, E, I, R, H, V = history[-1]
 

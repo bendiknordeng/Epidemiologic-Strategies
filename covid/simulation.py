@@ -52,11 +52,10 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     kommunenummer_befolkning["kommunenummer"] = kommune_id
     kommunenummer_befolkning = kommunenummer_befolkning[["kommunenummer", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "befolkning"})
     befolkning = pd.merge(kommunenummer_befolkning, kommunenavn, on='kommunenummer', sort=True)
-    befolkningsarray = befolkning.befolkning.to_numpy(dtype='float64')
-    pop = np.asarray([befolkningsarray for _ in range(84)])
+    pop = befolkning.befolkning.to_numpy(dtype='float64')
     return pop, befolkning
 
-def initialize_seir(OD, pop, config, num_regions, num_infected=50):
+def initialize_seir(OD, pop, config):
     """ initialize seir model 
     Parameters
         config: namedtuple with seir parameters
