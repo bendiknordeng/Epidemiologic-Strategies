@@ -47,19 +47,18 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def simulate(self, state, decision, vaccine_supply, days, information):
+    def simulate(self, state, decision, days, information):
         """  
         Parameters:
             state: State object with values for each compartment
-            decision: vaccine allocation for each period for each region (time_delta * days, 356)
-            vaccine_supply: vaccines available in each period (time_delta * days, 356)
+            decision: vaccine allocation for each period for each region (24/time_delta * days, 356)
             comp_values: dict of values for each compartment (S, E, I, R)
             information: dict of exogenous information for each region (time_delta * days, 356, 356)
         Returns:
             res: accumulated SEIR values for the whole country
             history: SEIRHV for each region for each time step
         """
-        iterations = self.par.time_delta * days
+        iterations = 24/self.par.time_delta * days
         k = 6 # Num of compartments
         r = flow.shape[0]
         n = flow.shape[1]
@@ -98,7 +97,7 @@ class SEIR:
             realOD_e = realflow_e[iter % r]
             realOD_i = realflow_i[iter % r]
             realOD_r = realflow_r[iter % r]
-            realOD_v = vaccine_supply[iter % r]
+            realOD_v = decision[iter % r]
 
             newE = Svec * Ivec / self.par.pop * (self.par.R0 / self.par.DI)
             newI = Evec / self.par.DE
@@ -141,8 +140,5 @@ class SEIR:
             history[iter + 1,2,:] = Ivec
             history[iter + 1,3,:] = Rvec
             history[iter + 1,5,:] = Vvec
-
-        print("len history", len(history[0,0,:]))
-        print("nr iter", len(history[0,0,:]))
 
         return res, history
