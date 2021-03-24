@@ -1,11 +1,11 @@
 from covid.simulation import *
 from collections import namedtuple
-from covid.utils import read_config
+from covid.utils import read_config, read_paths
 
 
 if __name__ == '__main__':
     # read filepaths 
-    paths = read_config('filepaths.txt')
+    paths = read_paths('filepaths.txt')
     
     # read in data from filepaths 
     config = read_config(paths.config)

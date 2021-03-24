@@ -34,7 +34,7 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def seir(self, distr, flow, alphas, iterations, inf, vacc, from_history=False, history=None, save_history=True):
+    def seir(self, distr, flow, alphas, iterations, inf, vacc, from_history=False, history_folder = "test/", save_history=True):
         """ Simulates an epidemic
         parameters:
             - self.par: parameters {
@@ -82,26 +82,26 @@ class SEIR:
             
             Svec -= initial
             Ivec += initial
-        else: # if the simulation is a continuation of a former simulation
-            pass
 
-        res = np.zeros((iterations, k))
-        res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
-        
+            res = np.zeros((iterations, k))
+            res[0,:] = [Svec.sum(), Evec.sum(), Ivec.sum(), Rvec.sum(), 0, Vvec.sum()]
+
+            history = np.zeros((iterations, k, n))
+            history[0,0,:] = Svec
+            history[0,1,:] = Evec
+            history[0,2,:] = Ivec
+            history[0,3,:] = Rvec
+            history[0,5,:] = Vvec
+        else: # if the simulation is a continuation of a former simulation
+            history = read_pickle(f"covid/data/data_municipalities/{history_folder}history.pkl")
+
+
         # Realflows for different compartments 
         alpha_s, alpha_e, alpha_i, alpha_r = alphas
         realflow_s = self.scale_flow(flow.copy(), alpha_s)
         realflow_e = self.scale_flow(flow.copy(), alpha_e)
         realflow_i = self.scale_flow(flow.copy(), alpha_i)
         realflow_r = self.scale_flow(flow.copy(), alpha_r)
-        
-        history = np.zeros((iterations, k, n))
-        history[0,0,:] = Svec
-        history[0,1,:] = Evec
-        history[0,2,:] = Ivec
-        history[0,3,:] = Rvec
-        history[0,5,:] = Vvec
-
         
         eachIter = np.zeros(iterations + 1)
         
@@ -165,8 +165,12 @@ class SEIR:
             history[iter + 1,3,:] = Rvec
             history[iter + 1,5,:] = Vvec
 
+        print("len history", len(history[0,0,:]))
+        print("nr iter", len(history[0,0,:]))
+
+
         if save_history:
-            write_pickle("covid/data/data_municipalities/history.pkl", history)
+            write_pickle(f"covid/data/data_municipalities/{history_folder}history.pkl", history)
         print("State, ", Svec.shape, Evec.shape, Ivec.shape, Rvec.shape, Vvec.shape)
 
         return res, history
