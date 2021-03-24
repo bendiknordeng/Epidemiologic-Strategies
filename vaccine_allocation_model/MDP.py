@@ -2,6 +2,7 @@ from covid import simulation as sim
 from covid.seir import SEIR
 from vaccine_allocation_model.State import State
 import numpy as np
+from tqdm import tqdm
 import random
 
 class MarkovDecisionProcess:
@@ -17,10 +18,8 @@ class MarkovDecisionProcess:
         self.decision_period = decision_period
 
     def run_policy(self, policy):
-        for t in range(self.state.time_step, self.horizon):
-            decision = self.get_action(self.decision_period, policy)
-            information = self.get_exogenous_information(self.state)
-            self.update_state(decision, information)
+        for t in tqdm(range(self.state.time_step, self.horizon)):
+            self.update_state()
         return self.path, self.state
 
     def get_action(self, policy='random'):
@@ -34,7 +33,6 @@ class MarkovDecisionProcess:
 
         n = len(self.pop)
         vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
-        
         if policy=='random':
             np.random.seed(10)
             demand = self.state.S

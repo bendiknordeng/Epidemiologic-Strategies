@@ -1,10 +1,11 @@
 from covid.simulation import *
+from covid.utils import *
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from collections import namedtuple
 from covid.utils import read_config, read_paths
 
-""" 
-if __name__ == '__main__':
+
+""" if __name__ == '__main__':
     # read filepaths 
     paths = read_paths('filepaths.txt')
     
@@ -47,8 +48,9 @@ if __name__ == '__main__':
     seir = initialize_seir(OD_matrices, pop, config)
     vaccine_supply = load_vaccination_programme(OD_matrices.shape[0], len(pop), paths.municipalities_v)
 
-    horizon = 400 # this is number_of_days * periods_per_day 
+    horizon = 100 # this is number_of_days * periods_per_day 
     mdp = MarkovDecisionProcess(OD_matrices, pop, befolkning, seir, vaccine_supply, horizon, 28)
-    
 
-    mdp.update_state()
+    path, state = mdp.run_policy("random")
+    import pdb; pdb.set_trace()
+    

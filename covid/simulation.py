@@ -25,7 +25,7 @@ def load_od_matrices(fpath_od):
     Parameters
         fpath_od: filepath to OD-matrices (.pkl file)
     Returns
-        3d-array e.g (84, 256, 256)
+        3d-array e.g (28, 256, 256)
     """
     pkl_file = open(fpath_od, 'rb')
     OD_matrices = pkl.load(pkl_file)
@@ -82,7 +82,7 @@ def load_vaccination_programme(data_period, num_regions, fpath_municipalities_v)
     Returns
         a matrix of dimension (data_period, num_regions), for each time period how many vaccines should be allocated.
     """
-    m = utils.generate_vaccine_matrix(data_period, num_regions)
+    m = utils.generate_vaccine_matrix(data_period)
     utils.write_pickle(fpath_municipalities_v, m)
     # load vaccine schedule
     pkl_file = open(fpath_municipalities_v, 'rb')

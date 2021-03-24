@@ -55,15 +55,15 @@ def generate_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_vaccine_matrix(num_time_steps, num_regions):
+def generate_vaccine_matrix(num_time_steps):
     """ generate an vaccine matrix used for illustrative purposes only
     Parameters
         num_regions: number of regions e.g 356
-        num_time_steps: number of time periods e.g 84
+        num_time_steps: number of time periods e.g 28
     Returns
         An vaccine matrix with dimensions (num_time_steps, num_counties) 
     """
-    a = [[10 for x in range(num_regions)] for i in range (num_time_steps)]
+    a = [40 for i in range (num_time_steps)]
     return np.array(a)
     
 def write_pickle(filepath, arr):
