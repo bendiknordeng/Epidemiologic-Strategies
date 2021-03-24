@@ -48,20 +48,6 @@ class MarkovDecisionProcess:
 
         return vaccine_allocation
 
-    import numpy as np
-    import random
-    n = 356
-    vaccine_allocation = [np.zeros(n) for _ in range(28)]
-    S = [random.randint(300) for _ in range(n)]
-    
-    random.seed(10)
-    vacc_available = 10000
-    while vacc_available > 0:
-        period, region = np.random.randint(28), np.random.randint(n)
-        if (S[region] >= sum(vaccine_allocation[:][loc])):
-            vaccine_allocation[period][loc] += 1.0
-    print(vaccine_allocation)
-
     def get_exogenous_information(self):
         """ recieves the exogenous information at time_step t
         Parameters:
@@ -70,7 +56,8 @@ class MarkovDecisionProcess:
             returns a vector of alphas indicating the mobility flow at time_step t
         """
         alphas = [np.ones(self.OD_matrices.shape) for x in range(4)]
-        information = {'alphas': alphas}
+        vaccines_available = sum(self.vaccine_supply[self.state.time_step:self.state.time_step:self.decision_period])
+        information = {'alphas': alphas, 'vaccine_supply': vaccines_available}
         return information
     
     def update_state(self, decision_period=28):
@@ -81,7 +68,7 @@ class MarkovDecisionProcess:
             returns a vector of alphas indicatinig the mobility flow at time_step t
         """
         decision = self.get_action()
-        information = self.get_exogenous_information
+        information = self.get_exogenous_information()
         self.path.append(self.state)
         self.state = self.state.get_transition(decision, information, self.seir.simulate, decision_period)
 
