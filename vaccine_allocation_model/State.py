@@ -14,7 +14,7 @@ class State:
 
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
-        result, new_infected, history = epidemic_function(self, decision, decision_period, information, write_to_csv=True, write_weekly=True)
+        result, new_infected, history = epidemic_function(self, decision, decision_period, information, write_to_csv=True, write_weekly=False)
         self.new_infected = new_infected
         S, E, I, R, H, V = history[-1]
 

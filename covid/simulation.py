@@ -28,17 +28,17 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
         (pop, population), where pop is a matrix of dimensions (84, 356) and population is a dataframe with region_id, region_name and population
     """
     region = pd.read_csv(fpath_muncipalities_names, delimiter=",").drop_duplicates()
-    region.rename(columns={"Kommunenr. 2020": "id", "Kommunenavn 2020": "region"}, inplace=True)
-    region.id = region.id.astype(int)
+    region.rename(columns={"Kommunenr. 2020": "region_id", "Kommunenavn 2020": "region"}, inplace=True)
+    region.region_id = region.region_id.astype(int)
 
     # create population 
     region_population = pd.read_csv(fpath_muncipalities_pop, delimiter=";", skiprows=1)
     region_ids = []
     for r in region_population.region.str.split(" "):
         region_ids.append(int(r[0]))
-    region_population["id"] = region_ids
-    region_population = region_population[["id", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "population"})
-    population_df = pd.merge(region_population, region, on='id', sort=True)
+    region_population["region_id"] = region_ids
+    region_population = region_population[["region_id", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "population"})
+    population_df = pd.merge(region_population, region, on='region_id', sort=True)
     pop = population_df.population.to_numpy(dtype='float64')
     return pop, population_df
 
@@ -93,8 +93,9 @@ def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath
     else:
         norge_geojson = gpd.read_file(fpath_region_geo_geojson, layer='administrative_enheter.kommune')
         utils.write_pickle(fpath_region_geo_pkl, norge_geojson)
-    norge_geojson.region_id = norge_geojson.region_id.astype(int) # Ensure right epsg
-       
+    norge_geojson.kommunenummer = norge_geojson.kommunenummer.astype(int) # Ensure right epsg
+    norge_geojson.rename(columns={"kommunenummer": "region_id"}, inplace=True)
+    
     # merge population and geopandas 
     kommuner_geometry = pd.merge(norge_geojson, population, on='region_id', sort=True).reset_index().drop_duplicates(["region_id"])
     kommuner_geometry.index = kommuner_geometry.region_id
@@ -112,7 +113,7 @@ def find_exposed_limits(baseline, population):
     Returns
         min and max number of infected people per 100k inhabitants
     """
-    df = utils.transform_res_to__df(baseline, 'SEIRHV', population.region.to_numpy(str), population.population.to_numpy(int))
+    df = utils.transform_history_to_df(baseline, 'SEIRHV', population.region.to_numpy(str), population.population.to_numpy(int))
     df["exposed_per_100k"] = 100000*df.E/df.Population
 
     min_exp_val = df.exposed_per_100k.min()

@@ -38,7 +38,7 @@ from covid.utils import read_config, read_paths
 
 
 if __name__ == '__main__':
-    """
+    
     # read filepaths 
     paths = read_config('filepaths.txt')
     
@@ -48,21 +48,25 @@ if __name__ == '__main__':
     vaccine_supply = read_pickle(paths.municipalities_v)
     _, population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     seir = initialize_seir(OD_matrices, population, config)
-    
-    horizon = 4 # number of weeks
+
+    horizon = 50 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
 
-    path = mdp.run()
+    #path = mdp.run()
     
 
-    infection = [x.new_infected for x in path]
-    print(infection, sum(infection))
-    """
-    # Plot geospatial
-    df = pd.read_csv('weekly.csv')
-    hist = transform_df_to_history(df, 'SEIRHV')
-    seir_plot(res_from_hist(hist))
+    #infection = [x.new_infected for x in path]
+    #print(infection, sum(infection))
 
+    # Plot geospatial
+    df = pd.read_csv('history.csv')
+    hist = transform_df_to_history(df, 'SEIRHV')
+    print(hist.shape)
+    seir_plot(res_from_hist(hist))
+    results = res_from_hist(hist)
+    
+    kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
+    plot_simulation(hist[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
 
     # plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
     

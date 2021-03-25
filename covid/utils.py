@@ -99,7 +99,7 @@ def transform_history_to_df(time_step, history, population, column_names):
     B = A.reshape(-1,c) 
     df = pd.DataFrame(B, columns=list(column_names))
     df['timestep'] = np.floor_divide(df.index.values, b) + time_step
-    df['region_id'] = np.tile(np.array(population.id), a)
+    df['region_id'] = np.tile(np.array(population.region_id), a)
     df['region_name'] = np.tile(np.array(population.region), a)
     df['region_population'] = np.tile(np.array(population.population), a)
     df['E_per_100k'] = 100000*df.E/df.region_population
@@ -115,7 +115,7 @@ def transform_df_to_history(df, column_names):
     3D-matrix used for plotting geospatial and SEIR development
     """
     l = []
-    df = df[[char for char in column_names]]
+    df = df[list(column_names)]
     for i in range(0, len(df), 356):
         l.append(np.transpose(df.iloc[i:i+356].to_numpy()))
     return np.array(l)
