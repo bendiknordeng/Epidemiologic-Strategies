@@ -45,11 +45,11 @@ if __name__ == '__main__':
     config = read_config(paths.config)
     OD_matrices = read_pickle(paths.od)
     vaccine_supply = read_pickle(paths.municipalities_v)
-    pop, _ = create_population(paths.muncipalities_names, paths.muncipalities_pop)
-    seir = initialize_seir(OD_matrices, pop, config)
+    _, population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
+    seir = initialize_seir(OD_matrices, population, config)
     
-    horizon = 50 # number of weeks
-    mdp = MarkovDecisionProcess(OD_matrices, pop, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
+    horizon = 4 # number of weeks
+    mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
 
     path = mdp.run()
 

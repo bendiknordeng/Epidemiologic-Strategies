@@ -7,10 +7,12 @@ from covid import utils
 import os
 
 class SEIR:
-    def __init__(self, OD, pop, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
+    def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
         """ 
         Parameters
         - self.par: parameters {
+                    OD: Origin-Destination matrix
+                    population: pd.DataFrame with columns region_id, region_name, population (number)
                     R0: Basic reproduction number (e.g 2.4)
                     DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
                     DI: Infectious period (e.g 5.2 * 12)
@@ -20,7 +22,7 @@ class SEIR:
                     eff: vaccine efficacy (e.g 0.95)
                     time_delta: time increment.
          """
-        param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff time_delta OD pop')
+        param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff time_delta OD population')
         self.par = param(R0=R0,
                         DE=DE,
                         DI=DI,
@@ -29,7 +31,7 @@ class SEIR:
                         hospital_duration=hospital_duration,
                         time_delta=time_delta,
                         OD=OD,
-                        pop=pop)
+                        population=population)
 
     # I0 is the distribution of infected people at time t=0, if None then randomly choose inf number of people
 
@@ -64,7 +66,7 @@ class SEIR:
         k = 6 # Num of compartments
         r = self.par.OD.shape[0]
         n = self.par.OD.shape[1]
-        N = self.par.pop.sum()
+        N = self.par.population.population.to_numpy(dtype='float64').sum()
         
         S_vec = state.S
         E_vec = state.E
@@ -101,7 +103,7 @@ class SEIR:
             realOD_r = realflow_r[i % r]
             realOD_v = decision[i % r]
 
-            newE = S_vec * I_vec / self.par.pop * (self.par.R0 / self.par.DI)
+            newE = S_vec * I_vec / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)
             newI = E_vec / self.par.DE
             newR = I_vec / self.par.DI
             newV = realOD_v * self.par.eff

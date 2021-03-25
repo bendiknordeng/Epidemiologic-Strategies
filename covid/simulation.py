@@ -42,7 +42,7 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     pop = population_df.population.to_numpy(dtype='float64')
     return pop, population_df
 
-def initialize_seir(OD, pop, config):
+def initialize_seir(OD, population, config):
     """ initialize seir model 
     Parameters
         config: namedtuple with seir parameters
@@ -52,7 +52,7 @@ def initialize_seir(OD, pop, config):
         a SEIR-object, found in virus_sim.py
     """
     seir = SEIR(OD,
-                pop,
+                population,
                 R0=config.R0,
                 DE= config.DE* config.periods_per_day,
                 DI= config.DI* config.periods_per_day,

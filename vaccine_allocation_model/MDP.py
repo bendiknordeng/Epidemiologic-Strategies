@@ -6,10 +6,10 @@ from tqdm import tqdm
 import random
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, pop, seir, vaccine_supply, horizon, decision_period, policy):
+    def __init__(self, OD_matrices, population, seir, vaccine_supply, horizon, decision_period, policy):
         self.horizon = horizon
         self.OD_matrices = OD_matrices
-        self.pop = pop
+        self.population = population
         self.vaccine_supply = vaccine_supply
         self.seir = seir
         self.state = self._initialize_state(None, 50, 1000)
@@ -48,8 +48,8 @@ class MarkovDecisionProcess:
         """
         decision = self.policy()
         information = self.get_exogenous_information()
-        self.path.append(self.state)
         self.state = self.state.get_transition(decision, information, self.seir.simulate, decision_period)
+        self.path.append(self.state)
 
     def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
         """ initializes a state 
@@ -61,8 +61,9 @@ class MarkovDecisionProcess:
         Returns
             an initialized state object
         """
-        n = len(self.pop)
-        S = self.pop.copy()
+        pop = self.population.population.to_numpy(dtype='float64')
+        n = len(pop)
+        S = pop.copy()
         E = np.zeros(n)
         I = np.zeros(n)
         R = np.zeros(n)
@@ -90,7 +91,7 @@ class MarkovDecisionProcess:
         return State(S, E, I, R, H, V, vaccines_available, time_step) 
 
     def _random_policy(self):
-        n = len(self.pop)
+        n = len(self.population)
         vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
         np.random.seed(10)
         demand = self.state.S
@@ -105,8 +106,9 @@ class MarkovDecisionProcess:
         return vaccine_allocation
 
     def _population_based_policy(self):
-        n = len(self.pop)
-        pop_weight = self.pop/np.sum(self.pop)
+        n = len(self.population)
+        pop = self.population.population.to_numpy(dtype='float64')
+        pop_weight = pop/np.sum(pop)
         demand = self.state.S
         region_allocation = pop_weight * self.state.vaccines_available
         for i in range(len(region_allocation)):
