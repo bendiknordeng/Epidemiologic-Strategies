@@ -118,18 +118,19 @@ def transform_df_to_history(df, column_names):
         l.append(np.transpose(df.iloc[i:i+356].to_numpy()))
     return np.array(l)
 
-def seir_plot_one_cell(res, cellid):
+def seir_plot_one_cell(history, cellid):
     """ plots SEIR curves for a single region
     Parameters
-        res: [3D array, comself.partment_id]
+        hist: history matrix
         cellid: index to the region to plot in the res 3d-array
     """
-    plt.plot(res[::12, 0, cellid], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
-    plt.plot(res[::12, 1, cellid], color='g', label='E')
-    plt.plot(res[::12, 2, cellid], color='b', label='I')
-    plt.plot(res[::12, 3, cellid], color='y', label='R')
-    plt.plot(res[::12, 4, cellid], color='c', label='H')
-    plt.plot(res[::12, 5, cellid], color='m', label='V')
+    num_periods_per_day = 4
+    plt.plot(history[::num_periods_per_day, 0, cellid], color='r', label='S')  
+    plt.plot(history[::num_periods_per_day, 1, cellid], color='g', label='E')
+    plt.plot(history[::num_periods_per_day, 2, cellid], color='b', label='I')
+    plt.plot(history[::num_periods_per_day, 3, cellid], color='y', label='R')
+    plt.plot(history[::num_periods_per_day, 4, cellid], color='c', label='H')
+    plt.plot(history[::num_periods_per_day, 5, cellid], color='m', label='V')
     plt.legend()
     plt.show()
 
@@ -138,12 +139,19 @@ def seir_plot(res):
     Parameters
         res: [3D array, comself.partment_id]
     """
-    plt.plot(res[::12, 0], color='r', label='S') # Take every 12 value to get steps per day (beacause of 2-hours intervals) 
-    plt.plot(res[::12, 1], color='g', label='E')
-    plt.plot(res[::12, 2], color='b', label='I')
-    plt.plot(res[::12, 3], color='y', label='R')
-    plt.plot(res[::12, 4], color='c', label='H')
-    plt.plot(res[::12, 5], color='m', label='V')
+    num_periods_per_day = 4
+    plt.plot(res[::num_periods_per_day, 0], color='r', label='S') 
+    plt.plot(res[::num_periods_per_day, 1], color='g', label='E')
+    plt.plot(res[::num_periods_per_day, 2], color='b', label='I')
+    plt.plot(res[::num_periods_per_day, 3], color='y', label='R')
+    plt.plot(res[::num_periods_per_day, 4], color='c', label='H')
+    plt.plot(res[::num_periods_per_day, 5], color='m', label='V')
     plt.legend()
     plt.show()
+
+def res_from_hist(hist):
+    """ returns res matrix from history matrix
+    """
+    return hist.sum(axis=2)
+
 

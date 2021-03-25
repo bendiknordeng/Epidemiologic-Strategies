@@ -38,6 +38,7 @@ from covid.utils import read_config, read_paths
 
 
 if __name__ == '__main__':
+    """
     # read filepaths 
     paths = read_config('filepaths.txt')
     
@@ -50,9 +51,17 @@ if __name__ == '__main__':
     
     horizon = 50 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, pop, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
-
     path = mdp.run()
+    
 
     infection = [x.new_infected for x in path]
     print(infection, sum(infection))
+    """
+    # Plot geospatial
+    df = pd.read_csv('weekly.csv')
+    hist = transform_df_to_history(df, 'SEIRHV')
+    seir_plot(res_from_hist(hist))
+
+
+    # plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
     
