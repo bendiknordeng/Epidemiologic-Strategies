@@ -46,7 +46,7 @@ if __name__ == '__main__':
     config = read_config(paths.config)
     OD_matrices = read_pickle(paths.od)
     vaccine_supply = read_pickle(paths.municipalities_v)
-    _, population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
+    population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     seir = initialize_seir(OD_matrices, population, config)
 
     horizon = 50 # number of weeks

@@ -25,7 +25,7 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
         fpath_muncipalities_names: file path to region names
         fpath_muncipalities_pop: file path to population data
     Returns
-        (pop, population), where pop is a matrix of dimensions (84, 356) and population is a dataframe with region_id, region_name and population
+        population: a dataframe with region_id, region_name and population
     """
     region = pd.read_csv(fpath_muncipalities_names, delimiter=",").drop_duplicates()
     region.rename(columns={"Kommunenr. 2020": "region_id", "Kommunenavn 2020": "region"}, inplace=True)
@@ -39,17 +39,16 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     region_population["region_id"] = region_ids
     region_population = region_population[["region_id", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "population"})
     population_df = pd.merge(region_population, region, on='region_id', sort=True)
-    pop = population_df.population.to_numpy(dtype='float64')
-    return pop, population_df
+    return population_df
 
 def initialize_seir(OD, population, config):
-    """ initialize seir model 
+    """ initialize seir model
     Parameters
+        OD: Origin-Destination matrix giving movement patterns between regions
+        population: A DataFrame with region_id, region_name and population
         config: namedtuple with seir parameters
-        num_regions: number of regions between which you travel
-        num_infected: number of infected at start of simulations 
     Returns
-        a SEIR-object, found in virus_sim.py
+        seir: instance of SEIR as defined in seir.py
     """
     seir = SEIR(OD,
                 population,
@@ -64,7 +63,7 @@ def initialize_seir(OD, population, config):
 def seir_plot(res):
     """ plots the epidemiological curves
     Parameters
-        res: [3D array, compartment_id]
+        res: shape (decision_period*horizon, #compartments)
     """
     plt.plot(res[::12, 0], color='r', label='S')
     plt.plot(res[::12, 1], color='g', label='E')
@@ -79,8 +78,11 @@ def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath
     """ creates geopandas dataframe used to plot 
     Parameters
         geopandas_from_pkl: Bool, True if you have a geopandas DataFrame in pickle format to read from
+        population: a DataFrame with region_id, region_name and population
+        fpath_region_geo_pkl: pickle file for geopandas object if norge_geojson.pkl exists in data folder
+        fpath_region_geo_geojson: geojson-file to create geopandas object from
     Returns
-        a dataframe in geopandas format, containing population and geometry information about regions.
+        a dataframe in geopandas format, containing region_id, region_name, region_population and geometry information about regions.
     """
     # epsg from kartverket data
     kommune_json = pd.read_json(fpath_region_geo_geojson)
@@ -108,8 +110,8 @@ def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath
 def find_exposed_limits(baseline, population):
     """ calculates min and max number of infected people per 100k inhabitants
     Parameters
-        baseline: 3D matrix e.g (#timesteps, #compartments, #regions)
-        population: dataframe, information about population in and name of all regions
+        baseline: resulting matrix from simulation, (#timesteps, #compartments, #regions)
+        population: dataframe, containing region_id, region_name, region_population and geometry
     Returns
         min and max number of infected people per 100k inhabitants
     """
@@ -124,8 +126,8 @@ def trunc_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     """
     Parameters
         cmap
-        minval
-        maxval=1.0
+        minval: minimum number of exposed in all regions and all time_steps of simulation
+        maxval: ma number of exposed in all regions and all time_steps of simulation
         n
     """
     new_cmap = LinearSegmentedColormap.from_list('trunc({n}, {a:.2f}, {b:.2f})'.format(n=cmap.name, a=minval, b=maxval),

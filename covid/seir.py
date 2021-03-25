@@ -7,39 +7,31 @@ from covid import utils
 import os
 
 class SEIR:
-    def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12, time_delta=6):
+    def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12):
         """ 
         Parameters
         - self.par: parameters {
                     OD: Origin-Destination matrix
-                    population: pd.DataFrame with columns region_id, region_name, population (number)
+                    population: pd.DataFrame with columns region_id, region_name, population (quantity)
                     R0: Basic reproduction number (e.g 2.4)
                     DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
                     DI: Infectious period (e.g 5.2 * 12)
-                    I0: Array with the distribution of infected people at time t=0
                     hospitalisation_rate: Percentage of people that will be hospitalized (e.g 0.1)
                     hospital_duration: Length of hospitalization (e.g 15*12) }
                     eff: vaccine efficacy (e.g 0.95)
-                    time_delta: time increment.
          """
-        param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff time_delta OD population')
+        param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff OD population')
         self.par = param(R0=R0,
                         DE=DE,
                         DI=DI,
                         hospitalisation_rate=hospitalisation_rate,
                         eff=eff,
                         hospital_duration=hospital_duration,
-                        time_delta=time_delta,
                         OD=OD,
                         population=population)
 
-    # I0 is the distribution of infected people at time t=0, if None then randomly choose inf number of people
-
-    # flow is a 3D matrix of dimensions r x n x n (i.e., 84 x 549 x 549),
-    # flow[t mod r] is the desired OD matrix at time t.
-
     def scale_flow(self, flow, alpha):
-        """scales realflow
+        """ scales realflow
         Parameters
             flow: 3D array with flows
             alpha: array of scalers that adjust flows for a given compartment and region
@@ -52,14 +44,17 @@ class SEIR:
         return realflow
 
     def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
-        """  
+        """  simulates the development of an epidemic as modelled by current parameters
         Parameters:
             state: State object with values for each compartment
-            decision: vaccine allocation for each period for each region (24/time_delta * decision_period, 356)
-            comp_values: dict of values for each compartment (S, E, I, R)
-            information: dict of exogenous information for each region (24/time_delta * decision_period, 356, 356)
+            decision: Vaccine allocation for each period for each region, shape (decision_period, nr_regions)
+            decision_period: number of steps the simulation makes
+            information: dict of exogenous information for each region, shape (decision_period, nr_regions, nr_regions)
+            write_to_csv: Bool, True if history is to be saved as csv
+            write_weekly: Bool, True if history is to be sampled on a weekly basis
         Returns:
-            res: accumulated SEIR values for the whole country
+            res: accumulated SEIR values for all regions as whole (decision_period, )
+            total_new_infected.sum(): accumulated infected for the decision_period, float.
             history: SEIRHV for each region for each time step (decision_period,  number_compartments, number_of_regions)
         """
         
@@ -159,4 +154,8 @@ class SEIR:
                 else:
                     history_df.to_csv("history.csv")
 
+        total_new_infected_2 = history[:,2,:] # Sander test
+        print("history", history[:,2,:]) # Sander test
+        print("total_new_infected", total_new_infected.sum()) # Sander test
+        
         return result, total_new_infected.sum(), history
