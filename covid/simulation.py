@@ -113,11 +113,10 @@ def find_exposed_limits(baseline, population):
     Returns
         min and max number of infected people per 100k inhabitants
     """
-    df = utils.transform_history_to_df(baseline, 'SEIRHV', population.region.to_numpy(str), population.population.to_numpy(int))
-    df["exposed_per_100k"] = 100000*df.E/df.Population
+    df = utils.transform_history_to_df(0, baseline, population, 'SEIRHV')
 
-    min_exp_val = df.exposed_per_100k.min()
-    max_exp_val = df.exposed_per_100k.max()
+    min_exp_val = df.E_per_100k.min()
+    max_exp_val = df.E_per_100k.max()
     
     return min_exp_val, max_exp_val
 

@@ -59,14 +59,17 @@ if __name__ == '__main__':
     #print(infection, sum(infection))
 
     # Plot geospatial
-    df = pd.read_csv('history.csv')
-    hist = transform_df_to_history(df, 'SEIRHV')
-    print(hist.shape)
-    seir_plot(res_from_hist(hist))
-    results = res_from_hist(hist)
+    #df = pd.read_csv('history.csv')
+    #hist = transform_df_to_history(df, 'SEIRHV')
+    #print(hist[::4,:,:].shape)
     
-    kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
-    plot_simulation(hist[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
+    
+    #seir_plot(res_from_hist(hist))
+    #results = res_from_hist(hist)
+    #print(results[::4,4].shape)
+    #kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
+    #print(kommuner_geometry)
+    #plot_simulation(hist[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
 
-    # plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
+    create_gif(paths.municipality_gif,paths.municipality_plots)
     
