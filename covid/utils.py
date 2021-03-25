@@ -5,33 +5,19 @@ import pickle as pkl
 import ast
 from collections import namedtuple
 
-def read_paths(path):
+
+def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
     Parameters
-        path: file path to .txt file
+        filepath: file path to .txt file
     Returns
         A namedtuple representing each path needed for system execution
     """
-    file = open(path, "r")
+    file = open(filepath, "r")
     contents = file.read()
     dictionary = ast.literal_eval(contents)
     file.close()
-    return namedtuple('Config', dictionary.keys())(**dictionary)
-    # dicts_from_file now contains the dictionaries created from the text file
-
-def read_config(fpath_config):
-    """ generate a namedtuple from a config file
-    Parameters
-        fpath_config: file path to .txt config file
-    Returns
-        A namedtuple representing config file
-    """
-    file = open(fpath_config, "r")
-    contents = file.read()
-    dictionary = ast.literal_eval(contents)
-    file.close()
-    return namedtuple('Config', dictionary.keys())(**dictionary)
-    # dicts_from_file now contains the dictionaries created from the text file
+    return namedtuple('_', dictionary.keys())(**dictionary)
 
 def generate_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
@@ -55,30 +41,19 @@ def generate_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_vaccine_matrix(num_time_steps):
-    """ generate an vaccine matrix used for illustrative purposes only
-    Parameters
-        num_regions: number of regions e.g 356
-        num_time_steps: number of time periods e.g 28
-    Returns
-        An vaccine matrix with dimensions (num_time_steps, num_counties) 
-    """
-    a = [40 for i in range (num_time_steps)]
-    return np.array(a)
-    
 def write_pickle(filepath, arr):
-    """ saves an array as a pickle to filepath
+    """ writes an array to file as a pickle
     Parameters
-        filepath: string filepath
+        filepath: string file path
         arr: array that is written to file 
     """
     with open(filepath,'wb') as f:
         pkl.dump(arr, f)
 
 def read_pickle(filepath):
-    """ read pickle from filepath
+    """ read pickle
     Parameters
-        filepath: string filepath
+        filepath: string file path
     Returns
         arr: array that is read from filepath 
     """
@@ -86,10 +61,11 @@ def read_pickle(filepath):
         return pkl.load(f)
 
 def transform_history_to_df(time_step, history, population, column_names):
-    """ transforms a 3D matrix that is the result from SEIR modelling to a pandas dataframe
+    """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
     Parameters
-        history: 3D matrix 
-        population: DataFrame with region_id, region_name, and population (quantity)
+        time_step: integer used to indicate time step in the simulation
+        history: 3D array with shape (number of time steps, number of compartments, number of regions)
+        population: DataFrame with region_id, region_namntse, and population (quantity)
         coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
     Returns
         df: dataframe that represents the 3D matrix 
@@ -108,7 +84,7 @@ def transform_history_to_df(time_step, history, population, column_names):
 def transform_df_to_history(df, column_names):
     """ transforms a data frame to 3D matrix that is the result from SEIR modelling
     Parameters
-    df:  dataframe (35600 (100 weeks), ) 
+    df:  dataframe to b
     coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
     region_names: list with strings that represents all the regions. Should have the same length as res[2]
     Returns
@@ -121,9 +97,9 @@ def transform_df_to_history(df, column_names):
     return np.array(l)
 
 def seir_plot_one_cell(history, cellid):
-    """ plots SEIR curves for a single region
+    """ plots SEIR development for a single region
     Parameters
-        hist: history matrix
+        history: 3D array with shape (number of time steps, number of compartments, number of regions)
         cellid: index to the region to plot in the res 3d-array
     """
     num_periods_per_day = 4
@@ -137,9 +113,9 @@ def seir_plot_one_cell(history, cellid):
     plt.show()
 
 def seir_plot(res):
-    """ plots SEIR curves for all regions 
+    """ plots accumulated SEIR development
     Parameters
-        res: [3D array, comself.partment_id]
+        res: 3D array with shape (number of time steps, number of compartments)
     """
     num_periods_per_day = 4
     plt.plot(res[::num_periods_per_day, 0], color='r', label='S') 
@@ -151,9 +127,13 @@ def seir_plot(res):
     plt.legend()
     plt.show()
 
-def res_from_hist(hist):
+def res_from_hist(history):
     """ returns res matrix from history matrix
+    Parameters
+        history: 3D array with shape (number of time steps, number of compartments, number of regions)
+    Returns
+
     """
-    return hist.sum(axis=2)
+    return history.sum(axis=2)
 
 

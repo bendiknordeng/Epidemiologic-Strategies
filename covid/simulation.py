@@ -191,7 +191,7 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
         kommuner_geometry.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=2)
         kommuner_geometry.plot(ax=ax, column='exposed_per_100k', cmap=new_cmap, zorder=3)
         # add background
-        ctx.add_basemap(ax, attribution="", source=ctx.sources.ST_TONER_LITE, zoom='auto', alpha=0.6)
+        ctx.add_basemap(ax, attribution="", source=ctx.providers.Stamen.TonerLite, zoom='auto', alpha=0.6)
         
         ax.set_xlim(west, east)
         ax.set_ylim(south, north)

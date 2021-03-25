@@ -6,4 +6,7 @@
 'municipalities_geo_pkl':       'covid/data/data_municipalities/norge_geojson.pkl',
 'municipalities_geo_geojson':   'covid/data/data_municipalities/Basisdata_0000_Norge_25833_Kommuner_GEOJSON.geojson',
 'municipality_plots':           'covid/plots/plots_municipalities/',
-'municipality_gif':             'covid/gifs/gifs_municipalities/Covid_19_municipalities.gif'}
+'municipality_gif':             'covid/gifs/gifs_municipalities/Covid_19_municipalities.gif',
+'results_dayly':                'vaccine_allocation_model/results/results_municipalities/dayly.csv',
+'results_weekly':               'vaccine_allocation_model/results/results_municipalities/weekly.csv'
+}

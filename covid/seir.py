@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from covid import utils
 import os
+from covid.utils import *
 
 class SEIR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12):
@@ -20,6 +21,7 @@ class SEIR:
                     hospital_duration: Length of hospitalization (e.g 15*12) }
                     eff: vaccine efficacy (e.g 0.95)
          """
+        self.paths = create_named_tuple('filepaths.txt')
         param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff OD population')
         self.par = param(R0=R0,
                         DE=DE,
@@ -143,19 +145,15 @@ class SEIR:
         if write_to_csv:
             if write_weekly:
                 latest_df = utils.transform_history_to_df(state.time_step, np.expand_dims(history[-1], axis=0), self.par.population, "SEIRHV")
-                if os.path.exists("weekly.csv"):
-                    latest_df.to_csv("weekly.csv", mode="a", header=False)
+                if os.path.exists(self.paths.results_weekly):
+                    latest_df.to_csv(self.paths.results_weekly, mode="a", header=False)
                 else:
-                    latest_df.to_csv("weekly.csv")
+                    latest_df.to_csv(self.paths.results_weekly)
             else:
                 history_df = utils.transform_history_to_df(state.time_step, history, self.par.population, "SEIRHV")
-                if os.path.exists("history.csv"):
-                    history_df.to_csv("history.csv", mode="a", header=False)
+                if os.path.exists(self.paths.results_dayly):
+                    history_df.to_csv(self.paths.results_dayly, mode="a", header=False)
                 else:
-                    history_df.to_csv("history.csv")
-
-        total_new_infected_2 = history[:,2,:] # Sander test
-        print("history", history[:,2,:]) # Sander test
-        print("total_new_infected", total_new_infected.sum()) # Sander test
+                    history_df.to_csv(self.paths.results_dayly)
         
         return result, total_new_infected.sum(), history
