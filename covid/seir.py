@@ -147,13 +147,13 @@ class SEIR:
 
         if write_to_csv:
             if write_weekly:
-                latest_df = utils.transform_history_to_df(state.time_step, np.expand_dims(history[-1], axis=0), "SEIRHV")
+                latest_df = utils.transform_history_to_df(state.time_step, np.expand_dims(history[-1], axis=0), self.par.population, "SEIRHV")
                 if os.path.exists("weekly.csv"):
                     latest_df.to_csv("weekly.csv", mode="a", header=False)
                 else:
                     latest_df.to_csv("weekly.csv")
             else:
-                history_df = utils.transform_history_to_df(state.time_step, history, "SEIRHV")
+                history_df = utils.transform_history_to_df(state.time_step, history, self.par.population, "SEIRHV")
                 if os.path.exists("history.csv"):
                     history_df.to_csv("history.csv", mode="a", header=False)
                 else:

@@ -85,12 +85,12 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
-def transform_history_to_df(time_step, history, column_names):
+def transform_history_to_df(time_step, history, population, column_names):
     """ transforms a 3D matrix that is the result from SEIR modelling to a pandas dataframe
     Parameters
         history: 3D matrix 
+        population: DataFrame with region_id, region_name, and population (quantity)
         coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
-        region_names: list with strings that represents all the regions. 
     Returns
         df: dataframe that represents the 3D matrix 
     """
@@ -98,10 +98,12 @@ def transform_history_to_df(time_step, history, column_names):
     (a,b,c) = A.shape 
     B = A.reshape(-1,c) 
     df = pd.DataFrame(B, columns=list(column_names))
-    region_numbers = [x for x in range(356)]
-    df['Region'] = np.tile(np.array(region_numbers), a)
-    df['Timestep'] = np.floor_divide(df.index.values, b) + time_step
-    return df
+    df['timestep'] = np.floor_divide(df.index.values, b) + time_step
+    df['region_id'] = np.tile(np.array(population.id), a)
+    df['region_name'] = np.tile(np.array(population.region), a)
+    df['region_population'] = np.tile(np.array(population.population), a)
+    df['E_per_100k'] = 100000*df.E/df.region_population
+    return df[['timestep', 'region_id', 'region_name', 'region_population'] + list(column_names) + ['E_per_100k']]
 
 def transform_df_to_history(df, column_names):
     """ transforms a data frame to 3D matrix that is the result from SEIR modelling

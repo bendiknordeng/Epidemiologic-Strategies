@@ -27,7 +27,7 @@ class MarkovDecisionProcess:
         """
         ...
         """
-        for t in tqdm(range(self.state.time_step, self.horizon)):
+        for _ in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
         return self.path
 
