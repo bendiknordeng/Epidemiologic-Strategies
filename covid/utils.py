@@ -88,11 +88,11 @@ def read_pickle(filepath):
 def transform_history_to_df(time_step, history, column_names):
     """ transforms a 3D matrix that is the result from SEIR modelling to a pandas dataframe
     Parameters
-        res: 3D matrix e.g (250, 6, 11)
-        coloumn_names: string that represents the column names (e.g 'SEIRHQ').  Should have the same length as res[1]
-        region_names: list with strings that represents all the regions. Should have the same length as res[2]
+        history: 3D matrix 
+        coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
+        region_names: list with strings that represents all the regions. 
     Returns
-        df: dataframe that represents the 3D matrix e.g (2750 (res[0]*res[2]), 6 (res[1]))
+        df: dataframe that represents the 3D matrix 
     """
     A = history.transpose(0,2,1)
     (a,b,c) = A.shape 
@@ -102,6 +102,21 @@ def transform_history_to_df(time_step, history, column_names):
     df['Region'] = np.tile(np.array(region_numbers), a)
     df['Timestep'] = np.floor_divide(df.index.values, b) + time_step
     return df
+
+def transform_df_to_history(df, column_names):
+    """ transforms a data frame to 3D matrix that is the result from SEIR modelling
+    Parameters
+    df:  dataframe (35600 (100 weeks), ) 
+    coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
+    region_names: list with strings that represents all the regions. Should have the same length as res[2]
+    Returns
+    3D-matrix used for plotting geospatial and SEIR development
+    """
+    l = []
+    df = df[[char for char in column_names]]
+    for i in range(0, len(df), 356):
+        l.append(np.transpose(df.iloc[i:i+356].to_numpy()))
+    return np.array(l)
 
 def seir_plot_one_cell(res, cellid):
     """ plots SEIR curves for a single region
@@ -131,3 +146,4 @@ def seir_plot(res):
     plt.plot(res[::12, 5], color='m', label='V')
     plt.legend()
     plt.show()
+

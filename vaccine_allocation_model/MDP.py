@@ -1,4 +1,4 @@
-from covid import simulation as sim
+import covid.simulation as sim
 from covid.seir import SEIR
 from vaccine_allocation_model.State import State
 import numpy as np
@@ -24,6 +24,9 @@ class MarkovDecisionProcess:
         self.policy = policies[policy]
 
     def run(self):
+        """
+        ...
+        """
         for t in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
         return self.path
