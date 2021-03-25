@@ -58,7 +58,7 @@ class SEIR:
             information: dict of exogenous information for each region (24/time_delta * decision_period, 356, 356)
         Returns:
             res: accumulated SEIR values for the whole country
-            history: SEIRHV for each region for each time step
+            history: SEIRHV for each region for each time step (decision_period,  number_compartments, number_of_regions)
         """
         
         k = 6 # Num of compartments
@@ -156,5 +156,5 @@ class SEIR:
                     history_df.to_csv("history.csv", mode="a", header=False)
                 else:
                     history_df.to_csv("history.csv")
-        
+
         return result, total_new_infected.sum(), history

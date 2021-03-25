@@ -1,4 +1,4 @@
-from covid import simulation as sim
+import covid.simulation as sim
 from covid.seir import SEIR
 from vaccine_allocation_model.State import State
 import numpy as np
@@ -24,6 +24,9 @@ class MarkovDecisionProcess:
         self.policy = policies[policy]
 
     def run(self):
+        """
+        ...
+        """
         for t in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
         return self.path
@@ -90,6 +93,9 @@ class MarkovDecisionProcess:
         return State(S, E, I, R, H, V, vaccines_available, time_step) 
 
     def _random_policy(self):
+        """
+        ...
+        """
         n = len(self.pop)
         vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
         np.random.seed(10)
@@ -105,6 +111,9 @@ class MarkovDecisionProcess:
         return vaccine_allocation
 
     def _population_based_policy(self):
+        """
+        ...
+        """
         n = len(self.pop)
         pop_weight = self.pop/np.sum(self.pop)
         demand = self.state.S
