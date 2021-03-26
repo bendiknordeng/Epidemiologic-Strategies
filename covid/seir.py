@@ -151,9 +151,9 @@ class SEIR:
                     latest_df.to_csv(self.paths.results_weekly)
             else:
                 history_df = utils.transform_history_to_df(state.time_step, history, self.par.population, "SEIRHV")
-                if os.path.exists(self.paths.results_dayly):
-                    history_df.to_csv(self.paths.results_dayly, mode="a", header=False)
+                if os.path.exists(self.paths.results_history):
+                    history_df.to_csv(self.paths.results_history, mode="a", header=False)
                 else:
-                    history_df.to_csv(self.paths.results_dayly)
+                    history_df.to_csv(self.paths.results_history)
         
         return result, total_new_infected.sum(), history

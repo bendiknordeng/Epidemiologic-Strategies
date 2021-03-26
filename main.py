@@ -22,7 +22,7 @@ if __name__ == '__main__':
     path = mdp.run()
 
     # load necessary data for geospatial plot
-    df = pd.read_csv(paths.results_dayly)
+    df = pd.read_csv(paths.results_history)
     history = transform_df_to_history(df, 'SEIRHV')
     results = history.sum(axis=2)
     kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
