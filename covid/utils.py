@@ -8,6 +8,7 @@ from collections import namedtuple
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
+
     Parameters
         filepath: file path to .txt file
     Returns
@@ -21,9 +22,10 @@ def create_named_tuple(filepath):
 
 def generate_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
+
     Parameters
-        num_regions: number of regions e.g 356
-        num_time_steps: number of time periods e.g 84
+        num_regions: int indicating number of regions e.g 356
+        num_time_steps: int indicating number of time periods e.g 28
     Returns
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) with 0.8 on its diagonal and 0.1 on cells next to diagonal 
     """
@@ -43,6 +45,7 @@ def generate_od_matrix(num_time_steps, num_regions):
 
 def write_pickle(filepath, arr):
     """ writes an array to file as a pickle
+
     Parameters
         filepath: string file path
         arr: array that is written to file 
@@ -51,24 +54,26 @@ def write_pickle(filepath, arr):
         pkl.dump(arr, f)
 
 def read_pickle(filepath):
-    """ read pickle
+    """ read pickle and returns an array
+
     Parameters
         filepath: string file path
     Returns
-        arr: array that is read from filepath 
+        arr: array that is read from file path 
     """
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
 def transform_history_to_df(time_step, history, population, column_names):
     """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
+
     Parameters
-        time_step: integer used to indicate time step in the simulation
+        time_step: integer used to indicate the current time step in the simulation
         history: 3D array with shape (number of time steps, number of compartments, number of regions)
-        population: DataFrame with region_id, region_namntse, and population (quantity)
-        coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
+        population: DataFrame with region_id, region_names, and population (quantity)
+        coloumn_names: string that represents the column names e.g 'SEIRHQ'. 
     Returns
-        df: dataframe that represents the 3D matrix 
+        df: dataframe with columns:  'timestep', 'region_id', 'region_name', 'region_population', 'S', 'E', I','R', 'H', 'V', 'E_per_100k'
     """
     A = history.transpose(0,2,1)
     (a,b,c) = A.shape 
@@ -82,13 +87,13 @@ def transform_history_to_df(time_step, history, population, column_names):
     return df[['timestep', 'region_id', 'region_name', 'region_population'] + list(column_names) + ['E_per_100k']]
 
 def transform_df_to_history(df, column_names):
-    """ transforms a data frame to 3D matrix that is the result from SEIR modelling
+    """ transforms a data frame to 3D array
+    
     Parameters
-    df:  dataframe to b
-    coloumn_names: string that represents the column names (e.g 'SEIRHQ'). 
-    region_names: list with strings that represents all the regions. Should have the same length as res[2]
+        df:  dataframe 
+        coloumn_names: string indicating the column names of the data that will be transformed e.g 'SEIRHQ'. 
     Returns
-    3D-matrix used for plotting geospatial and SEIR development
+         3D array with shape (number of time steps, number of compartments, number of regions)
     """
     l = []
     df = df[list(column_names)]
@@ -97,10 +102,11 @@ def transform_df_to_history(df, column_names):
     return np.array(l)
 
 def seir_plot_one_cell(history, cellid):
-    """ plots SEIR development for a single region
+    """ plots SEIR curves for a single region
+
     Parameters
         history: 3D array with shape (number of time steps, number of compartments, number of regions)
-        cellid: index to the region to plot in the res 3d-array
+        cellid: index of the region to plot SEIR curves
     """
     num_periods_per_day = 4
     plt.plot(history[::num_periods_per_day, 0, cellid], color='r', label='S')  
@@ -113,7 +119,8 @@ def seir_plot_one_cell(history, cellid):
     plt.show()
 
 def seir_plot(res):
-    """ plots accumulated SEIR development
+    """ plots accumulated SEIR curves
+    
     Parameters
         res: 3D array with shape (number of time steps, number of compartments)
     """
@@ -126,14 +133,4 @@ def seir_plot(res):
     plt.plot(res[::num_periods_per_day, 5], color='m', label='V')
     plt.legend()
     plt.show()
-
-def res_from_hist(history):
-    """ returns res matrix from history matrix
-    Parameters
-        history: 3D array with shape (number of time steps, number of compartments, number of regions)
-    Returns
-
-    """
-    return history.sum(axis=2)
-
 

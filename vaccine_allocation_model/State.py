@@ -2,6 +2,21 @@ import numpy as np
 
 class State:
     def __init__(self, S, E, I, R, H, V, vaccines_available, time_step):
+        """ initialize a State instance
+
+        Parameters
+            S: array with shape (1,356) indicating number of suceptible in each region 
+            E: array with shape (1,356) indicating number of exposed in each region 
+            I: array with shape (1,356) indicating number of infected in each region 
+            R: array with shape (1,356) indicating number of recovered in each region 
+            H: array with shape (1,356) indicating number of hospitalized in each region 
+            V: array with shape (1,356) indicating number of vaccinated in each region
+            vaccines_available: integer indicating number of vaccines available at initialization time step
+            time_Step: integer indicating the time step when state is intialized in the range(0, (24/time_delta)*7 -1)
+        Returns
+            an initialized State instance
+
+        """
         self.S = S
         self.E = E
         self.I = I
@@ -14,6 +29,15 @@ class State:
 
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
+        """ 
+        Parameters
+            decision: array indicating the number of vaccines to be allocated to each region for the decision period e.g (28, 356)
+            information: dicitionary with exogenous information e.g {'vaccine_supply': (28, 356) }
+            epidemic_function: function that simulated an epidemic 
+            decision_period: the number of time steps that every decision directly affects
+        Returns
+            A new initialized State instance
+        """
         result, new_infected, history = epidemic_function(self, decision, decision_period, information, write_to_csv=True, write_weekly=False)
         self.new_infected = new_infected
         S, E, I, R, H, V = history[-1]

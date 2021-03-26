@@ -35,4 +35,6 @@ if __name__ == '__main__':
 
     # generate gif 
     create_gif(paths.municipality_gif,paths.municipality_plots)
+
+    
     
