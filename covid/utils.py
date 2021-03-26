@@ -87,7 +87,7 @@ def transform_history_to_df(time_step, history, population, column_names):
     return df[['timestep', 'region_id', 'region_name', 'region_population'] + list(column_names) + ['E_per_100k']]
 
 def transform_df_to_history(df, column_names):
-    """ transforms a data frame to 3D array
+    """ transforms a dataframe to 3D array
     
     Parameters
         df:  dataframe 
@@ -133,4 +133,20 @@ def seir_plot(res):
     plt.plot(res[::num_periods_per_day, 5], color='m', label='V')
     plt.legend()
     plt.show()
+
+def transform_historical_df_to_history(df):
+    """ transforms a dataframe to 3D array
+    
+    Parameters
+        df:  dataframe of real historical covid data for Norway's municipalities
+    Returns
+         3D array with shape (number of time steps, number of compartments, number of regions)
+    """
+    # Add leading zero for municipality id
+    df['kommune_no'] = df['kommune_no'].apply(lambda x: '{0:0>4}'.format(x)) 
+    df = df[['kommune_no', 'cases']]
+    df = df.rename(columns={'cases': 'I'})
+    return transform_df_to_history(df, 'I')
+    
+
 

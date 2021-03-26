@@ -290,3 +290,102 @@ def create_gif(path_gif, path_plots):
             image = imageio.imread(path_plots + '{}'.format(filename))
             writer.append_data(image)
 
+
+def plot_historical_infected(baseline, population, kommuner_geometry, path_plots):
+    """ plots pictures of a given time resolution of exposed individuals in the different regions
+
+    Parameters
+        baseline: resulting matrix from simulation, (#timesteps, #compartments, #regions)
+        population: dataframe, containing region_id, region_name, region_population and geometry
+        kommuner_geometry: Geopandas DataFrame containing name of regions and geometry information about polygons making the regions.
+        path_plots: path to plots where all plots are saved
+    """
+
+    num_iterations = 350
+
+    ncolors = 256
+    # get cmap
+    color_array = plt.get_cmap('Reds')(range(ncolors))
+
+    # change alpha values
+    color_array[:, -1] = np.linspace(0.3, 1, ncolors)
+
+    map_object = LinearSegmentedColormap.from_list(name="Reds_transp", colors=color_array)
+
+    # register the colormap object
+    plt.register_cmap(cmap=map_object)
+
+    # plot some example data
+    fig, ax = plt.subplots()
+    h = ax.imshow(np.random.rand(100,100), cmap='Reds_transp')
+    plt.colorbar(mappable=h)
+
+    cmap = plt.get_cmap('Reds_transp')
+    new_cmap = trunc_colormap(cmap, 0.0, .9)
+
+    #uncomment when ctx is used
+    kommuner_geometry = kommuner_geometry.to_crs(epsg=3857)  # Convert to epsg=3857 to use contextily
+    west, south, east, north = kommuner_geometry.unary_union.bounds
+
+    params = {"axes.labelcolor":"slategrey"}
+    plt.rcParams.update(params)
+
+    # Used for colorbar 
+    fig, ax = plt.subplots()
+    min_exp_val, max_exp_val = 0,5
+    h = ax.imshow(np.random.uniform(low=min_exp_val, high=max_exp_val, size=(10,10)), cmap=new_cmap)
+
+    for time_step in tqdm(range(1,num_iterations)):
+        
+        kommuner_geometry['infected_per_100k'] = 100000*baseline[time_step-1, 0, :]/population.population.to_numpy(int)
+        #plot
+        fig, ax = plt.subplots(figsize=(14,14), dpi=72)
+        kommuner_geometry.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=2)
+        kommuner_geometry.plot(ax=ax, column='infected_per_100k', cmap=new_cmap, zorder=3)
+        # add background
+        ctx.add_basemap(ax, attribution="", source=ctx.providers.Stamen.TonerLite, zoom='auto', alpha=0.6)
+        
+        ax.set_xlim(west, east)
+        ax.set_ylim(south, north)
+        ax.axis('off')
+        plt.tight_layout()
+
+        # Add colourbar
+        plt.colorbar(mappable=h)
+        
+        inset_ax = fig.add_axes([0.4, 0.14, 0.37, 0.27])
+        inset_ax.patch.set_alpha(0.5)
+
+        inset_ax.plot(baseline[:time_step, 0].sum(axis=1), label="infectious", color='r', ls='-', lw=1.5, alpha=0.8)
+
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 0].sum(), color='r', s=50, alpha=0.2)
+        
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 0].sum(), color='r', s=20, alpha=0.8)
+        
+
+        inset_ax.fill_between(np.arange(0, time_step), np.maximum(baseline[:time_step, 0].sum(axis=1), \
+                                                                baseline[:time_step, 0].sum(axis=1)), alpha=0.035, color='r')
+        inset_ax.plot([time_step, time_step], [0, max(baseline[(time_step-1), 0].sum(), \
+                                                baseline[(time_step-1), 0].sum())], ls='--', lw=0.7, alpha=0.8, color='r')
+        
+        inset_ax.set_ylabel('Population', size=18, alpha=1, rotation=90)
+        inset_ax.set_xlabel('Days', size=18, alpha=1)
+        inset_ax.yaxis.set_label_coords(-0.15, 0.55)
+        inset_ax.tick_params(direction='in', size=10)
+        inset_ax.set_xlim(0, num_iterations)
+        inset_ax.set_ylim(0, 100000)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        inset_ax.grid(alpha=0.4)
+        
+        inset_ax.spines['right'].set_visible(False)
+        inset_ax.spines['top'].set_visible(False)
+        
+        inset_ax.spines['left'].set_color('darkslategrey')
+        inset_ax.spines['bottom'].set_color('darkslategrey')
+        inset_ax.tick_params(axis='x', colors='darkslategrey')
+        inset_ax.tick_params(axis='y', colors='darkslategrey')
+        plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
+        plt.title("Norway Covid-19 spreading on day: {}".format(time_step), fontsize=18, color= 'dimgray')
+        plt.savefig(path_plots + "historical_h{}.jpg".format(time_step), dpi=fig.dpi)
+        plt.close()
