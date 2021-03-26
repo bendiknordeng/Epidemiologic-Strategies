@@ -7,6 +7,17 @@ import random
 
 class MarkovDecisionProcess:
     def __init__(self, OD_matrices, population, seir, vaccine_supply, horizon, decision_period, policy):
+        """ Initializes an instance of the class MarkovDecisionProcess, that administrates
+
+        Parameters
+            OD_matrices: Origin-Destination matrices giving movement patterns between regions
+            population: A DataFrame with region_id, region_name and population
+            seir: A seir model that enables simulation of the decision process
+            vaccine_supply: Information about supply of vaccines, shape e.g. (#decision_period, #regions)
+            horizon: The amount of decision_periods the decision process is run 
+            decision_period: The number of time steps that every decision directly affects
+            policy: How the available vaccines should be distributed.
+        """
         self.horizon = horizon
         self.OD_matrices = OD_matrices
         self.population = population
@@ -24,16 +35,19 @@ class MarkovDecisionProcess:
         self.policy = policies[policy]
 
     def run(self):
-        """
-        ...
+        """ Updates states from current time_step to a specified horizon
+
+        Returns
+            A path that shows resulting traversal of states
         """
         for _ in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
         return self.path
 
     def get_exogenous_information(self):
-        """ recieves the exogenous information at time_step t
-        Parameters:
+        """ Recieves the exogenous information at time_step t
+
+        Parameters
             t: time_step
         Returns:
             returns a vector of alphas indicating the mobility flow at time_step t
@@ -43,11 +57,10 @@ class MarkovDecisionProcess:
         return information
     
     def update_state(self, decision_period=28):
-        """ recieves the exogenous information at time_step t
-        Parameters:
-            state: state
-        Returns:
-            returns a vector of alphas indicatinig the mobility flow at time_step t
+        """ Updates the state of the decision process.
+
+        Parameters
+            decision_period: number of periods forward in time that the decision directly affects
         """
         decision = self.policy()
         information = self.get_exogenous_information()
@@ -55,14 +68,15 @@ class MarkovDecisionProcess:
         self.path.append(self.state)
 
     def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
-        """ initializes a state 
+        """ Initializes a state, default from the moment a disease breaks out
+
         Parameters
             initial_infected: array of initial infected (1,356)
             num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
             vaccines_available: int, number of vaccines available at time
-            time_step: timestep in which state is initialized in the range (0, time_timedelta*7-1)
+            time_step: timestep in which state is initialized. Should be in the range of (0, (24/time_timedelta)*7 - 1)
         Returns
-            an initialized state object
+            an initialized State object, type defined in State.py
         """
         pop = self.population.population.to_numpy(dtype='float64')
         n = len(pop)
@@ -73,7 +87,6 @@ class MarkovDecisionProcess:
         V = np.zeros(n)
         H = np.zeros(n)
 
-        # Initialize I
         if initial_infected is None:
             random.seed(10)
             initial = np.zeros(n)
@@ -94,6 +107,12 @@ class MarkovDecisionProcess:
         return State(S, E, I, R, H, V, vaccines_available, time_step) 
 
     def _random_policy(self):
+        """ Define allocation of vaccines based on random distribution
+
+        Returns
+            a vaccine allocation of shape (#decision periods, #regions)
+        """
+
         n = len(self.population)
         vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
         np.random.seed(10)
@@ -109,6 +128,11 @@ class MarkovDecisionProcess:
         return vaccine_allocation
 
     def _population_based_policy(self):
+        """ Define allocation of vaccines based on number of inhabitants in each region
+
+        Returns
+            a vaccine allocation of shape (#decision periods, #regions)
+        """
         n = len(self.population)
         pop = self.population.population.to_numpy(dtype='float64')
         pop_weight = pop/np.sum(pop)

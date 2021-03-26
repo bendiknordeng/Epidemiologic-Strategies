@@ -20,7 +20,8 @@ import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 
 def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
-    """ load population information into dataframes
+    """ Load population information into dataframes
+
     Parameters
         fpath_muncipalities_names: file path to region names
         fpath_muncipalities_pop: file path to population data
@@ -42,13 +43,14 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     return population_df
 
 def initialize_seir(OD, population, config):
-    """ initialize seir model
+    """ Initialize SEIR model
+
     Parameters
-        OD: Origin-Destination matrix giving movement patterns between regions
+        OD: Origin-Destination matrices giving movement patterns between regions
         population: A DataFrame with region_id, region_name and population
         config: namedtuple with seir parameters
     Returns
-        seir: instance of SEIR as defined in seir.py
+        instance of SEIR as defined in seir.py
     """
     seir = SEIR(OD,
                 population,
@@ -61,7 +63,8 @@ def initialize_seir(OD, population, config):
     return seir
 
 def seir_plot(res):
-    """ plots the epidemiological curves
+    """ Plots the epidemiological curves
+
     Parameters
         res: shape (decision_period*horizon, #compartments)
     """
@@ -75,7 +78,8 @@ def seir_plot(res):
     plt.show()
 
 def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath_region_geo_geojson):
-    """ creates geopandas dataframe used to plot 
+    """ Creates a geopandas dataframe that stores geometry and identifying information about regions
+
     Parameters
         geopandas_from_pkl: Bool, True if you have a geopandas DataFrame in pickle format to read from
         population: a DataFrame with region_id, region_name and population
@@ -108,7 +112,8 @@ def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath
     return kommuner_geometry
 
 def find_exposed_limits(baseline, population):
-    """ calculates min and max number of infected people per 100k inhabitants
+    """ Calculates min and max number of exposed people per 100k inhabitants
+
     Parameters
         baseline: resulting matrix from simulation, (#timesteps, #compartments, #regions)
         population: dataframe, containing region_id, region_name, region_population and geometry
@@ -123,19 +128,23 @@ def find_exposed_limits(baseline, population):
     return min_exp_val, max_exp_val
 
 def trunc_colormap(cmap, minval=0.0, maxval=1.0, n=100):
-    """
+    """ Creates a colormap returned for plotting, based on max and min exposed individuals per 100k
+
     Parameters
-        cmap
+        cmap: a base colormap that will be modified
         minval: minimum number of exposed in all regions and all time_steps of simulation
         maxval: ma number of exposed in all regions and all time_steps of simulation
-        n
+        n: nuances in the colormap
+    Returns
+        a modified colormap
     """
     new_cmap = LinearSegmentedColormap.from_list('trunc({n}, {a:.2f}, {b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
                                                 cmap(np.linspace(minval, maxval, n)))
     return new_cmap
 
 def print_hospitalized_information(res):
-    """ prints hospitalized information
+    """ Prints hospitalized information
+
     Parameters
         res: [3D array, compartment_id]
     """
@@ -143,10 +152,14 @@ def print_hospitalized_information(res):
     print("Day with max hospitalised people: ", int(res["baseline"][0][:,4].argmax()/12)) # Divide by
 
 def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
-    """
+    """ plots pictures of a given time resolution of exposed individuals in the different regions
+
     Parameters
-        baseline:
-        kommuner_geometry:
+        baseline: resulting matrix from simulation, (#timesteps, #compartments, #regions)
+        population: dataframe, containing region_id, region_name, region_population and geometry
+        hosp: resulting array of total hospitalised individuals throughout simulation, shape (#timesteps)
+        kommuner_geometry: Geopandas DataFrame containing name of regions and geometry information about polygons making the regions.
+        path_plots: path to plots where all plots are saved
     """
     ncolors = 256
     # get cmap
@@ -253,7 +266,8 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
         plt.close()
 
 def sort_in_order(l):
-    """ sorts a given iterable
+    """ Sorts a given iterable
+
     Parameters
         l: iterable to be sorted
     """
@@ -262,9 +276,11 @@ def sort_in_order(l):
     return sorted(l, key=alphanumeric_key)
 
 def create_gif(path_gif, path_plots):
-    """ generate a gif
+    """ Generate a gif
+
     Parameters
-        fpath_region_gif: 
+        path_gif: outpath of gif
+        path_plots: path where plots that will make the gif are stored
     """
     filenames = listdir(path_plots)
     filenames = sort_in_order(filenames)

@@ -23,15 +23,15 @@ if __name__ == '__main__':
 
     # load necessary data for geospatial plot
     df = pd.read_csv(paths.results_dayly)
-    hist = transform_df_to_history(df, 'SEIRHV')
-    results = res_from_hist(hist)
+    history = transform_df_to_history(df, 'SEIRHV')
+    results = history.sum(axis=2)
     kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
 
     # accumulated SEIR development plot
-    seir_plot(res_from_hist(hist))
+    seir_plot(results)
     
     # geospatial plot
-    plot_simulation(hist[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
+    plot_simulation(history[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
 
     # generate gif 
     create_gif(paths.municipality_gif,paths.municipality_plots)
