@@ -127,13 +127,3 @@ def seir_plot(res):
     plt.legend()
     plt.show()
 
-def res_from_hist(history):
-    """ returns res matrix from history matrix
-    Parameters
-        history: 3D array with shape (number of time steps, number of compartments, number of regions)
-    Returns
-
-    """
-    return history.sum(axis=2)
-
-
