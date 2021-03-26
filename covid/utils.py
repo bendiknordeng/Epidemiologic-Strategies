@@ -20,7 +20,7 @@ def create_named_tuple(filepath):
     file.close()
     return namedtuple('_', dictionary.keys())(**dictionary)
 
-def generate_od_matrix(num_time_steps, num_regions):
+def generate_dummy_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -42,6 +42,41 @@ def generate_od_matrix(num_time_steps, num_regions):
                     l[i][j] = 0.1
         a.append(l)
     return np.array(a)
+
+def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commute):
+    """ generate an OD-matrix used for illustrative purposes only
+
+    Parameters
+        num_regions: int indicating number of regions e.g 356
+        num_time_steps: int indicating number of time periods e.g 28
+    Returns
+        An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) with 0.8 on its diagonal and 0.1 on cells next to diagonal 
+    """
+
+    df = pd.read_csv(fpath_muncipalities_commute, usecols=[1,2,3])
+    df['from'] = df['from'].str.lstrip("municip municip0").astype(int)
+    df['to'] = df['to'].str.lstrip("municip municip0").astype(int)
+    decision_period = 28
+    region_id = population.region_id.to_numpy()
+    od = np.zeros((decision_period, len(region_id), len(region_id)))
+
+    morning_travel = np.zeros((len(region_id), len(region_id)))
+    for id in region_id:
+        i = np.where(region_id == id)
+        filtered = df.where(df["from"] == id).dropna()
+        to, n = filtered['to'].to_numpy(int), filtered['n'].to_numpy()
+        for k in range(len(to)):
+            j = np.where(region_id == to[k])
+            morning_travel[i,j] = n[k]
+    afternoon_travel = morning_travel.T
+
+    for i in range(num_time_steps):
+        if (i-1)%4 == 0:
+            print(i)
+            od[i] = morning_travel
+        elif (i-3)%4 == 0:
+            od[i] = afternoon_travel
+    return od
 
 def write_pickle(filepath, arr):
     """ writes an array to file as a pickle

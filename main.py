@@ -11,9 +11,9 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = create_named_tuple(paths.config)
+    population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     OD_matrices = read_pickle(paths.od)
     vaccine_supply = read_pickle(paths.municipalities_v)
-    population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
     seir = initialize_seir(OD_matrices, population, config)
 
     # # run simulation

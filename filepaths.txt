@@ -1,8 +1,10 @@
-{'config':                      'configs/baseline.txt',
+{
+'config':                       'configs/baseline.txt',
 'od':                           'covid/data/data_municipalities/od_municipalities.pkl',
 'muncipalities_names':          'covid/data/data_municipalities/Kommunenummer_navn_2020.csv',
 'muncipalities_pop':            'covid/data/data_municipalities/Folkemengde_kommuner.csv',
 'municipalities_v':             'covid/data/data_municipalities/vaccines_municipalities.pkl',
+'municipalities_commute':       'covid/data/data_municipalities/norway_commuters_2017_b2020.csv',
 'municipalities_geo_pkl':       'covid/data/data_municipalities/norge_geojson.pkl',
 'municipalities_geo_geojson':   'covid/data/data_municipalities/Basisdata_0000_Norge_25833_Kommuner_GEOJSON.geojson',
 'municipality_plots':           'covid/plots/plots_municipalities/',
