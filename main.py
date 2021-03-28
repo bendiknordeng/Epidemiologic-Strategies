@@ -11,15 +11,15 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = create_named_tuple(paths.config)
-    OD_matrices = read_pickle(paths.od)
-    vaccine_supply = read_pickle(paths.municipalities_v)
     population = create_population(paths.muncipalities_names, paths.muncipalities_pop)
+    OD_matrices = generate_ssb_od_matrix(28, population, paths.municipalities_commute)
+    vaccine_supply = read_pickle(paths.municipalities_v)
     seir = initialize_seir(OD_matrices, population, config)
 
-    # # # run simulation
-    # horizon = 50 # number of weeks
-    # mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
-    # path = mdp.run()
+    # run simulation
+    horizon = 50 # number of weeks
+    mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
+    path = mdp.run()
 
     # load necessary data for geospatial plot
     df = pd.read_csv(paths.results_history)

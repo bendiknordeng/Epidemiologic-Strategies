@@ -20,7 +20,7 @@ def create_named_tuple(filepath):
     file.close()
     return namedtuple('_', dictionary.keys())(**dictionary)
 
-def generate_od_matrix(num_time_steps, num_regions):
+def generate_dummy_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -42,6 +42,63 @@ def generate_od_matrix(num_time_steps, num_regions):
                     l[i][j] = 0.1
         a.append(l)
     return np.array(a)
+
+def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commute):
+    """ generate an OD-matrix used for illustrative purposes only
+
+    Parameters
+        num_time_steps: int indicating number of time periods e.g 28
+        population: a dataframe with region_id, region_name and population
+        fpath_muncipalities_commute: filepath to commuting data between regions
+    Returns
+        An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
+    """
+
+    df = pd.read_csv(fpath_muncipalities_commute, usecols=[1,2,3])
+    df['from'] = df['from'].str.lstrip("municip municip0").astype(int)
+    df['to'] = df['to'].str.lstrip("municip municip0").astype(int)
+    decision_period = 28
+    region_id = population.region_id.to_numpy()
+    od = np.zeros((decision_period, len(region_id), len(region_id)))
+    morning = np.zeros((len(region_id), len(region_id)))
+    
+    for id in region_id:
+        i = np.where(region_id == id)
+        filtered = df.where(df["from"] == id).dropna()
+        to, n = filtered['to'].to_numpy(int), filtered['n'].to_numpy()
+        for k in range(len(to)):
+            j = np.where(region_id == to[k])
+            morning[i,j] = n[k]
+
+    for i in range(len(region_id)):
+        sum_travel = morning[i,:].sum()
+        pop_i = population.iloc[i].population
+        morning[i,i] = pop_i - sum_travel
+    
+    afternoon = np.copy(morning.T)
+    
+    for i in range(len(region_id)):
+        morning[i,:] = morning[i,:]/morning[i,:].sum()
+        afternoon[i,:] = afternoon[i,:]/afternoon[i,:].sum() 
+
+    midday = np.zeros((len(region_id), len(region_id)))
+    np.fill_diagonal(midday, np.ones(len(region_id)))  # ([morning[:,i].sum() for i in range(len(region_id))])) 
+    night = np.copy(midday)
+
+    # fill od matrices with correct matrix
+    for i in range(num_time_steps):
+        if i >= 20: # weekend: no travel
+            od[i] = night
+        elif (i)%4 == 0: # 0000-0600
+            od[i] = night
+        elif (i-1)%4 == 0: # 0600-1200
+            od[i] = morning
+        elif (i-2)%4 == 0: # 1200-1800
+            od[i] = midday
+        elif (i-3)%4 == 0: # 1800-0000
+            od[i] = afternoon
+    
+    return od
 
 def write_pickle(filepath, arr):
     """ writes an array to file as a pickle
