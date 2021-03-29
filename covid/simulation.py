@@ -14,7 +14,7 @@ from tqdm import tqdm
 import re
 from os import listdir
 import imageio
-from .seir import SEIR
+from .seir import SEIR 
 from . import utils
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap

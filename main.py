@@ -20,12 +20,13 @@ if __name__ == '__main__':
     horizon = 50 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
     path = mdp.run()
+    #import pdb; pdb.set_trace()
 
     # load necessary data for geospatial plot
-    df = pd.read_csv(paths.results_history)
-    history = transform_df_to_history(df, 'SEIRHV')
-    results = history.sum(axis=2)
-    kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
+    #df = pd.read_csv(paths.results_history)
+    #history = transform_df_to_history(df, 'SEIRHV')
+    #results = history.sum(axis=2)
+    #kommuner_geometry = create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
 
     # # accumulated SEIR development plot
     # seir_plot(results)
@@ -35,9 +36,9 @@ if __name__ == '__main__':
     # create_gif(paths.municipality_gif,paths.municipality_plots)
 
     # geospatial plot of of historical covid cases in Norway
-    history = transform_historical_df_to_history(pd.read_csv(paths.municipalities_hist_data))
-    plot_historical_infected(history[::1,:,:], population, kommuner_geometry, paths.municipality_hist_plots)
-    create_gif(paths.municipality_hist_gif,paths.municipality_hist_plots)
+    #history = transform_historical_df_to_history(pd.read_csv(paths.municipalities_hist_data))
+    #plot_historical_infected(history[::1,:,:], population, kommuner_geometry, paths.municipality_hist_plots)
+    #create_gif(paths.municipality_hist_gif,paths.municipality_hist_plots)
 
     
 
