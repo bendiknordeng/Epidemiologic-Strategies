@@ -28,6 +28,7 @@ if __name__ == '__main__':
     horizon = 10 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
     path = mdp.run()
+    #import pdb; pdb.set_trace()
 
     # load necessary data for geospatial plot
     df = pd.read_csv(paths.results_history)
