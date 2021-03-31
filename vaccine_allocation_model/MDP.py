@@ -1,5 +1,3 @@
-import covid.simulation as sim
-from covid.seir import SEIR
 from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm

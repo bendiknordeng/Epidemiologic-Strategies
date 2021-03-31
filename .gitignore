@@ -17,4 +17,4 @@ covid/gifs
 covid/.ipynb_checkpoints/
 
 #results
-vaccine_allocation_model/Results/
+vaccine_allocation_model/Results/results_municipalities/

@@ -1,11 +1,7 @@
 import numpy as np
 from collections import namedtuple
-import pickle
-import pandas as pd
-import matplotlib.pyplot as plt
 from covid import utils
 import os
-from covid.utils import *
 
 class SEIR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12):
@@ -21,7 +17,7 @@ class SEIR:
                     hospital_duration: Length of hospitalization (e.g 15*12) }
                     eff: vaccine efficacy (e.g 0.95)
          """
-        self.paths = create_named_tuple('filepaths.txt')
+        self.paths = utils.create_named_tuple('filepaths.txt')
         param = namedtuple('param', 'R0 DE DI hospitalisation_rate hospital_duration eff OD population')
         self.par = param(R0=R0,
                         DE=DE,
@@ -32,7 +28,7 @@ class SEIR:
                         OD=OD,
                         population=population)
 
-    def scale_flow(self, flow, alpha):
+    def scale_flow(self, alpha):
         """ scales realflow
         Parameters
             flow: 3D array with flows
@@ -77,10 +73,10 @@ class SEIR:
         
         # Realflows for different comself.partments 
         alpha_s, alpha_e, alpha_i, alpha_r = information['alphas']
-        realflow_s = self.scale_flow(self.par.OD.copy(), alpha_s)
-        realflow_e = self.scale_flow(self.par.OD.copy(), alpha_e)
-        realflow_i = self.scale_flow(self.par.OD.copy(), alpha_i)
-        realflow_r = self.scale_flow(self.par.OD.copy(), alpha_r)
+        realflow_s = self.scale_flow(alpha_s)
+        realflow_e = self.scale_flow(alpha_e)
+        realflow_i = self.scale_flow(alpha_i)
+        realflow_r = self.scale_flow(alpha_r)
         
         history = np.zeros((decision_period, k, n))
         history[0,0,:] = S_vec
@@ -146,13 +142,21 @@ class SEIR:
             if write_weekly:
                 latest_df = utils.transform_history_to_df(state.time_step, np.expand_dims(history[-1], axis=0), self.par.population, "SEIRHV")
                 if os.path.exists(self.paths.results_weekly):
-                    latest_df.to_csv(self.paths.results_weekly, mode="a", header=False)
+                    if state.time_step == 0: # block to remove old csv file if new run is executed 
+                        os.remove(self.paths.results_weekly)
+                        latest_df.to_csv(self.paths.results_weekly)
+                    else:
+                        latest_df.to_csv(self.paths.results_weekly, mode='a', header=False)
                 else:
                     latest_df.to_csv(self.paths.results_weekly)
             else:
                 history_df = utils.transform_history_to_df(state.time_step, history, self.par.population, "SEIRHV")
                 if os.path.exists(self.paths.results_history):
-                    history_df.to_csv(self.paths.results_history, mode="a", header=False)
+                    if state.time_step == 0: # block to remove old csv file if new run is executed
+                        os.remove(self.paths.results_history)
+                        history_df.to_csv(self.paths.results_history)
+                    else:
+                        history_df.to_csv(self.paths.results_history, mode='a', header=False)
                 else:
                     history_df.to_csv(self.paths.results_history)
         
