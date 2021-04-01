@@ -7,6 +7,7 @@ class SEIR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12):
         """ 
         Parameters
+
         - self.par: parameters {
                     OD: Origin-Destination matrix
                     population: pd.DataFrame with columns region_id, region_name, population (quantity)
@@ -30,6 +31,7 @@ class SEIR:
 
     def scale_flow(self, alpha):
         """ scales realflow
+
         Parameters
             flow: 3D array with flows
             alpha: array of scalers that adjust flows for a given compartment and region
@@ -43,6 +45,7 @@ class SEIR:
 
     def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
+        
         Parameters:
             state: State object with values for each compartment
             decision: Vaccine allocation for each period for each region, shape (decision_period, nr_regions)

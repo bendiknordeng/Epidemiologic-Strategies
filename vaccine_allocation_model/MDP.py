@@ -4,13 +4,13 @@ from tqdm import tqdm
 import random
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, population, seir, vaccine_supply, horizon, decision_period, policy):
+    def __init__(self, OD_matrices, population, seaiqr, vaccine_supply, horizon, decision_period, policy):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
             OD_matrices: Origin-Destination matrices giving movement patterns between regions
             population: A DataFrame with region_id, region_name and population
-            seir: A seir model that enables simulation of the decision process
+            seaiqr: A seaiqr model that enables simulation of the decision process
             vaccine_supply: Information about supply of vaccines, shape e.g. (#decision_period, #regions)
             horizon: The amount of decision_periods the decision process is run 
             decision_period: The number of time steps that every decision directly affects
@@ -20,7 +20,7 @@ class MarkovDecisionProcess:
         self.OD_matrices = OD_matrices
         self.population = population
         self.vaccine_supply = vaccine_supply
-        self.seir = seir
+        self.seaiqr = seaiqr
         self.state = self._initialize_state(None, 50, 1000)
         self.path = [self.state]
         self.decision_period = decision_period
@@ -62,7 +62,7 @@ class MarkovDecisionProcess:
         """
         decision = self.policy()
         information = self.get_exogenous_information()
-        self.state = self.state.get_transition(decision, information, self.seir.simulate, decision_period)
+        self.state = self.state.get_transition(decision, information, self.seaiqr.simulate, decision_period)
         self.path.append(self.state)
 
     def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
@@ -80,8 +80,11 @@ class MarkovDecisionProcess:
         n = len(pop)
         S = pop.copy()
         E = np.zeros(n)
+        A = np.zeros(n)
         I = np.zeros(n)
+        Q = np.zeros(n)
         R = np.zeros(n)
+        D = np.zeros(n)
         V = np.zeros(n)
         H = np.zeros(n)
 
@@ -102,7 +105,7 @@ class MarkovDecisionProcess:
         S -= initial
         I += initial
 
-        return State(S, E, I, R, H, V, vaccines_available, time_step) 
+        return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step) 
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution

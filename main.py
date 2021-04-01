@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seir import SEIR
+from covid.seaiqr import SEAIQR
 
 if __name__ == '__main__':
     # read filepaths 
@@ -16,24 +17,34 @@ if __name__ == '__main__':
     
     #vaccine_supply = read_pickle(paths.municipalities_v)
     vaccine_supply = np.ones((28,356))
-    seir = SEIR(OD_matrices,
+    seaiqrdvh = SEAIQR(OD_matrices,
                 population,
                 R0=config.R0,
                 DE= config.DE* config.periods_per_day,
                 DI= config.DI* config.periods_per_day,
                 hospitalisation_rate=config.hospitalisation_rate,
-                eff=config.eff,
-                hospital_duration=config.hospital_duration*config.periods_per_day)
+                hospital_duration=config.hospital_duration*config.periods_per_day,
+                efficacy=config.efficacy,
+                proportion_symptomatic_infections=config.proportion_symptomatic_infections,
+                latent_period=config.latent_period*config.periods_per_day, 
+                recovery_period=config.recovery_period*config.periods_per_day,
+                pre_isolation_infection_period=config.pre_isolation_infection_period*config.periods_per_day, 
+                post_isolation_recovery_period=config.post_isolation_recovery_period*config.periods_per_day, 
+                fatality_rate_symptomatic=config.fatality_rate_symptomatic,
+                immunity_duration=config.immunity_duration*config.periods_per_day 
+                )
+
+
 
     # run simulation
     horizon = 10 # number of weeks
-    mdp = MarkovDecisionProcess(OD_matrices, population, seir, vaccine_supply, horizon, decision_period=28, policy="population_based")
+    mdp = MarkovDecisionProcess(OD_matrices, population, seaiqrdvh, vaccine_supply, horizon, decision_period=28, policy="population_based")
     path = mdp.run()
     #import pdb; pdb.set_trace()
 
     # load necessary data for geospatial plot
     df = pd.read_csv(paths.results_history)
-    history = utils.transform_df_to_history(df, 'SEIRHV')
+    history = utils.transform_df_to_history(df, 'SEAIQRDVH')
     results = history.sum(axis=2)
     kommuner_geometry = plot.create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
 
