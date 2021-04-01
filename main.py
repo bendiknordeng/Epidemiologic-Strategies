@@ -13,6 +13,7 @@ if __name__ == '__main__':
     config = utils.create_named_tuple(paths.config)
     population = utils.create_population(paths.muncipalities_names, paths.muncipalities_pop)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
+    
     #vaccine_supply = read_pickle(paths.municipalities_v)
     vaccine_supply = np.ones((28,356))
     seir = SEIR(OD_matrices,

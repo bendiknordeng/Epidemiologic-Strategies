@@ -8,13 +8,10 @@ __pycache__/
 data/
 
 #plots
-covid/plots
-
-#gifs
-covid/gifs
+plots/
 
 #checkpoints
 covid/.ipynb_checkpoints/
 
 #results
-vaccine_allocation_model/Results/results_municipalities/
+vaccine_allocation_model/Results/
