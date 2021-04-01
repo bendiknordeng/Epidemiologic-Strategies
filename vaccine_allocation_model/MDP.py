@@ -101,6 +101,7 @@ class MarkovDecisionProcess:
 
         S -= initial
         I += initial
+        I[0] += 20 # boost infected in Oslo
 
         return State(S, E, I, R, H, V, vaccines_available, time_step) 
 
