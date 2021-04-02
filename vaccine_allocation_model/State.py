@@ -44,7 +44,7 @@ class State:
         Returns
             A new initialized State instance
         """
-        result, new_infected, history = epidemic_function(self, decision, decision_period, information, write_to_csv=True, write_weekly=False)
+        _, new_infected, history = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=True, write_weekly=False)
         self.new_infected = new_infected
         S, E, A, I, Q, R, D, V, H = history[-1]
 

@@ -19,8 +19,8 @@ if __name__ == '__main__':
     seaiqrdvh = SEAIQR(OD_matrices,
                 population,
                 R0=config.R0,
-                DE= config.DE* config.periods_per_day,
-                DI= config.DI* config.periods_per_day,
+                DE=config.DE*config.periods_per_day,
+                DI=config.DI*config.periods_per_day,
                 hospitalisation_rate=config.hospitalisation_rate,
                 hospital_duration=config.hospital_duration*config.periods_per_day,
                 efficacy=config.efficacy,
@@ -30,9 +30,7 @@ if __name__ == '__main__':
                 pre_isolation_infection_period=config.pre_isolation_infection_period*config.periods_per_day, 
                 post_isolation_recovery_period=config.post_isolation_recovery_period*config.periods_per_day, 
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic,
-                immunity_duration=config.immunity_duration*config.periods_per_day 
-                )
-
+                immunity_duration=config.immunity_duration*config.periods_per_day)
 
     # run simulation
     horizon = 80 # number of weeks

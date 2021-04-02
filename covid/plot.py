@@ -12,7 +12,6 @@ import re
 from os import listdir
 import imageio
 from . import utils
-import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 
 

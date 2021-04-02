@@ -1,9 +1,9 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import pickle as pkl
 import ast
 from collections import namedtuple
+import os
 
 
 def create_named_tuple(filepath):
@@ -195,3 +195,36 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     region_population = region_population[["region_id", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "population"})
     population_df = pd.merge(region_population, region, on='region_id', sort=True)
     return population_df
+
+def write_history(write_weekly, history, population, time_step, results_weekly, results_history, compartments):
+    """ write history array to csv
+
+    Parameters
+        write_weekly: Bool, if the results should be written on weekly basis
+        history: 3D array with shape (number of time steps, number of compartments, number of regions)
+        population: pd.DataFrame with columns region_id, region_name, population (quantity)
+        time_step: Int, indicating the time step of the simulation
+        results_weekly: Bool, indicating if weekly results exists. Stored data is removed if True.
+        results_history: Bool, indicating if results exists. Stored data is removed if True.
+        compartments:
+    """
+    if write_weekly:
+        latest_df = transform_history_to_df(time_step, np.expand_dims(history[-1], axis=0), population, compartments)
+        if os.path.exists(results_weekly):
+            if time_step == 0: # block to remove old csv file if new run is executed 
+                os.remove(results_weekly)
+                latest_df.to_csv(results_weekly)
+            else:
+                latest_df.to_csv(results_weekly, mode='a', header=False)
+        else:
+            latest_df.to_csv(results_weekly)
+    else:
+        history_df = transform_history_to_df(time_step, history, population, compartments)
+        if os.path.exists(results_history):
+            if time_step == 0: # block to remove old csv file if new run is executed
+                os.remove(results_history)
+                history_df.to_csv(results_history)
+            else:
+                history_df.to_csv(results_history, mode='a', header=False)
+        else:
+            history_df.to_csv(results_history)
