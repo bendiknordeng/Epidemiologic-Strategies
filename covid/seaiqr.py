@@ -133,7 +133,7 @@ class SEAIQR:
             v = decision[i % r]
 
             # Calculate values for each arrow in epidemic model 
-            newS = R_vec / self.par.immunity_duration
+            newS = R_vec / self.par.immunity_duration # Ignored for now
             newE = S_vec * (A_vec + I_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
             newA = (1 - self.par.proportion_symptomatic_infections) * E_vec / self.par.latent_period
             newI = self.par.proportion_symptomatic_infections *  E_vec / self.par.latent_period
@@ -145,7 +145,7 @@ class SEAIQR:
             newV = v * self.par.efficacy
 
             # Calculate values for each compartment
-            S_vec = S_vec + newS - newV - newE
+            S_vec = S_vec - newV - newE
             S_vec = (S_vec 
                 + np.matmul(S_vec.reshape(1,n), realOD_s)
                 - S_vec * realOD_s.sum(axis=1))

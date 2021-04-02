@@ -36,9 +36,9 @@ if __name__ == '__main__':
 
 
     # run simulation
-    # horizon = 100 # number of weeks
-    # mdp = MarkovDecisionProcess(OD_matrices, population, seaiqrdvh, vaccine_supply, horizon, decision_period=28, policy="population_based")
-    # path = mdp.run()
+    horizon = 80 # number of weeks
+    mdp = MarkovDecisionProcess(OD_matrices, population, seaiqrdvh, vaccine_supply, horizon, decision_period=28, policy="population_based")
+    path = mdp.run()
 
     # load necessary data for SEIR development plot
     df = pd.read_csv(paths.results_history)
