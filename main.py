@@ -3,7 +3,6 @@ from covid import utils
 import numpy as np
 import pandas as pd
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.seir import SEIR
 from covid.seaiqr import SEAIQR
 
 if __name__ == '__main__':
