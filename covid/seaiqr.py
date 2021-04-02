@@ -49,13 +49,12 @@ class SEAIQR:
                         )
 
     def scale_flow(self, alpha):
-        """ scales realflow
-        
+        """ Scales flow of individuals between regions
+
         Parameters
-            flow: 3D array with flows
             alpha: array of scalers that adjust flows for a given compartment and region
         Returns
-            Scaled realflow
+            realflow, scaled flow
         """
         realflow = self.par.OD.copy() 
         realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
@@ -84,8 +83,7 @@ class SEAIQR:
             if s_vec[i] > new_infections:
                 new_i[i] += new_infections
         return new_i
-    
-    
+        
     def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
         

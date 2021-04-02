@@ -33,7 +33,7 @@ if __name__ == '__main__':
                 immunity_duration=config.immunity_duration*config.periods_per_day)
 
     # run simulation
-    horizon = 80 # number of weeks
+    horizon = 20 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, population, seaiqrdvh, vaccine_supply, horizon, decision_period=28, policy="population_based")
     path = mdp.run()
 
