@@ -159,38 +159,6 @@ def transform_df_to_history(df, column_names):
         l.append(np.transpose(df.iloc[i:i+356].to_numpy()))
     return np.array(l)
 
-def seir_plot_one_cell(history, cellid):
-    """ Plots SEIR curves for a single region
-
-    Parameters
-        history: 3D array with shape (number of time steps, number of compartments, number of regions)
-        cellid: index of the region to plot SEIR curves
-    """
-    num_periods_per_day = 4
-    plt.plot(history[::num_periods_per_day, 0, cellid], color='r', label='S')  
-    plt.plot(history[::num_periods_per_day, 1, cellid], color='g', label='E')
-    plt.plot(history[::num_periods_per_day, 2, cellid], color='b', label='I')
-    plt.plot(history[::num_periods_per_day, 3, cellid], color='y', label='R')
-    plt.plot(history[::num_periods_per_day, 4, cellid], color='c', label='H')
-    plt.plot(history[::num_periods_per_day, 5, cellid], color='m', label='V')
-    plt.legend()
-    plt.show()
-
-def seir_plot(res):
-    """ Plots accumulated SEIR curves
-    
-    Parameters
-        res: 3D array with shape (number of time steps, number of compartments)
-    """
-    num_periods_per_day = 4
-    plt.plot(res[::num_periods_per_day, 0], color='r', label='S') 
-    plt.plot(res[::num_periods_per_day, 1], color='g', label='E')
-    plt.plot(res[::num_periods_per_day, 2], color='b', label='I')
-    plt.plot(res[::num_periods_per_day, 3], color='y', label='R')
-    plt.plot(res[::num_periods_per_day, 4], color='c', label='H')
-    plt.plot(res[::num_periods_per_day, 5], color='m', label='V')
-    plt.legend()
-    plt.show()
 
 def transform_historical_df_to_history(df):
     """ Transforms a dataframe to 3D array
