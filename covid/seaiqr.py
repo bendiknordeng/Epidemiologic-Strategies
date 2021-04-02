@@ -48,41 +48,6 @@ class SEAIQR:
                         immunity_duration=immunity_duration
                         )
 
-    def scale_flow(self, alpha):
-        """ Scales flow of individuals between regions
-
-        Parameters
-            alpha: array of scalers that adjust flows for a given compartment and region
-        Returns
-            realflow, scaled flow
-        """
-        realflow = self.par.OD.copy() 
-        realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
-        realflow = alpha * realflow 
-        return realflow
-
-    def add_hidden_cases(self, s_vec, i_vec, new_i):
-        """ Adds cases to the infection compartment, to represent hidden cases
-
-        Parameters
-            s_vec: array of susceptible in each region
-            i_vec: array of infected in each region
-            new_i: array of new cases of infected individuals
-        Returns
-            new_i, an array of new cases including hidden cases
-        """
-        share = 0.1 # maximum number of hidden infections
-        i_vec = i_vec.reshape(-1) # ensure correct shape
-        s_vec = s_vec.reshape(-1) # ensure correct shape
-        new_i = new_i.reshape(-1) # ensure correct shape
-        for i in range(len(i_vec)):
-            if i_vec[i] < 0.5:
-                new_infections = uniform(0, 0.01) # introduce infection to region with little infections
-            else:
-                new_infections = randint(0, min(int(i_vec[i]*share), 1))
-            if s_vec[i] > new_infections:
-                new_i[i] += new_infections
-        return new_i
         
     def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
@@ -103,53 +68,25 @@ class SEAIQR:
         # Meta-parameters
         compartments = 'SEAIQRDVH'
         k = len(compartments)
-        r = self.par.OD.shape[0]
+        r = self.par.OD.shape[0] 
         n = self.par.OD.shape[1]
         
-        s_vec = state.S
-        e_vec = state.E
-        a_vec = state.A
-        i_vec = state.I
-        q_vec = state.Q
-        r_vec = state.R
-        d_vec = state.D
-        v_vec = state.V
-        h_vec = state.H
+        # Get compartment values
+        s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec = self.get_compartment_values(state)
         
-        result = np.zeros((decision_period, k))
-        result[0,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(), d_vec.sum(), v_vec.sum(), 0]
+        # Extraxt movement information and scale flow
+        realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r = self.get_realflows(information['alphas'] )
         
-        # Realflows for different comself.partments 
-        alpha_s, alpha_e, alpha_a, alpha_i, alpha_q, alpha_r = information['alphas'] # They currently have the same values
-        realflow_s = self.scale_flow(alpha_s)
-        realflow_e = self.scale_flow(alpha_e)
-        realflow_a = self.scale_flow(alpha_a)
-        realflow_i = self.scale_flow(alpha_i)
-        realflow_q = self.scale_flow(alpha_q)
-        realflow_r = self.scale_flow(alpha_r)
-        
-        history = np.zeros((decision_period, k, n))
-        history[0,0,:] = s_vec
-        history[0,1,:] = e_vec
-        history[0,2,:] = a_vec
-        history[0,3,:] = i_vec
-        history[0,4,:] = q_vec
-        history[0,5,:] = r_vec
-        history[0,6,:] = d_vec
-        history[0,7,:] = v_vec
-        history[0,8,:] = h_vec
+        # Initialize output matrices
+        history, result = self.initialize_output_matrices(decision_period, k, n, s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec)
 
+        # Keep control of accumulated number of infected 
         total_new_infected = np.zeros(decision_period+1)
         
-        # run simulation
+        # Run simulation
         for i in range(0, decision_period - 1):
             # Finds the flow between regions for each compartment 
-            realOD_s = realflow_s[i % r]
-            realOD_e = realflow_e[i % r]
-            realOD_a = realflow_a[i % r] 
-            realOD_i = realflow_i[i % r]
-            realOD_q = realflow_q[i % r] 
-            realOD_r = realflow_r[i % r]
+            realOD_s, realOD_e, realOD_a, realOD_i, realOD_q, realOD_r = self.get_relevant_flow(r, realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r, i)
             
             # Finds the decision - number of vaccines to be allocated to each region for a specific time period
             v = decision[i % r]
@@ -159,7 +96,7 @@ class SEAIQR:
             new_e = s_vec * (a_vec + i_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
             new_a = (1 - self.par.proportion_symptomatic_infections) * e_vec / self.par.latent_period
             new_i = self.par.proportion_symptomatic_infections *  e_vec / self.par.latent_period
-            
+
             # Add random infected to newI if it is included in modelling
             if hidden_cases and (i % (decision_period/7) == 0): 
                 new_i = self.add_hidden_cases(s_vec, i_vec, new_i)
@@ -199,22 +136,15 @@ class SEAIQR:
             d_vec = d_vec + new_d
             v_vec = v_vec + new_v - new_r_from_v
 
-            # Add the accumulated numbers to results
+            # Add the accumulated compartment values to results
             result[i + 1,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(),  d_vec.sum(), h_vec.sum(), v_vec.sum()]
             
             # Add number of hospitalized 
             total_new_infected[i + 1] = new_i.sum()
             result[i + 1, 8] = total_new_infected[max(0, i - self.par.hospital_duration) : i].sum() * self.par.hospitalisation_rate
             
-            history[i + 1,0,:] = s_vec
-            history[i + 1,1,:] = e_vec
-            history[i + 1,2,:] = a_vec
-            history[i + 1,3,:] = i_vec
-            history[i + 1,4,:] = q_vec
-            history[i + 1,5,:] = r_vec
-            history[i + 1,6,:] = d_vec
-            history[i + 1,7,:] = v_vec
-            history[i + 1,8,:] = h_vec
+            # Add the accumulated compartment values to results
+            history = self.update_history_results(s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec, history, i)
         
         # write results to csv
         if write_to_csv:
@@ -225,5 +155,109 @@ class SEAIQR:
                                 self.paths.results_weekly, 
                                 self.paths.results_history,
                                 compartments)
-        
         return result, total_new_infected.sum(), history
+    
+    @staticmethod
+    def add_hidden_cases(s_vec, i_vec, new_i):
+        """ Adds cases to the infection compartment, to represent hidden cases
+
+        Parameters
+            s_vec: array of susceptible in each region
+            i_vec: array of infected in each region
+            new_i: array of new cases of infected individuals
+        Returns
+            new_i, an array of new cases including hidden cases
+        """
+        share = 0.1 # maximum number of hidden infections
+        i_vec = i_vec.reshape(-1) # ensure correct shape
+        s_vec = s_vec.reshape(-1) # ensure correct shape
+        new_i = new_i.reshape(-1) # ensure correct shape
+        for i in range(len(i_vec)):
+            if i_vec[i] < 0.5:
+                new_infections = uniform(0, 0.01) # introduce infection to region with little infections
+            else:
+                new_infections = randint(0, min(int(i_vec[i]*share), 1))
+            if s_vec[i] > new_infections:
+                new_i[i] += new_infections
+        return new_i
+    
+    @staticmethod
+    def get_relevant_flow(r, realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r, i):
+        """ Gets relevant realflow value"""
+        realOD_s = realflow_s[i % r]
+        realOD_e = realflow_e[i % r]
+        realOD_a = realflow_a[i % r]
+        realOD_i = realflow_i[i % r]
+        realOD_q = realflow_q[i % r]
+        realOD_r = realflow_r[i % r]
+        return realOD_s,realOD_e,realOD_a,realOD_i,realOD_q,realOD_r
+
+    @staticmethod
+    def update_history_results(s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec, history, i):
+        """ Updates history results with new compartments values"""
+        history[i + 1,0,:] = s_vec
+        history[i + 1,1,:] = e_vec
+        history[i + 1,2,:] = a_vec
+        history[i + 1,3,:] = i_vec
+        history[i + 1,4,:] = q_vec
+        history[i + 1,5,:] = r_vec
+        history[i + 1,6,:] = d_vec
+        history[i + 1,7,:] = v_vec
+        history[i + 1,8,:] = h_vec
+        return history
+
+    @staticmethod
+    def initialize_output_matrices(decision_period, k, n, s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec):
+        """ Initializes output matrices """
+        history = np.zeros((decision_period, k, n))
+        history[0,0,:] = s_vec
+        history[0,1,:] = e_vec
+        history[0,2,:] = a_vec
+        history[0,3,:] = i_vec
+        history[0,4,:] = q_vec
+        history[0,5,:] = r_vec
+        history[0,6,:] = d_vec
+        history[0,7,:] = v_vec
+        history[0,8,:] = h_vec
+
+        result = np.zeros((decision_period, k))
+        result[0,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(), d_vec.sum(), v_vec.sum(), 0]
+        return history, result
+
+    @staticmethod
+    def get_compartment_values(state):
+        """ Gets compartment values from a state"""
+        s_vec = state.S
+        e_vec = state.E
+        a_vec = state.A
+        i_vec = state.I
+        q_vec = state.Q
+        r_vec = state.R
+        d_vec = state.D
+        v_vec = state.V
+        h_vec = state.H
+        return s_vec,e_vec,a_vec,i_vec,q_vec,r_vec,d_vec,v_vec,h_vec
+    
+    def get_realflows(self, alphas):
+        """ Gets realflows after each flow is scaled with a respective alpha value"""
+        alpha_s, alpha_e, alpha_a, alpha_i, alpha_q, alpha_r = alphas
+        realflow_s = self.scale_flow(alpha_s)
+        realflow_e = self.scale_flow(alpha_e)
+        realflow_a = self.scale_flow(alpha_a)
+        realflow_i = self.scale_flow(alpha_i)
+        realflow_q = self.scale_flow(alpha_q)
+        realflow_r = self.scale_flow(alpha_r)
+        return realflow_s,realflow_e,realflow_a,realflow_i,realflow_q,realflow_r
+
+    def scale_flow(self, alpha):
+        """ Scales flow of individuals between regions
+
+        Parameters
+            alpha: array of scalers that adjust flows for a given compartment and region
+        Returns
+            realflow, scaled flow
+        """
+        realflow = self.par.OD.copy() 
+        realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
+        realflow = alpha * realflow 
+        return realflow

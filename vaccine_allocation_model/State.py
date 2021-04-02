@@ -1,25 +1,30 @@
 import numpy as np
 
 class State:
-    def __init__(self, S, E, A, I, Q, R, D, V, H, vaccines_available, time_step):
+    def __init__(self, S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, compartmets=0):
         """ initialize a State instance
 
         Parameters
-            S: array with shape (1,356) indicating number of suceptible in each region 
-            E: array with shape (1,356) indicating number of exposed in each region 
-            A: array with shape (1,356) indicating number of asymptomatic infected in each region 
-            I: array with shape (1,356) indicating number of symptomatic infected in each region 
-            Q: array with shape (1,356) indicating number of people in quarantine in each region 
-            R: array with shape (1,356) indicating number of recovered in each region 
-            D: array with shape (1,356) indicating number of accumulated deaths in each region 
-            V: array with shape (1,356) indicating number of vaccinated in each region
-            H: array with shape (1,356) indicating number of hospitalized in each region 
+            compartmets: {
+                '0-65':{
+                    S: array with shape (1,356) indicating number of suceptible in each region 
+                    E: array with shape (1,356) indicating number of exposed in each region 
+                    A: array with shape (1,356) indicating number of asymptomatic infected in each region 
+                    I: array with shape (1,356) indicating number of symptomatic infected in each region 
+                    Q: array with shape (1,356) indicating number of people in quarantine in each region 
+                    R: array with shape (1,356) indicating number of recovered in each region 
+                    D: array with shape (1,356) indicating number of accumulated deaths in each region 
+                    V: array with shape (1,356) indicating number of vaccinated in each region
+                    H: array with shape (1,356) indicating number of hospitalized in each region 
+                    }, 
+                '65+':{S:(1,356), E:(1,356), ...}}
             vaccines_available: integer indicating number of vaccines available at initialization time step
             time_Step: integer indicating the time step when state is intialized in the range(0, (24/time_delta)*7 -1)
         Returns
             an initialized State instance
 
         """
+        self.compartmets = compartmets
         self.S = S
         self.E = E
         self.A = A
