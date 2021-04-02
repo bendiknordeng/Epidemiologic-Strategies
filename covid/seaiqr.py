@@ -15,18 +15,18 @@ class SEAIQR:
                     OD: Origin-Destination matrix
                     population: pd.DataFrame with columns region_id, region_name, population (quantity)
                     R0: Basic reproduction number (e.g 2.4)
-                    DE: Incubation period (e.g 5.6 * 12)        # Needs to multiply by 12 to get one day effects
-                    DI: Infectious period (e.g 5.2 * 12)
+                    DE: Incubation period (e.g 5.6 * 4)        # Needs to multiply by 12 to get one day effects
+                    DI: Infectious period (e.g 5.2 * 4)
                     hospitalisation_rate: Percentage of people that will be hospitalized (e.g 0.1)
-                    hospital_duration: Length of hospitalization (e.g 15*12) }
+                    hospital_duration: Length of hospitalization (e.g 15*4) }
                     efficacy: vaccine efficacy (e.g 0.95)
                     proportion_symptomatic_infections: Proportion of symptomatic infections(e.g 0.8)
-                    latent_period: (e.g 5.1)
-                    recovery_period:   (e.g 21)
-                    pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6)
-                    post_isolation_recovery_period: (e.g 16.4)
-                    fatality_rate_symptomatic: (e.g 0.01)
-                    immunity_duration: (e.g 365)
+                    latent_period: Time before vaccine is effective (e.g 5.1*4)
+                    recovery_period: Time to recover from receiving the virus to not being  (e.g 21'4)
+                    pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6*4)
+                    post_isolation_recovery_period: Post-isolation recovery period (e.g 16.4*4)
+                    fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
+                    immunity_duration: Immunity duration of vaccine or after having the disease (e.g 365*4)
          """
         self.paths = utils.create_named_tuple('filepaths.txt')
         param = namedtuple('param', 'OD population R0 DE DI hospitalisation_rate hospital_duration efficacy proportion_symptomatic_infections latent_period recovery_period pre_isolation_infection_period post_isolation_recovery_period fatality_rate_symptomatic immunity_duration')
@@ -97,10 +97,12 @@ class SEAIQR:
         result[0,:] = [S_vec.sum(), E_vec.sum(), A_vec.sum(), I_vec.sum(), Q_vec.sum(), R_vec.sum(), D_vec.sum(), V_vec.sum(), 0]
         
         # Realflows for different comself.partments 
-        alpha_s, alpha_e, alpha_i, alpha_r = information['alphas'] # They currently have the same values
+        alpha_s, alpha_e, alpha_a, alpha_i, alpha_q, alpha_r = information['alphas'] # They currently have the same values
         realflow_s = self.scale_flow(alpha_s)
         realflow_e = self.scale_flow(alpha_e)
+        realflow_a = self.scale_flow(alpha_a)
         realflow_i = self.scale_flow(alpha_i)
+        realflow_q = self.scale_flow(alpha_q)
         realflow_r = self.scale_flow(alpha_r)
         
         history = np.zeros((decision_period, k, n))
@@ -119,18 +121,18 @@ class SEAIQR:
         
         # run simulation
         for i in range(0, decision_period - 1):
-            # Fins the flow between regions for each compartment 
+            # Finds the flow between regions for each compartment 
             realOD_s = realflow_s[i % r]
             realOD_e = realflow_e[i % r]
-            realOD_a = realflow_e[i % r] # Obs. Change this later using realflow_a
+            realOD_a = realflow_a[i % r] 
             realOD_i = realflow_i[i % r]
-            realOD_q = realflow_e[i % r] # Obs. Change this later using realflow_q
+            realOD_q = realflow_q[i % r] 
             realOD_r = realflow_r[i % r]
             
             # Finds the decision - number of vaccines to be allocated to each region for a specific time period
             v = decision[i % r]
 
-            # Finds values for each arraow in epidemic model 
+            # Calculate values for each arrow in epidemic model 
             newS = R_vec / self.par.immunity_duration
             newE = S_vec * (A_vec + I_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
             newA = (1 - self.par.proportion_symptomatic_infections) * E_vec / self.par.latent_period
@@ -142,8 +144,8 @@ class SEAIQR:
             newD = Q_vec * self.par.fatality_rate_symptomatic / self.par.recovery_period
             newV = v * self.par.efficacy
 
-            # Calculate new values for each compartment
-            S_vec = S_vec + newS - newV 
+            # Calculate values for each compartment
+            S_vec = S_vec + newS - newV - newE
             S_vec = (S_vec 
                 + np.matmul(S_vec.reshape(1,n), realOD_s)
                 - S_vec * realOD_s.sum(axis=1))

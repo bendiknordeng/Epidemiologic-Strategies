@@ -21,7 +21,7 @@ class MarkovDecisionProcess:
         self.population = population
         self.vaccine_supply = vaccine_supply
         self.seaiqr = seaiqr
-        self.state = self._initialize_state(None, 50, 1000)
+        self.state = self._initialize_state(None, 1000, 1000)
         self.path = [self.state]
         self.decision_period = decision_period
 
@@ -50,7 +50,7 @@ class MarkovDecisionProcess:
         Returns:
             returns a vector of alphas indicating the mobility flow at time_step t
         """
-        alphas = [np.ones(self.OD_matrices.shape) for x in range(4)]
+        alphas = [np.ones(self.OD_matrices.shape) for x in range(6)]
         information = {'alphas': alphas, 'vaccine_supply': self.vaccine_supply}
         return information
     

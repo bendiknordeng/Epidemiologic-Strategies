@@ -15,18 +15,43 @@ from . import utils
 import matplotlib.colors as colors
 from matplotlib.colors import LinearSegmentedColormap
 
-def seir_plot(res):
-    """ Plots the epidemiological curves
+
+def seir_plot_one_cell(history, cellid):
+    """ plots SEIR curves for a single region
 
     Parameters
-        res: shape (decision_period*horizon, #compartments)
+        history: 3D array with shape (decision_period*horizon, #compartments, number of regions)
+        cellid: index of the region to plot SEIR curves
     """
-    plt.plot(res[::12, 0], color='r', label='S')
-    plt.plot(res[::12, 1], color='g', label='E')
-    plt.plot(res[::12, 2], color='b', label='I')
-    plt.plot(res[::12, 3], color='y', label='R')
-    plt.plot(res[::12, 4], color='c', label='H')
-    plt.plot(res[::12, 5], color='m', label='V')
+    num_periods_per_day = 4
+    plt.plot(history[::num_periods_per_day, 0, cellid], color='r', label='S')  
+    plt.plot(history[::num_periods_per_day, 1, cellid], color='g', label='E')
+    plt.plot(history[::num_periods_per_day, 2, cellid], color='b', label='A')
+    plt.plot(history[::num_periods_per_day, 3, cellid], color='k', label='I')
+    plt.plot(history[::num_periods_per_day, 4, cellid], color='y', label='Q')
+    plt.plot(history[::num_periods_per_day, 5, cellid], color='c', label='R')
+    plt.plot(history[::num_periods_per_day, 6, cellid], color='m', label='D')
+    plt.plot(history[::num_periods_per_day, 7, cellid], color='gold', label='V')
+    plt.plot(history[::num_periods_per_day, 8, cellid], color='purple', label='H')
+    plt.legend()
+    plt.show()
+
+def seir_plot(res):
+    """ plots accumulated SEIR curves
+    
+    Parameters
+        res: 3D array with shape (decision_period*horizon, #compartments)
+    """
+    num_periods_per_day = 4
+    plt.plot(res[::num_periods_per_day, 0], color='r', label='S') 
+    plt.plot(res[::num_periods_per_day, 1], color='g', label='E')
+    plt.plot(res[::num_periods_per_day, 2], color='b', label='A') 
+    plt.plot(res[::num_periods_per_day, 3], color='k', label='I')
+    plt.plot(res[::num_periods_per_day, 4], color='y', label='Q') 
+    plt.plot(res[::num_periods_per_day, 5], color='c', label='R')
+    plt.plot(res[::num_periods_per_day, 6], color='m', label='D')
+    plt.plot(res[::num_periods_per_day, 7], color='gold', label='V') 
+    plt.plot(res[::num_periods_per_day, 8], color='purple', label='H')
     plt.legend()
     plt.show()
 
@@ -73,7 +98,7 @@ def find_exposed_limits(baseline, population):
     Returns
         min and max number of infected people per 100k inhabitants
     """
-    df = utils.transform_history_to_df(0, baseline, population, 'SEIRHV')
+    df = utils.transform_history_to_df(0, baseline, population, 'SEAIQRDVH')
 
     min_exp_val = df.E_per_100k.min()
     max_exp_val = df.E_per_100k.max()
@@ -89,7 +114,7 @@ def find_infected_limits(baseline, population):
     Returns
         min and max number of infected people per 100k inhabitants
     """
-    df = utils.transform_history_to_df(0, baseline, population, 'SEIRHV')
+    df = utils.transform_history_to_df(0, baseline, population, 'SEAIQRDVH')
     df = df[['timestep', 'I']].groupby(['timestep']).sum()
     min_I_val = df.I.min()
     max_I_val = df.I.max()
@@ -182,29 +207,39 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
 
         # Add colourbar
         plt.colorbar(mappable=h)
-        
+
         inset_ax = fig.add_axes([0.4, 0.14, 0.37, 0.27])
         inset_ax.patch.set_alpha(0.5)
-        #inset_ax.plot(baseline[:time_step, 0].sum(axis=1), label="susceptible", color=blue, ls='-', lw=1.5, alpha=0.8)
-        #inset_ax.plot(baseline[:time_step, 1].sum(axis=1), label="exposed", color='g', ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(baseline[:time_step, 2].sum(axis=1), label="infectious", color='r', ls='-', lw=1.5, alpha=0.8)
-        #inset_ax.plot(baseline[:time_step, 3].sum(axis=1), label="recovered", color='y', ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(hosp[:time_step], label="hospitalised", color='purple', ls='-', lw=1.5, alpha=0.8)
-        #inset_ax.plot(baseline[:time_step, 5].sum(axis=1), label="vaccinated", color='m', ls='-', lw=1.5, alpha=0.8)
-        
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 0].sum(), color=blue, s=50, alpha=0.2)
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 1].sum(), color='g', s=50, alpha=0.2)
-        inset_ax.scatter((time_step-1), baseline[(time_step-1), 2].sum(), color='r', s=50, alpha=0.2)
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 3].sum(), color='y', s=50, alpha=0.2)
+
+        inset_ax.plot(baseline[:time_step, 0].sum(axis=1), label="S", color='r', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 1].sum(axis=1), label="E", color='g', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 2].sum(axis=1), label="A", color='b', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 3].sum(axis=1), label="I", color='k', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 4].sum(axis=1), label="Q", color='y', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 5].sum(axis=1), label="R", color='c', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 6].sum(axis=1), label="D", color='m', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(baseline[:time_step, 7].sum(axis=1), label="V", color='gold', ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(hosp[:time_step], label="H", color='purple', ls='-', lw=1.5, alpha=0.8)
+
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 0].sum(), color='r', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 1].sum(), color='g', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 2].sum(), color='b', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 3].sum(), color='k', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 4].sum(), color='y', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 5].sum(), color='c', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 6].sum(), color='m', s=50, alpha=0.2)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 7].sum(), color='gold', s=50, alpha=0.2)
         inset_ax.scatter((time_step-1), hosp[(time_step-1)], color='purple', s=50, alpha=0.2)
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 5].sum(), color='m', s=50, alpha=0.2)
         
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 0].sum(), color=blue, s=20, alpha=0.8)
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 1].sum(), color='g', s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), baseline[(time_step-1), 2].sum(), color='r', s=20, alpha=0.8)
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 3].sum(), color='y', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 0].sum(), color='r', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 1].sum(), color='g', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 2].sum(), color='b', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 3].sum(), color='k', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 4].sum(), color='y', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 5].sum(), color='c', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 6].sum(), color='m', s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), baseline[(time_step-1), 7].sum(), color='gold', s=20, alpha=0.8)
         inset_ax.scatter((time_step-1), hosp[(time_step-1)], color='purple', s=20, alpha=0.8)
-        #inset_ax.scatter((time_step-1), baseline[(time_step-1), 5].sum(), color='m', s=20, alpha=0.8)
         
         inset_ax.fill_between(np.arange(0, time_step), np.maximum(baseline[:time_step, 0].sum(axis=1), \
                                                                 baseline[:time_step, 3].sum(axis=1)), alpha=0.035, color='r')
