@@ -10,11 +10,8 @@ data/
 #plots
 plots/
 
-#gifs
-covid/gifs
-
 #checkpoints
 covid/.ipynb_checkpoints/
 
 #results
-vaccine_allocation_model/Results/results_municipalities/
+vaccine_allocation_model/Results/
