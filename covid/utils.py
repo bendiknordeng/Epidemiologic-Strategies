@@ -210,7 +210,7 @@ def write_history(write_weekly, history, population, time_step, path_results_wee
     """
 
     if write_weekly:
-        latest_df = transform_history_to_df(time_step, np.expand_dims(history[-1], axis=0), population, "SEIRHV")
+        latest_df = transform_history_to_df(time_step, np.expand_dims(history[-1], axis=0), population, 'SEAIQRDVH')
         if os.path.exists(path_results_weekly):
             if time_step == 0: # block to remove old csv file if new run is executed 
                 os.remove(path_results_weekly)
@@ -220,7 +220,7 @@ def write_history(write_weekly, history, population, time_step, path_results_wee
         else:
             latest_df.to_csv(path_results_weekly)
     else:
-        history_df = transform_history_to_df(time_step, history, population, "SEIRHV")
+        history_df = transform_history_to_df(time_step, history, population, 'SEAIQRDVH')
         if os.path.exists(path_results_history):
             if time_step == 0: # block to remove old csv file if new run is executed
                 os.remove(path_results_history)

@@ -2,6 +2,7 @@ import numpy as np
 from collections import namedtuple
 from covid import utils
 import os
+from random import randint, uniform
 
 class SEAIQR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6*4, DI= 5.2*4, hospitalisation_rate=0.1, hospital_duration=15*4,
@@ -49,20 +50,42 @@ class SEAIQR:
                         )
 
     def scale_flow(self, alpha):
-        """ scales realflow
-        
+        """ Scales flow of individuals between regions
+
         Parameters
-            flow: 3D array with flows
             alpha: array of scalers that adjust flows for a given compartment and region
         Returns
-            Scaled realflow
+            realflow, scaled flow
         """
         realflow = self.par.OD.copy() 
         realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
         realflow = alpha * realflow 
         return realflow
 
-    def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
+    def add_hidden_cases(self, s_vec, i_vec, new_i):
+        """ Adds cases to the infection compartment, to represent hidden cases
+
+        Parameters
+            s_vec: array of susceptible in each region
+            i_vec: array of infected in each region
+            new_i: array of new cases of infected individuals
+        Returns
+            new_i, an array of new cases including hidden cases
+        """
+        share = 0.1 # maximum number of hidden infections
+        i_vec = i_vec.reshape(-1) # ensure correct shape
+        s_vec = s_vec.reshape(-1) # ensure correct shape
+        new_i = new_i.reshape(-1) # ensure correct shape
+        for i in range(len(i_vec)):
+            if i_vec[i] < 0.5:
+                new_infections = uniform(0, 0.01) # introduce infection to region with little infections
+            else:
+                new_infections = randint(0, min(int(i_vec[i]*share), 1))
+            if s_vec[i] > new_infections:
+                new_i[i] += new_infections
+        return new_i
+
+    def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
         
         Parameters:
@@ -190,25 +213,11 @@ class SEAIQR:
             history[i + 1,8,:] = H_vec
 
         if write_to_csv:
-            if write_weekly:
-                latest_df = utils.transform_history_to_df(state.time_step, np.expand_dims(history[-1], axis=0), self.par.population, compartments)
-                if os.path.exists(self.paths.results_weekly):
-                    if state.time_step == 0: # block to remove old csv file if new run is executed 
-                        os.remove(self.paths.results_weekly)
-                        latest_df.to_csv(self.paths.results_weekly)
-                    else:
-                        latest_df.to_csv(self.paths.results_weekly, mode='a', header=False)
-                else:
-                    latest_df.to_csv(self.paths.results_weekly)
-            else:
-                history_df = utils.transform_history_to_df(state.time_step, history, self.par.population, compartments)
-                if os.path.exists(self.paths.results_history):
-                    if state.time_step == 0: # block to remove old csv file if new run is executed
-                        os.remove(self.paths.results_history)
-                        history_df.to_csv(self.paths.results_history)
-                    else:
-                        history_df.to_csv(self.paths.results_history, mode='a', header=False)
-                else:
-                    history_df.to_csv(self.paths.results_history)
+            utils.write_history(write_weekly,
+                                history, 
+                                self.par.population, 
+                                state.time_step, 
+                                self.paths.results_weekly, 
+                                self.paths.results_history)
         
         return result, total_new_infected.sum(), history

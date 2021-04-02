@@ -36,7 +36,7 @@ if __name__ == '__main__':
 
 
     # run simulation
-    horizon = 80 # number of weeks
+    horizon = 20 # number of weeks
     mdp = MarkovDecisionProcess(OD_matrices, population, seaiqrdvh, vaccine_supply, horizon, decision_period=28, policy="population_based")
     path = mdp.run()
 
