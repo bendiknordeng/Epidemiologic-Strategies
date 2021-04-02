@@ -1,8 +1,7 @@
 import numpy as np
 from collections import namedtuple
 from covid import utils
-import os
-from random import randint, uniform
+from random import uniform, randint
 
 class SEAIQR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6*4, DI= 5.2*4, hospitalisation_rate=0.1, hospital_duration=15*4,
@@ -84,7 +83,7 @@ class SEAIQR:
             if s_vec[i] > new_infections:
                 new_i[i] += new_infections
         return new_i
-
+        
     def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
         
@@ -95,6 +94,7 @@ class SEAIQR:
             information: dict of exogenous information for each region, shape (decision_period, nr_regions, nr_regions)
             write_to_csv: Bool, True if history is to be saved as csv
             write_weekly: Bool, True if history is to be sampled on a weekly basis
+            hidden_cases: Bool, True if random hidden infections is to be included in modelling
         Returns:
             res: accumulated SEIR values for all regions as whole (decision_period, )
             total_new_infected.sum(): accumulated infected for the decision_period, float.
@@ -106,18 +106,18 @@ class SEAIQR:
         r = self.par.OD.shape[0]
         n = self.par.OD.shape[1]
         
-        S_vec = state.S
-        E_vec = state.E
-        A_vec = state.A
-        I_vec = state.I
-        Q_vec = state.Q
-        R_vec = state.R
-        D_vec = state.D
-        V_vec = state.V
-        H_vec = state.H
+        s_vec = state.S
+        e_vec = state.E
+        a_vec = state.A
+        i_vec = state.I
+        q_vec = state.Q
+        r_vec = state.R
+        d_vec = state.D
+        v_vec = state.V
+        h_vec = state.H
         
         result = np.zeros((decision_period, k))
-        result[0,:] = [S_vec.sum(), E_vec.sum(), A_vec.sum(), I_vec.sum(), Q_vec.sum(), R_vec.sum(), D_vec.sum(), V_vec.sum(), 0]
+        result[0,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(), d_vec.sum(), v_vec.sum(), 0]
         
         # Realflows for different comself.partments 
         alpha_s, alpha_e, alpha_a, alpha_i, alpha_q, alpha_r = information['alphas'] # They currently have the same values
@@ -129,16 +129,15 @@ class SEAIQR:
         realflow_r = self.scale_flow(alpha_r)
         
         history = np.zeros((decision_period, k, n))
-        history[0,0,:] = S_vec
-        history[0,1,:] = E_vec
-        history[0,2,:] = A_vec
-        history[0,3,:] = I_vec
-        history[0,4,:] = Q_vec
-        history[0,5,:] = R_vec
-        history[0,6,:] = D_vec
-        history[0,7,:] = V_vec
-        history[0,8,:] = H_vec
-
+        history[0,0,:] = s_vec
+        history[0,1,:] = e_vec
+        history[0,2,:] = a_vec
+        history[0,3,:] = i_vec
+        history[0,4,:] = q_vec
+        history[0,5,:] = r_vec
+        history[0,6,:] = d_vec
+        history[0,7,:] = v_vec
+        history[0,8,:] = h_vec
 
         total_new_infected = np.zeros(decision_period+1)
         
@@ -156,68 +155,75 @@ class SEAIQR:
             v = decision[i % r]
 
             # Calculate values for each arrow in epidemic model 
-            newS = R_vec / self.par.immunity_duration # Ignored for now
-            newE = S_vec * (A_vec + I_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
-            newA = (1 - self.par.proportion_symptomatic_infections) * E_vec / self.par.latent_period
-            newI = self.par.proportion_symptomatic_infections *  E_vec / self.par.latent_period
-            newQ = I_vec /  self.par.pre_isolation_infection_period  
-            newR_fromA = A_vec / self.par.recovery_period
-            newR_fromQ = Q_vec * (1- self.par.fatality_rate_symptomatic) / self.par.recovery_period 
-            newR_fromV = V_vec/self.par.latent_period
-            newD = Q_vec * self.par.fatality_rate_symptomatic / self.par.recovery_period
-            newV = v * self.par.efficacy
+            new_s = r_vec / self.par.immunity_duration
+            new_e = s_vec * (a_vec + i_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
+            new_a = (1 - self.par.proportion_symptomatic_infections) * e_vec / self.par.latent_period
+            new_i = self.par.proportion_symptomatic_infections *  e_vec / self.par.latent_period
+            
+            # Add random infected to newI if it is included in modelling
+            if hidden_cases and (i % (decision_period/7) == 0): 
+                new_i = self.add_hidden_cases(s_vec, i_vec, new_i)
+                
+            new_q = i_vec /  self.par.pre_isolation_infection_period  
+            new_r_from_a = a_vec / self.par.recovery_period
+            new_r_from_q = q_vec * (1- self.par.fatality_rate_symptomatic) / self.par.recovery_period 
+            new_r_from_v = v_vec/self.par.latent_period
+            new_d = q_vec * self.par.fatality_rate_symptomatic / self.par.recovery_period
+            new_v = v * self.par.efficacy
 
             # Calculate values for each compartment
-            S_vec = S_vec - newV - newE
-            S_vec = (S_vec 
-                + np.matmul(S_vec.reshape(1,n), realOD_s)
-                - S_vec * realOD_s.sum(axis=1))
-            E_vec = E_vec + newE - newI - newA
-            E_vec = (E_vec 
-                + np.matmul(E_vec.reshape(1,n), realOD_e)
-                - E_vec * realOD_e.sum(axis=1))
-            A_vec = A_vec + newA - newR_fromA
-            A_vec = (A_vec 
-                + np.matmul(A_vec.reshape(1,n), realOD_a)
-                - A_vec * realOD_a.sum(axis=1))
-            I_vec = I_vec + newI - newQ
-            I_vec = (I_vec 
-                + np.matmul(I_vec.reshape(1,n), realOD_i)
-                - I_vec * realOD_i.sum(axis=1))
-            Q_vec = Q_vec + newQ - newR_fromQ - newD
-            Q_vec = (Q_vec 
-                + np.matmul(Q_vec.reshape(1,n), realOD_q)
-                - Q_vec * realOD_q.sum(axis=1))
-            R_vec = R_vec + newR_fromQ + newR_fromA + newR_fromV
-            R_vec = (R_vec 
-                + np.matmul(R_vec.reshape(1,n), realOD_r)
-                - R_vec * realOD_r.sum(axis=1))
-            D_vec = D_vec + newD
-            V_vec = V_vec + newV - newR_fromV
+            s_vec = s_vec + new_s - new_v - new_e
+            s_vec = (s_vec 
+                + np.matmul(s_vec.reshape(1,n), realOD_s)
+                - s_vec * realOD_s.sum(axis=1))
+            e_vec = e_vec + new_e - new_i - new_a
+            e_vec = (e_vec 
+                + np.matmul(e_vec.reshape(1,n), realOD_e)
+                - e_vec * realOD_e.sum(axis=1))
+            a_vec = a_vec + new_a - new_r_from_a
+            a_vec = (a_vec 
+                + np.matmul(a_vec.reshape(1,n), realOD_a)
+                - a_vec * realOD_a.sum(axis=1))
+            i_vec = i_vec + new_i - new_q
+            i_vec = (i_vec 
+                + np.matmul(i_vec.reshape(1,n), realOD_i)
+                - i_vec * realOD_i.sum(axis=1))
+            q_vec = q_vec + new_q - new_r_from_q - new_d
+            q_vec = (q_vec 
+                + np.matmul(q_vec.reshape(1,n), realOD_q)
+                - q_vec * realOD_q.sum(axis=1))
+            r_vec = r_vec + new_r_from_q + new_r_from_a + new_r_from_v - new_s
+            r_vec = (r_vec 
+                + np.matmul(r_vec.reshape(1,n), realOD_r)
+                - r_vec * realOD_r.sum(axis=1))
+            d_vec = d_vec + new_d
+            v_vec = v_vec + new_v - new_r_from_v
 
             # Add the accumulated numbers to results
-            result[i + 1,:] = [S_vec.sum(), E_vec.sum(), A_vec.sum(), I_vec.sum(), Q_vec.sum(), R_vec.sum(),  D_vec.sum(), H_vec.sum(), V_vec.sum()]
+            result[i + 1,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(),  d_vec.sum(), h_vec.sum(), v_vec.sum()]
             
             # Add number of hospitalized 
-            total_new_infected[i + 1] = newI.sum()
+            total_new_infected[i + 1] = new_i.sum()
             result[i + 1, 8] = total_new_infected[max(0, i - self.par.hospital_duration) : i].sum() * self.par.hospitalisation_rate
             
-            history[i + 1,0,:] = S_vec
-            history[i + 1,1,:] = E_vec
-            history[i + 1,2,:] = A_vec
-            history[i + 1,3,:] = I_vec
-            history[i + 1,4,:] = Q_vec
-            history[i + 1,5,:] = R_vec
-            history[i + 1,6,:] = D_vec
-            history[i + 1,7,:] = V_vec
-            history[i + 1,8,:] = H_vec
-
+            history[i + 1,0,:] = s_vec
+            history[i + 1,1,:] = e_vec
+            history[i + 1,2,:] = a_vec
+            history[i + 1,3,:] = i_vec
+            history[i + 1,4,:] = q_vec
+            history[i + 1,5,:] = r_vec
+            history[i + 1,6,:] = d_vec
+            history[i + 1,7,:] = v_vec
+            history[i + 1,8,:] = h_vec
+        
+        # write results to csv
         if write_to_csv:
             utils.write_history(write_weekly,
                                 history, 
                                 self.par.population, 
                                 state.time_step, 
                                 self.paths.results_weekly, 
-                                self.paths.results_history)
+                                self.paths.results_history,
+                                compartments)
         
         return result, total_new_infected.sum(), history

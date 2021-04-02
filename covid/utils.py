@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import pickle as pkl
 import ast
 from collections import namedtuple
@@ -8,7 +7,7 @@ import os
 
 
 def create_named_tuple(filepath):
-    """ Generate a namedtuple from a txt file
+    """ generate a namedtuple from a txt file
 
     Parameters
         filepath: file path to .txt file
@@ -22,7 +21,7 @@ def create_named_tuple(filepath):
     return namedtuple('_', dictionary.keys())(**dictionary)
 
 def generate_dummy_od_matrix(num_time_steps, num_regions):
-    """ Generate an OD-matrix used for illustrative purposes only
+    """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
         num_regions: int indicating number of regions e.g 356
@@ -45,7 +44,7 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
     return np.array(a)
 
 def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commute):
-    """ Generate an OD-matrix used for illustrative purposes only
+    """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
         num_time_steps: int indicating number of time periods e.g 28
@@ -102,7 +101,7 @@ def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commu
     return od
 
 def write_pickle(filepath, arr):
-    """ Writes an array to file as a pickle
+    """ writes an array to file as a pickle
 
     Parameters
         filepath: string file path
@@ -112,7 +111,7 @@ def write_pickle(filepath, arr):
         pkl.dump(arr, f)
 
 def read_pickle(filepath):
-    """ Read pickle and returns an array
+    """ read pickle and returns an array
 
     Parameters
         filepath: string file path
@@ -123,7 +122,7 @@ def read_pickle(filepath):
         return pkl.load(f)
 
 def transform_history_to_df(time_step, history, population, column_names):
-    """ Transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
+    """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
 
     Parameters
         time_step: integer used to indicate the current time step in the simulation
@@ -145,7 +144,7 @@ def transform_history_to_df(time_step, history, population, column_names):
     return df[['timestep', 'region_id', 'region_name', 'region_population'] + list(column_names) + ['E_per_100k']]
 
 def transform_df_to_history(df, column_names):
-    """ Transforms a dataframe to 3D array
+    """ transforms a dataframe to 3D array
     
     Parameters
         df:  dataframe 
@@ -161,7 +160,7 @@ def transform_df_to_history(df, column_names):
 
 
 def transform_historical_df_to_history(df):
-    """ Transforms a dataframe to 3D array
+    """ transforms a dataframe to 3D array
     
     Parameters
         df:  dataframe of real historical covid data for Norway's municipalities
@@ -197,35 +196,35 @@ def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
     population_df = pd.merge(region_population, region, on='region_id', sort=True)
     return population_df
 
-def write_history(write_weekly, history, population, time_step, path_results_weekly, path_results_history):
-    """ Write history of simulation to csv files
+def write_history(write_weekly, history, population, time_step, results_weekly, results_history, compartments):
+    """ write history array to csv
 
     Parameters
-        write_weekly: bool value specifying if time resolution on csv file should be weekly
-        history: the complete 3d array of simulation, in every time step
-        population: a dataframe with region_id, region_name and population
-        time_step: the current time step of the simulation
-        path_results_weekly: path to store weekly results of simulation
-        path_results_history: path to store complete results of simulation
+        write_weekly: Bool, if the results should be written on weekly basis
+        history: 3D array with shape (number of time steps, number of compartments, number of regions)
+        population: pd.DataFrame with columns region_id, region_name, population (quantity)
+        time_step: Int, indicating the time step of the simulation
+        results_weekly: Bool, indicating if weekly results exists. Stored data is removed if True.
+        results_history: Bool, indicating if results exists. Stored data is removed if True.
+        compartments:
     """
-
     if write_weekly:
-        latest_df = transform_history_to_df(time_step, np.expand_dims(history[-1], axis=0), population, 'SEAIQRDVH')
-        if os.path.exists(path_results_weekly):
+        latest_df = transform_history_to_df(time_step, np.expand_dims(history[-1], axis=0), population, compartments)
+        if os.path.exists(results_weekly):
             if time_step == 0: # block to remove old csv file if new run is executed 
-                os.remove(path_results_weekly)
-                latest_df.to_csv(path_results_weekly)
+                os.remove(results_weekly)
+                latest_df.to_csv(results_weekly)
             else:
-                latest_df.to_csv(path_results_weekly, mode='a', header=False)
+                latest_df.to_csv(results_weekly, mode='a', header=False)
         else:
-            latest_df.to_csv(path_results_weekly)
+            latest_df.to_csv(results_weekly)
     else:
-        history_df = transform_history_to_df(time_step, history, population, 'SEAIQRDVH')
-        if os.path.exists(path_results_history):
+        history_df = transform_history_to_df(time_step, history, population, compartments)
+        if os.path.exists(results_history):
             if time_step == 0: # block to remove old csv file if new run is executed
-                os.remove(path_results_history)
-                history_df.to_csv(path_results_history)
+                os.remove(results_history)
+                history_df.to_csv(results_history)
             else:
-                history_df.to_csv(path_results_history, mode='a', header=False)
+                history_df.to_csv(results_history, mode='a', header=False)
         else:
-            history_df.to_csv(path_results_history)
+            history_df.to_csv(results_history)
