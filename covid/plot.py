@@ -156,6 +156,7 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
         path_plots: path to plots where all plots are saved
     """
     ncolors = 256
+    ndays = len(baseline[:,0,0])+1
     # get cmap
     color_array = plt.get_cmap('Reds')(range(ncolors))
 
@@ -180,8 +181,6 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
     west, south, east, north = kommuner_geometry.unary_union.bounds
     params = {"axes.labelcolor":"slategrey"}
     plt.rcParams.update(params)
-    cmap = plt.cm.get_cmap("Blues")
-    blue = cmap(200)
 
     # Used for colorbar 
     fig, ax = plt.subplots()
@@ -190,7 +189,7 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
     h = ax.imshow(np.random.uniform(low=min_exp_val, high=max_exp_val, size=(10,10)), cmap=new_cmap)
     min_I_val, max_I_val = find_infected_limits(baseline, population)
 
-    for time_step in tqdm(range(1,69)):
+    for time_step in tqdm(range(1,ndays)):
         
         kommuner_geometry['exposed_per_100k'] = 100000*baseline[time_step-1, 1, :]/population.population.to_numpy(int)
         #plot
@@ -250,7 +249,7 @@ def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
         inset_ax.set_xlabel('Days', size=18, alpha=1)
         inset_ax.yaxis.set_label_coords(-0.15, 0.55)
         inset_ax.tick_params(direction='in', size=10)
-        inset_ax.set_xlim(0, 69)
+        inset_ax.set_xlim(0, ndays)
         inset_ax.set_ylim(int(min_I_val*0.9), int(max_I_val*1.1))
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)

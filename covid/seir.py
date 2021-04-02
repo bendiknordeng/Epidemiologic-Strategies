@@ -2,6 +2,7 @@ import numpy as np
 from collections import namedtuple
 from covid import utils
 import os
+from random import choices, uniform
 
 class SEIR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6 * 12, DI= 5.2 * 12, hospitalisation_rate=0.1, eff=0.95, hospital_duration=15*12):
@@ -33,7 +34,6 @@ class SEIR:
         """ scales realflow
 
         Parameters
-            flow: 3D array with flows
             alpha: array of scalers that adjust flows for a given compartment and region
         Returns
             Scaled realflow
@@ -43,7 +43,29 @@ class SEIR:
         realflow = alpha * realflow 
         return realflow
 
-    def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
+    def add_hidden_cases(self, s_vec, i_vec, new_i):
+        """ adds cases to the infection compartment, to represent hidden cases
+        Parameters
+            s_vec: array of susceptible in each region
+            i_vec: array of infected in each region
+            new_i: array of new cases of infected individuals
+        Returns
+            new_i, an array of new cases including hidden cases
+        """
+        infected_weighted = i_vec/(i_vec.sum()) # make distribution
+        share_hidden_infections = 0.05 
+        hidden_infections = (i_vec.sum())*share_hidden_infections # specify number of hidden infections
+        count = 0 # count cases where there is too few susceptibles to add infected
+        while hidden_infections > 0.1 and count < 20:
+            index_chosen = choices(range(len(i_vec)), weights=infected_weighted)
+            new_hidden_infections = hidden_infections if hidden_infections<1 else uniform(0, min(hidden_infections, 10))
+            if s_vec.reshape(-1)[index_chosen] > new_hidden_infections:
+                new_i[index_chosen] += new_hidden_infections
+                hidden_infections -= new_hidden_infections
+            count += 1
+        return new_i
+
+    def simulate(self, state, decision, decision_period, information, hidden_cases=False, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
         
         Parameters:
@@ -64,15 +86,15 @@ class SEIR:
         n = self.par.OD.shape[1]
         N = self.par.population.population.to_numpy(dtype='float64').sum()
         
-        S_vec = state.S
-        E_vec = state.E
-        I_vec = state.I
-        R_vec = state.R
-        H_vec = state.H
-        V_vec = state.V
+        s_vec = state.S
+        e_vec = state.E
+        i_vec = state.I
+        r_vec = state.R
+        h_vec = state.H
+        v_vec = state.V
         
         result = np.zeros((decision_period, k))
-        result[0,:] = [S_vec.sum(), E_vec.sum(), I_vec.sum(), R_vec.sum(), 0, V_vec.sum()]
+        result[0,:] = [s_vec.sum(), e_vec.sum(), i_vec.sum(), r_vec.sum(), 0, v_vec.sum()]
         
         # Realflows for different comself.partments 
         alpha_s, alpha_e, alpha_i, alpha_r = information['alphas']
@@ -82,12 +104,12 @@ class SEIR:
         realflow_r = self.scale_flow(alpha_r)
         
         history = np.zeros((decision_period, k, n))
-        history[0,0,:] = S_vec
-        history[0,1,:] = E_vec
-        history[0,2,:] = I_vec
-        history[0,3,:] = R_vec
-        history[0,4,:] = H_vec
-        history[0,5,:] = V_vec
+        history[0,0,:] = s_vec
+        history[0,1,:] = e_vec
+        history[0,2,:] = i_vec
+        history[0,3,:] = r_vec
+        history[0,4,:] = h_vec
+        history[0,5,:] = v_vec
 
         total_new_infected = np.zeros(decision_period+1)
         
@@ -99,47 +121,49 @@ class SEIR:
             realOD_r = realflow_r[i % r]
             realOD_v = decision[i % r]
 
-            newE = S_vec * I_vec / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)
-            newI = E_vec / self.par.DE
-            newR = I_vec / self.par.DI
-            newV = realOD_v * self.par.eff
+            new_e = s_vec * i_vec / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)
+            new_i = e_vec / self.par.DE
+            if hidden_cases:
+                new_i = self.add_hidden_cases(s_vec, i_vec, new_i)
+            new_r = i_vec / self.par.DI
+            new_v = realOD_v * self.par.eff
             
-            S_vec -= newE
-            S_vec = (S_vec 
-                + np.matmul(S_vec.reshape(1,n), realOD_s)
-                - S_vec * realOD_s.sum(axis=1)
-                - newV
+            s_vec -= new_e
+            s_vec = (s_vec 
+                + np.matmul(s_vec.reshape(1,n), realOD_s)
+                - s_vec * realOD_s.sum(axis=1)
+                - new_v
                     )
-            E_vec = E_vec + newE - newI
-            E_vec = (E_vec 
-                + np.matmul(E_vec.reshape(1,n), realOD_e)
-                - E_vec * realOD_e.sum(axis=1)
-                    )
-                    
-            I_vec = I_vec + newI - newR
-            I_vec = (I_vec 
-                + np.matmul(I_vec.reshape(1,n), realOD_i)
-                - I_vec * realOD_i.sum(axis=1)
+            e_vec = e_vec + new_e - new_i
+            e_vec = (e_vec 
+                + np.matmul(e_vec.reshape(1,n), realOD_e)
+                - e_vec * realOD_e.sum(axis=1)
                     )
                     
-            R_vec += newR
-            R_vec = (R_vec 
-                + np.matmul(R_vec.reshape(1,n), realOD_r)
-                - R_vec * realOD_r.sum(axis=1)
-                + newV
+            i_vec = i_vec + new_i - new_r
+            i_vec = (i_vec 
+                + np.matmul(i_vec.reshape(1,n), realOD_i)
+                - i_vec * realOD_i.sum(axis=1)
+                    )
+                    
+            r_vec += new_r
+            r_vec = (r_vec 
+                + np.matmul(r_vec.reshape(1,n), realOD_r)
+                - r_vec * realOD_r.sum(axis=1)
+                + new_v
                     )
 
-            V_vec += newV   
+            v_vec += new_v   
             
-            result[i + 1,:] = [S_vec.sum(), E_vec.sum(), I_vec.sum(), R_vec.sum(),  H_vec.sum(), V_vec.sum()]
-            total_new_infected[i + 1] = newI.sum()
+            result[i + 1,:] = [s_vec.sum(), e_vec.sum(), i_vec.sum(), r_vec.sum(),  h_vec.sum(), v_vec.sum()]
+            total_new_infected[i + 1] = new_i.sum()
             result[i + 1, 4] = total_new_infected[max(0, i - self.par.hospital_duration) : i].sum() * self.par.hospitalisation_rate
             
-            history[i + 1,0,:] = S_vec
-            history[i + 1,1,:] = E_vec
-            history[i + 1,2,:] = I_vec
-            history[i + 1,3,:] = R_vec
-            history[i + 1,5,:] = V_vec
+            history[i + 1,0,:] = s_vec
+            history[i + 1,1,:] = e_vec
+            history[i + 1,2,:] = i_vec
+            history[i + 1,3,:] = r_vec
+            history[i + 1,5,:] = v_vec
 
         if write_to_csv:
             if write_weekly:
