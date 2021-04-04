@@ -59,3 +59,20 @@ class State:
         vaccines_available = vaccines_left + new_vaccines
 
         return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step=self.time_step+decision_period)
+    
+
+    def get_compartment_values(self):
+        """ Gets compartment values from a state
+        Returns
+            compartments    
+        """
+        s_vec = self.S
+        e_vec = self.E
+        a_vec = self.A
+        i_vec = self.I
+        q_vec = self.Q
+        r_vec = self.R
+        d_vec = self.D
+        v_vec = self.V
+        h_vec = self.H
+        return s_vec,e_vec,a_vec,i_vec,q_vec,r_vec,d_vec,v_vec,h_vec

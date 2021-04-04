@@ -69,16 +69,14 @@ class SEAIQR:
         r = self.par.OD.shape[0] 
         n = self.par.OD.shape[1]
         
-        # Get compartment values
-        s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec = self.get_compartment_values(state)
+        # Get initial compartment values
+        s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec = state.get_compartment_values()
         
         # Extraxt movement information and scale flow
         realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r = self.get_realflows(information['alphas'] )
         
         # Initialize output matrices
         history, result = self.initialize_output_matrices(decision_period, k, n, s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec)
-
-        # Keep control of accumulated number of infected 
         total_new_infected = np.zeros(decision_period+1)
         
         # Run simulation
@@ -222,19 +220,7 @@ class SEAIQR:
         result[0,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(), d_vec.sum(), v_vec.sum(), 0]
         return history, result
 
-    @staticmethod
-    def get_compartment_values(state):
-        """ Gets compartment values from a state"""
-        s_vec = state.S
-        e_vec = state.E
-        a_vec = state.A
-        i_vec = state.I
-        q_vec = state.Q
-        r_vec = state.R
-        d_vec = state.D
-        v_vec = state.V
-        h_vec = state.H
-        return s_vec,e_vec,a_vec,i_vec,q_vec,r_vec,d_vec,v_vec,h_vec
+
     
     def get_realflows(self, alphas):
         """ Gets realflows after each flow is scaled with a respective alpha value"""
