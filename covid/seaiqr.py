@@ -7,8 +7,7 @@ class SEAIQR:
     def __init__(self, OD, population, R0=2.4, DE= 5.6*4, DI= 5.2*4, hospitalisation_rate=0.1, hospital_duration=15*4,
     efficacy=0.95,  proportion_symptomatic_infections=0.8, latent_period=5.1*4, recovery_period=21*4,
     pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4,
-    immunity_duration=365*4
-    ):
+    immunity_duration=365*4):
         """ 
         Parameters
         - self.par: parameters {
@@ -47,8 +46,7 @@ class SEAIQR:
                         fatality_rate_symptomatic=fatality_rate_symptomatic,
                         immunity_duration=immunity_duration
                         )
-
-        
+ 
     def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
         

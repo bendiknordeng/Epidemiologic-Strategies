@@ -49,8 +49,8 @@ if __name__ == '__main__':
     kommuner_geometry = plot.create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
 
     # geospatial plot of simulation
-    plot.plot_simulation(history[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
-    plot.create_gif(paths.municipality_gif,paths.municipality_plots)
+    # plot.plot_simulation(history[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
+    # plot.create_gif(paths.municipality_gif,paths.municipality_plots)
 
     # geospatial plot of of historical covid cases in Norway
     # history = utils.transform_historical_df_to_history(pd.read_csv(paths.municipalities_hist_data))

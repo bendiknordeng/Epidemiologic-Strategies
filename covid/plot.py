@@ -23,15 +23,10 @@ def seir_plot_one_cell(history, cellid):
         cellid: index of the region to plot SEIR curves
     """
     num_periods_per_day = 4
-    plt.plot(history[::num_periods_per_day, 0, cellid], color='r', label='S')  
-    plt.plot(history[::num_periods_per_day, 1, cellid], color='g', label='E')
-    plt.plot(history[::num_periods_per_day, 2, cellid], color='b', label='A')
-    plt.plot(history[::num_periods_per_day, 3, cellid], color='k', label='I')
-    plt.plot(history[::num_periods_per_day, 4, cellid], color='y', label='Q')
-    plt.plot(history[::num_periods_per_day, 5, cellid], color='c', label='R')
-    plt.plot(history[::num_periods_per_day, 6, cellid], color='m', label='D')
-    plt.plot(history[::num_periods_per_day, 7, cellid], color='gold', label='V')
-    plt.plot(history[::num_periods_per_day, 8, cellid], color='purple', label='H')
+    colours = ['r', 'g', 'b', 'k', 'y', 'c', 'm', 'gold', 'purple']
+    labels= ['S', 'E', 'A', 'I', 'Q', 'R', 'D', 'V', 'H']
+    for i in range(len(labels)):
+        plt.plot(history[::num_periods_per_day, i, cellid], color=colours[i], label=labels[i])  
     plt.legend()
     plt.show()
 
@@ -42,15 +37,10 @@ def seir_plot(res):
         res: 3D array with shape (decision_period*horizon, #compartments)
     """
     num_periods_per_day = 4
-    plt.plot(res[::num_periods_per_day, 0], color='r', label='S') 
-    plt.plot(res[::num_periods_per_day, 1], color='g', label='E')
-    plt.plot(res[::num_periods_per_day, 2], color='b', label='A') 
-    plt.plot(res[::num_periods_per_day, 3], color='k', label='I')
-    plt.plot(res[::num_periods_per_day, 4], color='y', label='Q') 
-    plt.plot(res[::num_periods_per_day, 5], color='c', label='R')
-    plt.plot(res[::num_periods_per_day, 6], color='m', label='D')
-    plt.plot(res[::num_periods_per_day, 7], color='gold', label='V') 
-    plt.plot(res[::num_periods_per_day, 8], color='purple', label='H')
+    colours = ['r', 'g', 'b', 'k', 'y', 'c', 'm', 'gold', 'purple']
+    labels= ['S', 'E', 'A', 'I', 'Q', 'R', 'D', 'V', 'H']
+    for i in range(len(labels)):
+        plt.plot(res[::num_periods_per_day, i], color=colours[i], label=labels[i])  
     plt.legend()
     plt.show()
 
