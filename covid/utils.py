@@ -228,3 +228,4 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
                 history_df.to_csv(results_history, mode='a', header=False)
         else:
             history_df.to_csv(results_history)
+    

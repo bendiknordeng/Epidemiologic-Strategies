@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(self, S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, compartmets=0):
+    def __init__(self, S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, compartmets=None):
         """ initialize a State instance
 
         Parameters
@@ -34,6 +34,12 @@ class State:
         self.D = D
         self.V = V
         self.H = H
+
+        self.state_compartments_values ={ 
+            '0-65': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '65+':  [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H] 
+            }
+            
         self.vaccines_available = vaccines_available
         self.time_step = time_step
         self.new_infected = 0
@@ -49,7 +55,10 @@ class State:
         Returns
             A new initialized State instance
         """
-        _, new_infected, history = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=True, write_weekly=False)
+
+        # NEED TO UPDATE - delete SEAIQRDHV values initialization
+        state_compartments_values = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=True, write_weekly=False)
+        _, new_infected, history = state_compartments_values['65+']
         self.new_infected = new_infected
         S, E, A, I, Q, R, D, V, H = history[-1]
 
@@ -57,8 +66,9 @@ class State:
         new_vaccines = np.sum(information['vaccine_supply'])
 
         vaccines_available = vaccines_left + new_vaccines
+        time_step=self.time_step+decision_period
 
-        return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step=self.time_step+decision_period)
+        return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, state_compartments_values)
     
 
     def get_compartment_values(self):
@@ -66,13 +76,8 @@ class State:
         Returns
             compartments    
         """
-        s_vec = self.S
-        e_vec = self.E
-        a_vec = self.A
-        i_vec = self.I
-        q_vec = self.Q
-        r_vec = self.R
-        d_vec = self.D
-        v_vec = self.V
-        h_vec = self.H
-        return s_vec,e_vec,a_vec,i_vec,q_vec,r_vec,d_vec,v_vec,h_vec
+        state_compartments_values = { 
+            '0-65': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '65+':  [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H] 
+            }
+        return state_compartments_values

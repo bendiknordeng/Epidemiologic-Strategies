@@ -18,6 +18,7 @@ if __name__ == '__main__':
     vaccine_supply = np.ones((28,356))
     seaiqrdvh = SEAIQR(OD_matrices,
                 population,
+                contact_matrices=config.contact_matrices,
                 R0=config.R0,
                 DE=config.DE*config.periods_per_day,
                 DI=config.DI*config.periods_per_day,
