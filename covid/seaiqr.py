@@ -64,100 +64,97 @@ class SEAIQR:
         Returns:
             res: accumulated SEIR values for all regions as whole (decision_period, )
             total_new_infected.sum(): accumulated infected for the decision_period, float.
-            history: SEIRHV for each region for each time step (decision_period,  number_compartments, number_of_regions)
+            history: SEIRQDHV for each region for each time step (decision_period,  number_compartments, number_of_regions)
         """
         # Meta-parameters
         compartments = 'SEAIQRDVH'
         k = len(compartments)
         r = self.par.OD.shape[0] 
         n = self.par.OD.shape[1]
+    
+        s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec = state.get_compartments_values()
         
-        # Get initial compartment values
-        state_compartments_values = state.get_compartment_values()
+        # Extraxt movement information and scale flow
+        realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r = self.get_realflows(information['alphas'] )
+        
+        # Initialize output matrices
+        history, result = self.initialize_output_matrices(decision_period, k, n, s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec)
+        total_new_infected = np.zeros(decision_period+1)
+        
+        # Run simulation
+        for i in range(0, decision_period - 1):
+            # Finds the flow between regions for each compartment 
+            realOD_s, realOD_e, realOD_a, realOD_i, realOD_q, realOD_r = self.get_relevant_flow(r, realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r, i)
+            
+            # Finds the decision - number of vaccines to be allocated to each region for a specific time period
+            v = decision[i % r]
 
-        for age_group in state_compartments_values.keys():
-            s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec = state_compartments_values[age_group]
-            # Extraxt movement information and scale flow
-            realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r = self.get_realflows(information['alphas'] )
-            
-            # Initialize output matrices
-            history, result = self.initialize_output_matrices(decision_period, k, n, s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec)
-            total_new_infected = np.zeros(decision_period+1)
-            
-            # Run simulation
-            for i in range(0, decision_period - 1):
-                # Finds the flow between regions for each compartment 
-                realOD_s, realOD_e, realOD_a, realOD_i, realOD_q, realOD_r = self.get_relevant_flow(r, realflow_s, realflow_e, realflow_a, realflow_i, realflow_q, realflow_r, i)
+            # Calculate values for each arrow in epidemic model 
+            new_s = r_vec / self.par.immunity_duration
+            new_e = s_vec * (a_vec + i_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
+            new_a = (1 - self.par.proportion_symptomatic_infections) * e_vec / self.par.latent_period
+            new_i = self.par.proportion_symptomatic_infections *  e_vec / self.par.latent_period
+
+            # Add random infected to new I if it is included in modelling (NEED TO BE ADJUSTED FOR AGE GROUP DIMENSIONS)
+            if hidden_cases and (i % (decision_period/7) == 0): 
+                new_i = self.add_hidden_cases(s_vec, i_vec, new_i)
                 
-                # Finds the decision - number of vaccines to be allocated to each region for a specific time period
-                v = decision[i % r]
+            new_q = i_vec /  self.par.pre_isolation_infection_period  
+            new_r_from_a = a_vec / self.par.recovery_period
+            new_r_from_q = q_vec * (1- self.par.fatality_rate_symptomatic) / self.par.recovery_period 
+            new_r_from_v = v_vec/self.par.latent_period
+            new_d = q_vec * self.par.fatality_rate_symptomatic / self.par.recovery_period
+            new_v = v * self.par.efficacy
 
-                # Calculate values for each arrow in epidemic model 
-                new_s = r_vec / self.par.immunity_duration
-                new_e = s_vec * (a_vec + i_vec) / self.par.population.population.to_numpy(dtype='float64') * (self.par.R0 / self.par.DI)  # Need to change this to force of infection 
-                new_a = (1 - self.par.proportion_symptomatic_infections) * e_vec / self.par.latent_period
-                new_i = self.par.proportion_symptomatic_infections *  e_vec / self.par.latent_period
+            # Calculate values for each compartment
+            s_vec = s_vec + new_s - new_v - new_e
+            s_vec = (s_vec 
+                + np.matmul(s_vec.reshape(1,n), realOD_s)
+                - s_vec * realOD_s.sum(axis=1))
+            e_vec = e_vec + new_e - new_i - new_a
+            e_vec = (e_vec 
+                + np.matmul(e_vec.reshape(1,n), realOD_e)
+                - e_vec * realOD_e.sum(axis=1))
+            a_vec = a_vec + new_a - new_r_from_a
+            a_vec = (a_vec 
+                + np.matmul(a_vec.reshape(1,n), realOD_a)
+                - a_vec * realOD_a.sum(axis=1))
+            i_vec = i_vec + new_i - new_q
+            i_vec = (i_vec 
+                + np.matmul(i_vec.reshape(1,n), realOD_i)
+                - i_vec * realOD_i.sum(axis=1))
+            q_vec = q_vec + new_q - new_r_from_q - new_d
+            q_vec = (q_vec 
+                + np.matmul(q_vec.reshape(1,n), realOD_q)
+                - q_vec * realOD_q.sum(axis=1))
+            r_vec = r_vec + new_r_from_q + new_r_from_a + new_r_from_v - new_s
+            r_vec = (r_vec 
+                + np.matmul(r_vec.reshape(1,n), realOD_r)
+                - r_vec * realOD_r.sum(axis=1))
+            d_vec = d_vec + new_d
+            v_vec = v_vec + new_v - new_r_from_v
 
-                # Add random infected to newI if it is included in modelling
-                if hidden_cases and (i % (decision_period/7) == 0): 
-                    new_i = self.add_hidden_cases(s_vec, i_vec, new_i)
-                    
-                new_q = i_vec /  self.par.pre_isolation_infection_period  
-                new_r_from_a = a_vec / self.par.recovery_period
-                new_r_from_q = q_vec * (1- self.par.fatality_rate_symptomatic) / self.par.recovery_period 
-                new_r_from_v = v_vec/self.par.latent_period
-                new_d = q_vec * self.par.fatality_rate_symptomatic / self.par.recovery_period
-                new_v = v * self.par.efficacy
-
-                # Calculate values for each compartment
-                s_vec = s_vec + new_s - new_v - new_e
-                s_vec = (s_vec 
-                    + np.matmul(s_vec.reshape(1,n), realOD_s)
-                    - s_vec * realOD_s.sum(axis=1))
-                e_vec = e_vec + new_e - new_i - new_a
-                e_vec = (e_vec 
-                    + np.matmul(e_vec.reshape(1,n), realOD_e)
-                    - e_vec * realOD_e.sum(axis=1))
-                a_vec = a_vec + new_a - new_r_from_a
-                a_vec = (a_vec 
-                    + np.matmul(a_vec.reshape(1,n), realOD_a)
-                    - a_vec * realOD_a.sum(axis=1))
-                i_vec = i_vec + new_i - new_q
-                i_vec = (i_vec 
-                    + np.matmul(i_vec.reshape(1,n), realOD_i)
-                    - i_vec * realOD_i.sum(axis=1))
-                q_vec = q_vec + new_q - new_r_from_q - new_d
-                q_vec = (q_vec 
-                    + np.matmul(q_vec.reshape(1,n), realOD_q)
-                    - q_vec * realOD_q.sum(axis=1))
-                r_vec = r_vec + new_r_from_q + new_r_from_a + new_r_from_v - new_s
-                r_vec = (r_vec 
-                    + np.matmul(r_vec.reshape(1,n), realOD_r)
-                    - r_vec * realOD_r.sum(axis=1))
-                d_vec = d_vec + new_d
-                v_vec = v_vec + new_v - new_r_from_v
-
-                # Add the accumulated compartment values to results
-                result[i + 1,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(),  d_vec.sum(), h_vec.sum(), v_vec.sum()]
-                
-                # Add number of hospitalized 
-                total_new_infected[i + 1] = new_i.sum()
-                result[i + 1, 8] = total_new_infected[max(0, i - self.par.hospital_duration) : i].sum() * self.par.hospitalisation_rate
-                
-                # Add the accumulated compartment values to results
-                history = self.update_history_results(s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec, history, i)
+            # Add the accumulated compartment values to results
+            result[i + 1,:] = [s_vec.sum(), e_vec.sum(), a_vec.sum(), i_vec.sum(), q_vec.sum(), r_vec.sum(),  d_vec.sum(), h_vec.sum(), v_vec.sum()]
             
-            # write results to csv
-            if write_to_csv:
-                utils.write_history(write_weekly,
-                                    history, 
-                                    self.par.population, 
-                                    state.time_step, 
-                                    self.paths.results_weekly, 
-                                    self.paths.results_history,
-                                    compartments)
+            # Add number of hospitalized 
+            total_new_infected[i + 1] = new_i.sum()
+            result[i + 1, 8] = total_new_infected[max(0, i - self.par.hospital_duration) : i].sum() * self.par.hospitalisation_rate
             
-            state_compartments_values[age_group] = result, total_new_infected.sum(), history
+            # Add the accumulated compartment values to results
+            history = self.update_history_results(s_vec, e_vec, a_vec, i_vec, q_vec, r_vec, d_vec, v_vec, h_vec, history, i)
+        
+        # write results to csv
+        if write_to_csv:
+            utils.write_history(write_weekly,
+                                history, 
+                                self.par.population, 
+                                state.time_step, 
+                                self.paths.results_weekly, 
+                                self.paths.results_history,
+                                compartments)
+        
+        state_compartments_values[age_group] = result, total_new_infected.sum(), history
         
         return state_compartments_values
     

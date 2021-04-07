@@ -34,17 +34,7 @@ class State:
         self.D = D
         self.V = V
         self.H = H
-
-        self.state_compartments_values ={ 
-            '0-6':   [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '7-14':  [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '15-17': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '18-22': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '23-44': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '45-64': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '65+':   [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H]
-            }
-            
+        
         self.vaccines_available = vaccines_available
         self.time_step = time_step
         self.new_infected = 0
@@ -62,7 +52,7 @@ class State:
         """
 
         # NEED TO UPDATE - delete SEAIQRDHV values initialization
-        state_compartments_values = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=True, write_weekly=False)
+        state_compartments_values = epidemic_function(self, decision, decision_period, information, hidden_cases=False, write_to_csv=True, write_weekly=False)
         _, new_infected, history = state_compartments_values['65+']
         self.new_infected = new_infected
         S, E, A, I, Q, R, D, V, H = history[-1]
@@ -76,13 +66,9 @@ class State:
         return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, state_compartments_values)
     
 
-    def get_compartment_values(self):
+    def get_compartments_values(self):
         """ Gets compartment values from a state
         Returns
             compartments    
         """
-        state_compartments_values = { 
-            '0-65': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '65+':  [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H] 
-            }
-        return state_compartments_values
+        return [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H]

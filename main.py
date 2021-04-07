@@ -11,12 +11,12 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = utils.create_named_tuple(paths.config)
-    population = utils.create_population(paths.muncipalities_names, paths.muncipalities_pop)
+    population = utils.create_population(paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
     #vaccine_supply = read_pickle(paths.municipalities_v)
     vaccine_supply = np.ones((28,356))
-    seaiqrdvh = SEAIQR(OD_matrices,
+    epidemic_function = SEAIQR(OD_matrices,
                 population,
                 contact_matrices=config.contact_matrices,
                 R0=config.R0,
@@ -35,7 +35,7 @@ if __name__ == '__main__':
 
     # run simulation
     horizon = 20 # number of weeks
-    mdp = MarkovDecisionProcess(OD_matrices, population, seaiqrdvh, vaccine_supply, horizon, decision_period=28, policy="population_based")
+    mdp = MarkovDecisionProcess(OD_matrices, population, epidemic_function, vaccine_supply, horizon, decision_period=28, policy="random")
     path = mdp.run()
 
     # load necessary data for SEIR development plot
@@ -57,14 +57,3 @@ if __name__ == '__main__':
     # history = utils.transform_historical_df_to_history(pd.read_csv(paths.municipalities_hist_data))
     # plot.plot_historical_infected(history[::1,:,:], population, kommuner_geometry, paths.municipality_hist_plots)
     # plot.create_gif(paths.municipality_hist_gif,paths.municipality_hist_plots)
-
-    
-
-
-
-
-
-
-
-    
-    

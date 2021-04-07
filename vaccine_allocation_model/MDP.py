@@ -76,35 +76,39 @@ class MarkovDecisionProcess:
         Returns
             an initialized State object, type defined in State.py
         """
-        pop = self.population.population.to_numpy(dtype='float64')
-        n = len(pop)
+        # pop = self.population.population.to_numpy(dtype='float64')
+        pop = self.population[self.population.columns[2:7]].to_numpy(dtype="float64")
+        n_regions = pop.shape[0]
+        n_age_groups = pop.shape[1]
         S = pop.copy()
-        E = np.zeros(n)
-        A = np.zeros(n)
-        I = np.zeros(n)
-        Q = np.zeros(n)
-        R = np.zeros(n)
-        D = np.zeros(n)
-        V = np.zeros(n)
-        H = np.zeros(n)
+        E = np.zeros(pop.shape)
+        A = np.zeros(pop.shape)
+        I = np.zeros(pop.shape)
+        Q = np.zeros(pop.shape)
+        R = np.zeros(pop.shape)
+        D = np.zeros(pop.shape)
+        V = np.zeros(pop.shape)
+        H = np.zeros(pop.shape)
+
+
+        I[0] += [20] * n_age_groups # boost infected in Oslo
+        S[0] -= [20] * n_age_groups
+        num_initial_infected -= 20 * n_age_groups
 
         if initial_infected is None:
             random.seed(10)
-            initial = np.zeros(n)
+            initial = np.zeros(pop.shape)
             for i in range(num_initial_infected):
-                loc = np.random.randint(n)
-                if i < 5:
-                    S[loc]
-                    initial[loc]
-                if (S[loc] > initial[loc]):
-                    initial[loc] += 1.0
+                loc = (np.random.randint(0, n_regions), np.random.randint(0, n_age_groups))
+
+                if (S[loc[0]][loc[1]] > initial[loc[0]][loc[1]]):
+                    initial[loc[0]][loc[1]] += 1.0
         else:
             initial = initial_infected
         assert ((S < initial).sum() == 0)
 
         S -= initial
         I += initial
-        I[0] += 20 # boost infected in Oslo
 
         return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step) 
 
@@ -112,21 +116,21 @@ class MarkovDecisionProcess:
         """ Define allocation of vaccines based on random distribution
 
         Returns
-            a vaccine allocation of shape (#decision periods, #regions)
+            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
-
-        n = len(self.population)
-        vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
+        pop = self.population[self.population.columns[2:7]].to_numpy(dtype="float64")
+        n_regions, n_age_groups = pop.shape
+        vaccine_allocation = np.array([np.zeros(pop.shape) for _ in range(self.decision_period)])
         np.random.seed(10)
         demand = self.state.S
         vacc_available = self.state.vaccines_available
         while vacc_available > 0:
-            period, region = np.random.randint(28), np.random.randint(n)
-            if demand[region] > 0:
+            period, region, age_group = np.random.randint(self.decision_period), np.random.randint(n_regions), np.random.randint(n_age_groups)
+            if demand[region][age_group] > 0:
                 vacc_available -= 1
-                vaccine_allocation[period][region] += 1
-                demand[region] -= 1
-        
+                vaccine_allocation[period][region][age_group] += 1
+                demand[region][age_group] -= 1
+
         return vaccine_allocation
 
     def _population_based_policy(self):
@@ -150,3 +154,23 @@ class MarkovDecisionProcess:
 
         return vaccine_allocation
 
+
+class Decision:
+    def __init__(self):
+        self.region_allocation = {}
+
+    def allocate_to_region(self, region, age_allocation):
+        self.region_allocation[region] = age_allocation
+
+    @staticmethod
+    def get_age_allocation(self, allocation):
+        return {
+            '0-5':   allocation[0],
+            '6-15':  allocation[1],
+            '16-19': allocation[2],
+            '20-66': allocation[3],
+            '67+':   allocation[4]
+        }
+
+    def __str__(self):
+        return f""

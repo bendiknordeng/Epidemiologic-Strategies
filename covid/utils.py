@@ -172,29 +172,19 @@ def transform_historical_df_to_history(df):
     df = df[['kommune_no', 'cases']]
     df = df.rename(columns={'cases': 'I'})
     return transform_df_to_history(df, 'I')
-    
-def create_population(fpath_muncipalities_names, fpath_muncipalities_pop):
-    """ Load population information into dataframes
 
-    Parameters
-        fpath_muncipalities_names: file path to region names
-        fpath_muncipalities_pop: file path to population data
-    Returns
-        population: a dataframe with region_id, region_name and population
-    """
-    region = pd.read_csv(fpath_muncipalities_names, delimiter=",").drop_duplicates()
-    region.rename(columns={"Kommunenr. 2020": "region_id", "Kommunenavn 2020": "region"}, inplace=True)
-    region.region_id = region.region_id.astype(int)
-
-    # create population 
-    region_population = pd.read_csv(fpath_muncipalities_pop, delimiter=";", skiprows=1)
-    region_ids = []
-    for r in region_population.region.str.split(" "):
-        region_ids.append(int(r[0]))
-    region_population["region_id"] = region_ids
-    region_population = region_population[["region_id", "Befolkning per 1.1. (personer) 2020"]].rename(columns={ "Befolkning per 1.1. (personer) 2020": "population"})
-    population_df = pd.merge(region_population, region, on='region_id', sort=True)
-    return population_df
+def create_population(fpath_age_divided_population, fpath_municipality_names):
+    age_divided_pop = pd.read_csv(fpath_age_divided_population, delimiter=";")
+    column_names = ["region", "0-5", "6-15", "16-19", "20-66", "67+"]
+    age_divided_pop.columns = column_names
+    age_divided_pop['region_id'] = age_divided_pop.region.apply(lambda x: x.split(" ")[0])
+    age_divided_pop.region_id = age_divided_pop.region_id.apply(lambda x: x.split("-")[1])
+    age_divided_pop.drop(columns=["region"], inplace=True)
+    region_names_id = pd.read_csv(fpath_municipality_names, delimiter=",").drop_duplicates()
+    age_divided_pop.region_id = age_divided_pop.region_id.astype("int64")
+    df = pd.merge(region_names_id, age_divided_pop, on="region_id", sort=True)
+    df["population"] = df["0-5"] + df["6-15"] + df["16-19"] + df["20-66"] + df["67+"]
+    return df
 
 def write_history(write_weekly, history, population, time_step, results_weekly, results_history, compartments):
     """ write history array to csv
