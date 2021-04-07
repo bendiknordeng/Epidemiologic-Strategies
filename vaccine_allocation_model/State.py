@@ -36,8 +36,13 @@ class State:
         self.H = H
 
         self.state_compartments_values ={ 
-            '0-65': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
-            '65+':  [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H] 
+            '0-6':   [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '7-14':  [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '15-17': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '18-22': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '23-44': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '45-64': [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H],
+            '65+':   [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H]
             }
             
         self.vaccines_available = vaccines_available

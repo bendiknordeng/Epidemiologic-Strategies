@@ -253,3 +253,11 @@ class SEAIQR:
         realflow = realflow / realflow.sum(axis=2)[:,:, np.newaxis]  # Normalize flow
         realflow = alpha * realflow 
         return realflow
+
+
+    def generate_contact_matrix(self, weights):
+        """ scale the contact matrices  with weights, and return the master contact matriz
+
+        """
+        # NEED TO UPDATE
+        return self.par.contact_matrices[0]
