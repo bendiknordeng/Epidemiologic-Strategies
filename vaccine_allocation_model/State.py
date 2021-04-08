@@ -1,30 +1,24 @@
 import numpy as np
 
 class State:
-    def __init__(self, S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, compartmets=None):
+    def __init__(self, S, E, A, I, Q, R, D, V, vaccines_available, time_step):
         """ initialize a State instance
 
         Parameters
-            compartmets: {
-                '0-65':{
-                    S: array with shape (1,356) indicating number of suceptible in each region 
-                    E: array with shape (1,356) indicating number of exposed in each region 
-                    A: array with shape (1,356) indicating number of asymptomatic infected in each region 
-                    I: array with shape (1,356) indicating number of symptomatic infected in each region 
-                    Q: array with shape (1,356) indicating number of people in quarantine in each region 
-                    R: array with shape (1,356) indicating number of recovered in each region 
-                    D: array with shape (1,356) indicating number of accumulated deaths in each region 
-                    V: array with shape (1,356) indicating number of vaccinated in each region
-                    H: array with shape (1,356) indicating number of hospitalized in each region 
-                    }, 
-                '65+':{S:(1,356), E:(1,356), ...}}
+            S: array with shape (356,5) indicating number of suceptible in each region for each age group
+            E: array with shape (356,5) indicating number of exposed in each region for each age group
+            A: array with shape (356,5) indicating number of asymptomatic infected in each region for each age group
+            I: array with shape (356,5) indicating number of symptomatic infected in each region for each age group
+            Q: array with shape (356,5) indicating number of people in quarantine in each region for each age group
+            R: array with shape (356,5) indicating number of recovered in each region for each age group
+            D: array with shape (356,5) indicating number of accumulated deaths in each region for each age group
+            V: array with shape (356,5) indicating number of vaccinated in each region for each age group
             vaccines_available: integer indicating number of vaccines available at initialization time step
             time_Step: integer indicating the time step when state is intialized in the range(0, (24/time_delta)*7 -1)
         Returns
             an initialized State instance
 
         """
-        self.compartmets = compartmets
         self.S = S
         self.E = E
         self.A = A
@@ -33,7 +27,6 @@ class State:
         self.R = R
         self.D = D
         self.V = V
-        self.H = H
         
         self.vaccines_available = vaccines_available
         self.time_step = time_step
@@ -50,12 +43,8 @@ class State:
         Returns
             A new initialized State instance
         """
-
-        # NEED TO UPDATE - delete SEAIQRDHV values initialization
-        state_compartments_values = epidemic_function(self, decision, decision_period, information, hidden_cases=False, write_to_csv=True, write_weekly=False)
-        _, new_infected, history = state_compartments_values['65+']
+        S, E, A, I, Q, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information, hidden_cases=False, write_to_csv=False, write_weekly=False)
         self.new_infected = new_infected
-        S, E, A, I, Q, R, D, V, H = history[-1]
 
         vaccines_left = self.vaccines_available - np.sum(decision)
         new_vaccines = np.sum(information['vaccine_supply'])
@@ -63,7 +52,7 @@ class State:
         vaccines_available = vaccines_left + new_vaccines
         time_step=self.time_step+decision_period
 
-        return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step, state_compartments_values)
+        return State(S, E, A, I, Q, R, D, V, vaccines_available, time_step)
     
 
     def get_compartments_values(self):
@@ -71,4 +60,4 @@ class State:
         Returns
             compartments    
         """
-        return [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V, self.H]
+        return [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V]

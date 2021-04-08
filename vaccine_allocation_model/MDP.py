@@ -88,12 +88,11 @@ class MarkovDecisionProcess:
         R = np.zeros(pop.shape)
         D = np.zeros(pop.shape)
         V = np.zeros(pop.shape)
-        H = np.zeros(pop.shape)
 
-
-        I[0] += [20] * n_age_groups # boost infected in Oslo
-        S[0] -= [20] * n_age_groups
-        num_initial_infected -= 20 * n_age_groups
+        # Boost infected in Oslo
+        I[0] += [30, 40, 30, 0, 0]  
+        S[0] -= [30, 40, 30, 0, 0]
+        num_initial_infected -= 100
 
         if initial_infected is None:
             random.seed(10)
@@ -110,7 +109,7 @@ class MarkovDecisionProcess:
         S -= initial
         I += initial
 
-        return State(S, E, A, I, Q, R, D, V, H, vaccines_available, time_step) 
+        return State(S, E, A, I, Q, R, D, V, vaccines_available, time_step) 
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution

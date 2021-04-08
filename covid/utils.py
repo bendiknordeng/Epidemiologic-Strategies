@@ -70,21 +70,20 @@ def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commu
             j = np.where(region_id == to[k])
             morning[i,j] = n[k]
 
-    for i in range(len(region_id)):
-        sum_travel = morning[i,:].sum()
-        pop_i = population.iloc[i].population
-        morning[i,i] = pop_i - sum_travel
+    # for i in range(len(region_id)):
+    #     sum_travel = morning[i,:].sum()
+    #     pop_i = population.iloc[i].population
+    #     morning[i,i] = pop_i - sum_travel
     
     afternoon = np.copy(morning.T)
     
-    for i in range(len(region_id)):
-        morning[i,:] = morning[i,:]/morning[i,:].sum()
-        afternoon[i,:] = afternoon[i,:]/afternoon[i,:].sum() 
+    # for i in range(len(region_id)):
+    #     morning[i,:] = morning[i,:]/morning[i,:].sum()
+    #     afternoon[i,:] = afternoon[i,:]/afternoon[i,:].sum() 
 
     midday = np.zeros((len(region_id), len(region_id)))
-    np.fill_diagonal(midday, np.ones(len(region_id)))  # ([morning[:,i].sum() for i in range(len(region_id))])) 
+    #np.fill_diagonal(midday, np.ones(len(region_id)))  # ([morning[:,i].sum() for i in range(len(region_id))])) 
     night = np.copy(midday)
-
     # fill od matrices with correct matrix
     for i in range(num_time_steps):
         if i >= 20: # weekend: no travel
@@ -121,29 +120,36 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
+def transform_path_to_numpy(path):
+    history = []
+    for state in path:
+        history.append(state.get_compartments_values())
+    return np.array(history)
+
 def transform_history_to_df(time_step, history, population, column_names):
     """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
 
     Parameters
         time_step: integer used to indicate the current time step in the simulation
         history: 3D array with shape (number of time steps, number of compartments, number of regions)
-        population: DataFrame with region_id, region_names, and population (quantity)
+        population: DataFrame with region_id, region_names, age_group_population and total population (quantity)
         coloumn_names: string that represents the column names e.g 'SEIRHQ'. 
     Returns
-        df: dataframe with columns:  'timestep', 'region_id', 'region_name', 'region_population', 'S', 'E', I','R', 'H', 'V', 'E_per_100k'
+        df: dataframe with columns:  'timestep', 'region_id', 'region_name', 'region_population', 'S', 'E', I','R', 'V', 'E_per_100k'
     """
-    A = history.transpose(0,2,1)
-    (a,b,c) = A.shape 
-    B = A.reshape(-1,c) 
+    A = history.transpose(0,2,3,1)
+    (periods, regions, age_groups, compartments) = A.shape 
+    B = A.reshape(-1, compartments)
     df = pd.DataFrame(B, columns=list(column_names))
-    df['timestep'] = np.floor_divide(df.index.values, b) + time_step
-    df['region_id'] = np.tile(np.array(population.region_id), a)
-    df['region_name'] = np.tile(np.array(population.region), a)
-    df['region_population'] = np.tile(np.array(population.population), a)
-    df['E_per_100k'] = 100000*df.E/df.region_population
-    return df[['timestep', 'region_id', 'region_name', 'region_population'] + list(column_names) + ['E_per_100k']]
+    df['timestep'] = np.floor_divide(df.index.values, regions*age_groups) + time_step
+    df['age_group'] = np.tile(np.array(population.columns[2:7]), periods*regions)
+    df['region_id'] = np.array([[[r]*age_groups for r in population.region_id] for _ in range(periods)]).reshape(-1)
+    df['region_name'] = np.array([[[r]*age_groups for r in population.region] for _ in range(periods)]).reshape(-1)
+    df['region_population'] = np.array([[[r]*age_groups for r in population.population] for _ in range(periods)]).reshape(-1)
+    df['E_per_100k'] = 1e5*df.E/df.region_population
+    return df[['timestep', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E_per_100k']]
 
-def transform_df_to_history(df, column_names):
+def transform_df_to_history(df, column_names, n_regions, n_age_groups):
     """ transforms a dataframe to 3D array
     
     Parameters
@@ -152,10 +158,17 @@ def transform_df_to_history(df, column_names):
     Returns
          3D array with shape (number of time steps, number of compartments, number of regions)
     """
-    l = []
+
     df = df[list(column_names)]
-    for i in range(0, len(df), 356):
-        l.append(np.transpose(df.iloc[i:i+356].to_numpy()))
+    l = []
+    for i in range(0, len(df), n_age_groups):
+        l.append(df.iloc[i:i+5,:].sum())
+    compressed_df = pd.DataFrame(l)
+
+    l = []
+    for i in range(0, len(compressed_df), n_regions):
+        l.append(np.transpose(compressed_df.iloc[i:i+356].to_numpy()))
+
     return np.array(l)
 
 
@@ -203,19 +216,19 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
         if os.path.exists(results_weekly):
             if time_step == 0: # block to remove old csv file if new run is executed 
                 os.remove(results_weekly)
-                latest_df.to_csv(results_weekly)
+                latest_df.to_csv(results_weekly, index=False)
             else:
-                latest_df.to_csv(results_weekly, mode='a', header=False)
+                latest_df.to_csv(results_weekly, mode='a', header=False, index=False)
         else:
-            latest_df.to_csv(results_weekly)
+            latest_df.to_csv(results_weekly, index=False)
     else:
         history_df = transform_history_to_df(time_step, history, population, compartments)
         if os.path.exists(results_history):
             if time_step == 0: # block to remove old csv file if new run is executed
                 os.remove(results_history)
-                history_df.to_csv(results_history)
+                history_df.to_csv(results_history, index=False)
             else:
-                history_df.to_csv(results_history, mode='a', header=False)
+                history_df.to_csv(results_history, mode='a', header=False, index=False)
         else:
-            history_df.to_csv(results_history)
+            history_df.to_csv(results_history, index=False)
     
