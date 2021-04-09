@@ -11,8 +11,8 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = utils.create_named_tuple(paths.config)
-    age_bins = [0,5,15,20,40,66,100]
-    labels = ["0-5", "6-15", "16-19", "20-39", "40-66", "67+"]
+    age_bins = [0,15,20,40,66,100]
+    labels = ["0-15", "16-19", "20-39", "40-66", "67+"]
     population = utils.generate_custom_population(age_bins, labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
@@ -32,22 +32,26 @@ if __name__ == '__main__':
                 post_isolation_recovery_period=config.post_isolation_recovery_period*config.periods_per_day, 
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic)
 
-    # run simulation
-    horizon = 58 # number of weeks
-    mdp = MarkovDecisionProcess(OD_matrices, population, epidemic_function, vaccine_supply, horizon, decision_period=28, policy="random")
-    path = mdp.run()
+    # # run simulation
+    # horizon = 58 # number of weeks
+    # mdp = MarkovDecisionProcess(OD_matrices, population, epidemic_function, vaccine_supply, horizon, decision_period=28, policy="random")
+    # path = mdp.run()
 
-    history = utils.transform_path_to_numpy(path)
-    results = history.sum(axis=2)
-    plot.age_group_infected_plot_weekly(results)
+    # history = utils.transform_path_to_numpy(path)
+    # results = history.sum(axis=2)
+    # plot.age_group_infected_plot_weekly(results)
 
-    results = history.sum(axis=3).sum(axis=2)
-    plot.seir_plot_weekly(results)
+    # results = history.sum(axis=3).sum(axis=2)
+    # plot.seir_plot_weekly(results)
+
+    # plot confusion matrices
+    plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
+
 
     # load necessary data for SEIR development plot
-    """ df = pd.read_csv(paths.results_history)
-    history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
-    results = history.sum(axis=2) """
+    # df = pd.read_csv(paths.results_history)
+    # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
+    # results = history.sum(axis=2)
     
     # accumulated SEIR development plot
     # plot.seir_plot(results)
