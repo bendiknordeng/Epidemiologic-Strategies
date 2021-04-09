@@ -13,6 +13,8 @@ from os import listdir
 import imageio
 from . import utils
 from matplotlib.colors import LinearSegmentedColormap
+import seaborn as sn
+
 
 
 def seir_plot_one_cell(history, cellid):
@@ -70,6 +72,30 @@ def age_group_infected_plot_weekly(res, labels):
             plt.plot(res[:, 3, i], label=label) 
     plt.legend()
     plt.show()
+
+
+def plot_heatmaps(C, weights, fpath=""):
+    """ Plotes heatmaps for contact matrices
+
+    Parameters
+        C: lists of lists with contact matrices for households, schools, workplaces and public 
+        fpath: file paths where the heat mats is saved
+        weights: weights used to weight different contact matrices
+    """
+    age_groups = ["0-5", "6-15", "16-19", "20-66", "67+"]
+    c_descriptions = ['Households', 'Schools', 'Workplaces', 'Public', 'Weighted']   
+    sn.set(font_scale=1.2) 
+    
+    c_combined =  np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)
+    C.append(c_combined)
+    
+    for i in range(len(C)):
+        plt.figure(figsize = (10,7))
+        sn.heatmap(C[i], annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_groups, yticklabels=age_groups)
+        plt.title(c_descriptions[i])
+        if fpath != "":
+            plt.savefig(fpath + c_descriptions[i])
+
 
 def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath_region_geo_geojson):
     """ Creates a geopandas dataframe that stores geometry and identifying information about regions

@@ -15,5 +15,6 @@
 'municipality_hist_gif':        'plots/gifs/Covid_19_municipalities_historical.gif',
 'results_history':              'vaccine_allocation_model/results/results_municipalities/history.csv',
 'results_weekly':               'vaccine_allocation_model/results/results_municipalities/weekly.csv',
-'real_historical_infected':     'data/municipalities/historical_infected_municipalities.csv'
+'real_historical_infected':     'data/municipalities/historical_infected_municipalities.csv',
+'heat_maps':                    'plots/contact_matrices/'
 }

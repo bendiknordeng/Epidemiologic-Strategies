@@ -48,13 +48,13 @@ if __name__ == '__main__':
     results = history.sum(axis=2)
     plot.age_group_infected_plot_weekly(results, age_labels)
 
-    results = history.sum(axis=3).sum(axis=2)
-    plot.seir_plot_weekly(results)
+    # plot confusion matrices
+    # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
 
     # load necessary data for SEIR development plot
-    """ df = pd.read_csv(paths.results_history)
-    history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
-    results = history.sum(axis=2) """
+    # df = pd.read_csv(paths.results_history)
+    # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
+    # results = history.sum(axis=2)
     
     # accumulated SEIR development plot
     # plot.seir_plot(results)
