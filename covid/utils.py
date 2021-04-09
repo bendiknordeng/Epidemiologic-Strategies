@@ -142,7 +142,7 @@ def transform_history_to_df(time_step, history, population, column_names):
     B = A.reshape(-1, compartments)
     df = pd.DataFrame(B, columns=list(column_names))
     df['timestep'] = np.floor_divide(df.index.values, regions*age_groups) + time_step
-    df['age_group'] = np.tile(np.array(population.columns[2:7]), periods*regions)
+    df['age_group'] = np.tile(np.array(population.columns[2:-1]), periods*regions)
     df['region_id'] = np.array([[[r]*age_groups for r in population.region_id] for _ in range(periods)]).reshape(-1)
     df['region_name'] = np.array([[[r]*age_groups for r in population.region] for _ in range(periods)]).reshape(-1)
     df['region_population'] = np.array([[[r]*age_groups for r in population.population] for _ in range(periods)]).reshape(-1)
@@ -186,17 +186,15 @@ def transform_historical_df_to_history(df):
     df = df.rename(columns={'cases': 'I'})
     return transform_df_to_history(df, 'I')
 
-def create_population(fpath_age_divided_population, fpath_municipality_names):
-    age_divided_pop = pd.read_csv(fpath_age_divided_population, delimiter=";")
-    column_names = ["region", "0-5", "6-15", "16-19", "20-66", "67+"]
-    age_divided_pop.columns = column_names
-    age_divided_pop['region_id'] = age_divided_pop.region.apply(lambda x: x.split(" ")[0])
-    age_divided_pop.region_id = age_divided_pop.region_id.apply(lambda x: x.split("-")[1])
-    age_divided_pop.drop(columns=["region"], inplace=True)
-    region_names_id = pd.read_csv(fpath_municipality_names, delimiter=",").drop_duplicates()
-    age_divided_pop.region_id = age_divided_pop.region_id.astype("int64")
-    df = pd.merge(region_names_id, age_divided_pop, on="region_id", sort=True)
-    df["population"] = df["0-5"] + df["6-15"] + df["16-19"] + df["20-66"] + df["67+"]
+def generate_custom_population(bins, labels, path_pop, path_region_names):
+    assert len(bins)-1 == len(labels), "Length of bins need to be one less than labels"
+    total_pop = pd.read_csv(path_pop)
+    age_divided = pd.DataFrame(total_pop.groupby(['region_id', pd.cut(total_pop["age"], bins=bins, labels=labels, include_lowest=True)]).sum('population')['population'])
+    age_divided.reset_index(inplace=True)
+    age_divided = age_divided.pivot(index='region_id', columns=['age'])['population']
+    region_names_id = pd.read_csv(path_region_names, delimiter=",").drop_duplicates()
+    df = pd.merge(region_names_id, age_divided, on="region_id", how='right', sort=True)
+    df['population'] = df.loc[:,df.columns[2:2+len(labels)]].sum(axis=1)
     return df
 
 def write_history(write_weekly, history, population, time_step, results_weekly, results_history, compartments):

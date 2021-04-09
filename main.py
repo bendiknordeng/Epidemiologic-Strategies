@@ -11,7 +11,9 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = utils.create_named_tuple(paths.config)
-    population = utils.create_population(paths.age_divided_population, paths.municipalities_names)
+    age_bins = [0,5,15,20,40,66,100]
+    labels = ["0-5", "6-15", "16-19", "20-39", "40-66", "67+"]
+    population = utils.generate_custom_population(age_bins, labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
     #vaccine_supply = read_pickle(paths.municipalities_v)

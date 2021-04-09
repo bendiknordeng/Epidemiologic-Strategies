@@ -77,7 +77,7 @@ class MarkovDecisionProcess:
             an initialized State object, type defined in State.py
         """
         # pop = self.population.population.to_numpy(dtype='float64')
-        pop = self.population[self.population.columns[2:7]].to_numpy(dtype="float64")
+        pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         n_regions = pop.shape[0]
         n_age_groups = pop.shape[1]
         S = pop.copy()
@@ -117,7 +117,7 @@ class MarkovDecisionProcess:
         Returns
             a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
-        pop = self.population[self.population.columns[2:7]].to_numpy(dtype="float64")
+        pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         n_regions, n_age_groups = pop.shape
         vaccine_allocation = np.array([np.zeros(pop.shape) for _ in range(self.decision_period)])
         np.random.seed(10)
