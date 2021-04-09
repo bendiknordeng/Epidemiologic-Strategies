@@ -11,9 +11,9 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = utils.create_named_tuple(paths.config)
-    age_bins = [0,5,15,20,40,66,100]
-    labels = ["0-5", "6-15", "16-19", "20-39", "40-66", "67+"]
-    population = utils.generate_custom_population(age_bins, labels, paths.age_divided_population, paths.municipalities_names)
+    age_bins = [0,15,20,40,66]
+    age_labels = utils.generate_labels_from_bins(age_bins)
+    population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
     #vaccine_supply = read_pickle(paths.municipalities_v)
@@ -34,12 +34,19 @@ if __name__ == '__main__':
 
     # run simulation
     horizon = 58 # number of weeks
-    mdp = MarkovDecisionProcess(OD_matrices, population, epidemic_function, vaccine_supply, horizon, decision_period=28, policy="random")
+    mdp = MarkovDecisionProcess(OD_matrices, 
+                                population, 
+                                epidemic_function, 
+                                vaccine_supply, 
+                                horizon, 
+                                decision_period=28, 
+                                policy="random",
+                                infection_boost=[30, 40, 30, 0, 0])
     path = mdp.run()
 
     history = utils.transform_path_to_numpy(path)
     results = history.sum(axis=2)
-    plot.age_group_infected_plot_weekly(results)
+    plot.age_group_infected_plot_weekly(results, age_labels)
 
     results = history.sum(axis=3).sum(axis=2)
     plot.seir_plot_weekly(results)

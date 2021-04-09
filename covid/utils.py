@@ -187,15 +187,41 @@ def transform_historical_df_to_history(df):
     return transform_df_to_history(df, 'I')
 
 def generate_custom_population(bins, labels, path_pop, path_region_names):
-    assert len(bins)-1 == len(labels), "Length of bins need to be one less than labels"
+    """ generates age divided population
+
+    Parameters
+        bins: 1D array of bins in which to divide population
+        labels: list of strings, names of age groups
+        path_pop: path to population data
+        path_region_names: path to region name data
+    Returns
+        dataframe with age divided population
+    """
     total_pop = pd.read_csv(path_pop)
-    age_divided = pd.DataFrame(total_pop.groupby(['region_id', pd.cut(total_pop["age"], bins=bins, labels=labels, include_lowest=True)]).sum('population')['population'])
+    age_divided = pd.DataFrame(total_pop.groupby(['region_id', pd.cut(total_pop["age"], bins=bins+[110], labels=labels, include_lowest=True)]).sum('population')['population'])
     age_divided.reset_index(inplace=True)
     age_divided = age_divided.pivot(index='region_id', columns=['age'])['population']
     region_names_id = pd.read_csv(path_region_names, delimiter=",").drop_duplicates()
     df = pd.merge(region_names_id, age_divided, on="region_id", how='right', sort=True)
     df['population'] = df.loc[:,df.columns[2:2+len(labels)]].sum(axis=1)
     return df
+
+def generate_labels_from_bins(bins):
+    """ generates labels for population dataframe
+
+    Parameters
+        bins: 1D array of bins to divide population
+    Returns
+        labels defining the population bins
+    """
+    labels = []
+    for i in range(len(bins)-1):
+        if i == 0:
+            labels.append(str(bins[i])+"-"+str(bins[i+1]))
+        else:
+            labels.append(str(bins[i]+1)+"-"+str(bins[i+1]))
+    labels.append(str(bins[-1]+1)+"+")
+    return labels
 
 def write_history(write_weekly, history, population, time_step, results_weekly, results_history, compartments):
     """ write history array to csv

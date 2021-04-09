@@ -61,12 +61,13 @@ def seir_plot_weekly(res):
     plt.legend()
     plt.show()
 
-def age_group_infected_plot_weekly(res):
-    plt.plot(res[:, 3, 0], color='r', label='0-5') 
-    plt.plot(res[:, 3, 1], color='g', label='6-15')
-    plt.plot(res[:, 3, 2], color='b', label='16-19') 
-    plt.plot(res[:, 3, 3], color='c', label='20-66')
-    plt.plot(res[:, 3, 4], color='y', label='67+') 
+def age_group_infected_plot_weekly(res, labels):
+    colors = ['g','b','k','y','c','m','gold']
+    for i, label in enumerate(labels):
+        try:
+            plt.plot(res[:, 3, i], color=colors[i], label=label) 
+        except:
+            plt.plot(res[:, 3, i], label=label) 
     plt.legend()
     plt.show()
 

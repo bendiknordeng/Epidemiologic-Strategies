@@ -4,7 +4,7 @@ from tqdm import tqdm
 import random
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, population, seaiqr, vaccine_supply, horizon, decision_period, policy):
+    def __init__(self, OD_matrices, population, seaiqr, vaccine_supply, horizon, decision_period, policy, infection_boost):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -21,7 +21,7 @@ class MarkovDecisionProcess:
         self.population = population
         self.vaccine_supply = vaccine_supply
         self.seaiqr = seaiqr
-        self.state = self._initialize_state(None, 1000, 1000)
+        self.state = self._initialize_state(None, 1000, 1000, infection_boost=infection_boost)
         self.path = [self.state]
         self.decision_period = decision_period
 
@@ -65,7 +65,7 @@ class MarkovDecisionProcess:
         self.state = self.state.get_transition(decision, information, self.seaiqr.simulate, decision_period)
         self.path.append(self.state)
 
-    def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, time_step=0):
+    def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, infection_boost, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -90,8 +90,8 @@ class MarkovDecisionProcess:
         V = np.zeros(pop.shape)
 
         # Boost infected in Oslo
-        I[0] += [30, 40, 30, 0, 0]  
-        S[0] -= [30, 40, 30, 0, 0]
+        I[0] += infection_boost
+        S[0] -= infection_boost
         num_initial_infected -= 100
 
         if initial_infected is None:
