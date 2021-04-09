@@ -72,6 +72,7 @@ class MarkovDecisionProcess:
             initial_infected: array of initial infected (1,356)
             num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
             vaccines_available: int, number of vaccines available at time
+            infection_boost: array of initial infection boost for each age group
             time_step: timestep in which state is initialized. Should be in the range of (0, (24/time_timedelta)*7 - 1)
         Returns
             an initialized State object, type defined in State.py
@@ -99,7 +100,6 @@ class MarkovDecisionProcess:
             initial = np.zeros(pop.shape)
             for i in range(num_initial_infected):
                 loc = (np.random.randint(0, n_regions), np.random.randint(0, n_age_groups))
-
                 if (S[loc[0]][loc[1]] > initial[loc[0]][loc[1]]):
                     initial[loc[0]][loc[1]] += 1.0
         else:
@@ -121,7 +121,7 @@ class MarkovDecisionProcess:
         n_regions, n_age_groups = pop.shape
         vaccine_allocation = np.array([np.zeros(pop.shape) for _ in range(self.decision_period)])
         np.random.seed(10)
-        demand = self.state.S
+        demand = self.state.S.copy()
         vacc_available = self.state.vaccines_available
         while vacc_available > 0:
             period, region, age_group = np.random.randint(self.decision_period), np.random.randint(n_regions), np.random.randint(n_age_groups)
@@ -136,21 +136,12 @@ class MarkovDecisionProcess:
         """ Define allocation of vaccines based on number of inhabitants in each region
 
         Returns
-            a vaccine allocation of shape (#decision periods, #regions)
+            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
-        n = len(self.population)
-        pop = self.population.population.to_numpy(dtype='float64')
-        pop_weight = pop/np.sum(pop)
-        demand = self.state.S
-        region_allocation = pop_weight * self.state.vaccines_available
-        for i in range(len(region_allocation)):
-            region_allocation[i] = min(region_allocation[i], demand[i]) # throw away unused vaccines (temporary)
-
-        vaccine_allocation = np.array([np.zeros(n) for _ in range(self.decision_period)])
+        vaccine_allocation = []
         for period in range(self.decision_period):
-            for i, region in enumerate(region_allocation):
-                vaccine_allocation[period][i] = region/self.decision_period
-
+            total_allocation = self.state.vaccines_available * self.state.S/np.sum(self.state.S)
+            vaccine_allocation.append(total_allocation/self.decision_period)
         return vaccine_allocation
 
 

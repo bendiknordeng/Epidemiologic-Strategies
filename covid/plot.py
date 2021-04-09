@@ -52,14 +52,14 @@ def seir_plot_weekly(res):
     Parameters
         res: 3D array with shape (decision_period*horizon, #compartments)
     """
-    #plt.plot(res[::, 0], color='r', label='S') 
+    plt.plot(res[::, 0], color='r', label='S') 
     plt.plot(res[::, 1], color='g', label='E')
     plt.plot(res[::, 2], color='b', label='A') 
     plt.plot(res[::, 3], color='k', label='I')
     plt.plot(res[::, 4], color='y', label='Q') 
-    #plt.plot(res[::, 5], color='c', label='R')
+    plt.plot(res[::, 5], color='c', label='R')
     plt.plot(res[::, 6], color='m', label='D')
-    #plt.plot(res[::, 7], color='gold', label='V') 
+    plt.plot(res[::, 7], color='gold', label='V') 
     plt.legend()
     plt.show()
 

@@ -71,9 +71,8 @@ class SEAIQR:
         # Initialize output matrices
         history = self.initialize_output_matrices(decision_period, n_compartments, n_regions, n_age_groups, S, E, A, I, Q, R, D, V)
         total_new_infected = np.zeros(decision_period+1)
-
         # Run simulation
-        for i in range(0, decision_period - 1):
+        for i in range(0, decision_period-1):
             # Finds the flow between regions for each compartment 
             realOD_S, realOD_E, realOD_A, realOD_I, realOD_Q, realOD_R = self.get_relevant_flow(decision_period, realflow_S, realflow_E, realflow_A, realflow_I, realflow_Q, realflow_R, i)
             age_group_flow_scaling = np.array(self.par.age_group_flow_scaling)
@@ -126,11 +125,15 @@ class SEAIQR:
             D = D + new_D
             V = V + new_V
             
-            # Add number of hospitalized 
+            # Save number of new infected
             total_new_infected[i + 1] = new_I.sum()
             
             # Add the accumulated compartment values to results
             history = self.update_history_results(S, E, A, I, Q, R, D, V, history, i)
+
+            comp_pop = np.sum(S)+ np.sum(E) + np.sum(A) + np.sum(I) + np.sum(Q) + np.sum(R) + np.sum(D)
+            total_pop = np.sum(N)
+            assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 
         # write results to csv
         if write_to_csv:
