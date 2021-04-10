@@ -43,7 +43,7 @@ class State:
         Returns
             A new initialized State instance
         """
-        S, E, A, I, Q, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information, hidden_cases=False, write_to_csv=False, write_weekly=False)
+        S, E, A, I, Q, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=False)
         self.new_infected = new_infected
 
         vaccines_left = self.vaccines_available - np.sum(decision)

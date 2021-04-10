@@ -92,7 +92,7 @@ def plot_heatmaps(C, weights, fpath=""):
     for i in range(len(C)):
         plt.figure(figsize = (10,7))
         sn.heatmap(C[i], annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_groups, yticklabels=age_groups)
-        plt.title(c_descriptions[i])
+        # plt.title(c_descriptions[i])
         if fpath != "":
             plt.savefig(fpath + c_descriptions[i])
 
@@ -177,15 +177,6 @@ def trunc_colormap(cmap, minval=0.0, maxval=1.0, n=100):
     new_cmap = LinearSegmentedColormap.from_list('trunc({n}, {a:.2f}, {b:.2f})'.format(n=cmap.name, a=minval, b=maxval),
                                                 cmap(np.linspace(minval, maxval, n)))
     return new_cmap
-
-def print_hospitalized_information(res):
-    """ Prints hospitalized information
-
-    Parameters
-        res: [3D array, compartment_id]
-    """
-    print("Max number of hospitalised people: ", int(res["baseline"][0][:,4].max()))
-    print("Day with max hospitalised people: ", int(res["baseline"][0][:,4].argmax()/12)) # Divide by
 
 def plot_simulation(baseline, population, hosp, kommuner_geometry, path_plots):
     """ plots pictures of a given time resolution of exposed individuals in the different regions
