@@ -22,7 +22,6 @@ if __name__ == '__main__':
                 population,
                 contact_matrices=config.contact_matrices,
                 age_group_flow_scaling=config.age_group_flow_scaling,
-                contact_matrices_weights=config.contact_matrices_weights,
                 R0=config.R0,
                 efficacy=config.efficacy,
                 proportion_symptomatic_infections=config.proportion_symptomatic_infections,

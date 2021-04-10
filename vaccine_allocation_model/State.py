@@ -43,21 +43,21 @@ class State:
         Returns
             A new initialized State instance
         """
+        # Update compartment values
         S, E, A, I, Q, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=False)
         self.new_infected = new_infected
 
+        # Update vaccine available
         vaccines_left = self.vaccines_available - np.sum(decision)
         new_vaccines = np.sum(information['vaccine_supply'])
-
         vaccines_available = vaccines_left + new_vaccines
+
+        # Update time step
         time_step=self.time_step+decision_period
 
         return State(S, E, A, I, Q, R, D, V, vaccines_available, time_step)
     
 
     def get_compartments_values(self):
-        """ Gets compartment values from a state
-        Returns
-            compartments    
-        """
+        """ Returns compartment values """
         return [self.S, self.E, self.A, self.I, self.Q, self.R, self.D, self.V]

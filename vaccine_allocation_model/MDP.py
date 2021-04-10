@@ -42,18 +42,52 @@ class MarkovDecisionProcess:
             self.update_state()
         return self.path
 
-    def get_exogenous_information(self):
+    def get_exogenous_information(self, state):
         """ Recieves the exogenous information at time_step t
 
         Parameters
             t: time_step
+            state: state that 
         Returns:
-            returns a vector of alphas indicating the mobility flow at time_step t
+            returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights'
         """
-        alphas = [np.ones(self.OD_matrices.shape) for x in range(6)]
-        information = {'alphas': alphas, 'vaccine_supply': self.vaccine_supply}
+        infection_level = self.get_infection_level()
+        alphas = self.get_alphas(infection_level)
+        contact_matrices_weights = self.get_contact_matrices_weights(infection_level)
+        information = {'alphas': alphas, 'vaccine_supply': self.vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
         return information
+
+    def get_contact_matrices_weights(self, infection_level):
+        """ Returns the weight for contact matrices based on compartment values 
+        Returns 
+            weights for contact matrices
+        """
+        contact_matrices_weights = [0.31, 0.24, 0.16, 0.29]
+        return contact_matrices_weights
+
+    def get_alphas(self, infection_level):
+        """ Scales alphas with a given weight for each compartment
+        Returns 
+            alphas scaled with a weight for each compartment
+        """
+        alpha_weights = [1, 1, 1, 0.02, 0, 1] # movement for compartments S,E,A,I,Q,R
+        alphas = [np.full(self.OD_matrices.shape, w) for w in alpha_weights]
+        return alphas
     
+    def get_infection_level(self):
+        """ Decide what infection level every region is currently at
+        Returns
+            integer indicating current infection level each region and age group on a scale from 1-3, 3 being most severe
+        """
+        S, E, A, I, Q, R, D, V = self.state.get_compartments_values()
+        # TO DO: logic to find infection level
+        # calculate I_per_100K per region
+        # I_per_100k = 1e5*I/population
+        # 0-50 - level 1
+        # 50-100 - level 2
+        # >100 - level 3
+        return 1
+
     def update_state(self, decision_period=28):
         """ Updates the state of the decision process.
 
@@ -61,7 +95,7 @@ class MarkovDecisionProcess:
             decision_period: number of periods forward in time that the decision directly affects
         """
         decision = self.policy()
-        information = self.get_exogenous_information()
+        information = self.get_exogenous_information(self.state)
         self.state = self.state.get_transition(decision, information, self.seaiqr.simulate, decision_period)
         self.path.append(self.state)
 

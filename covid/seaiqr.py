@@ -5,7 +5,7 @@ from covid import utils
 from random import uniform, randint
 
 class SEAIQR:
-    def __init__(self, OD, population, contact_matrices, age_group_flow_scaling, contact_matrices_weights, R0=2.4,
+    def __init__(self, OD, population, contact_matrices, age_group_flow_scaling, R0=2.4,
                 efficacy=0.95,  proportion_symptomatic_infections=0.8, latent_period=5.1*4, recovery_period=21*4,
                 pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4):
         """ 
@@ -25,13 +25,12 @@ class SEAIQR:
                     fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
          """
         self.paths = utils.create_named_tuple('filepaths.txt')
-        param = namedtuple('param', 'OD population contact_matrices age_group_flow_scaling contact_matrices_weights R0 efficacy proportion_symptomatic_infections latent_period recovery_period pre_isolation_infection_period post_isolation_recovery_period fatality_rate_symptomatic')
+        param = namedtuple('param', 'OD population contact_matrices age_group_flow_scaling R0 efficacy proportion_symptomatic_infections latent_period recovery_period pre_isolation_infection_period post_isolation_recovery_period fatality_rate_symptomatic')
         self.par = param(
                         OD=OD,
                         population=population,
                         contact_matrices=contact_matrices,
                         age_group_flow_scaling=age_group_flow_scaling,
-                        contact_matrices_weights=contact_matrices_weights,
                         R0=R0,
                         efficacy=efficacy,  
                         proportion_symptomatic_infections=proportion_symptomatic_infections, 
@@ -56,7 +55,7 @@ class SEAIQR:
         Returns:
             res: accumulated SEIR values for all regions as whole (decision_period, )
             total_new_infected.sum(): accumulated infected for the decision_period, float.
-            history: SEIRQDHV for each region for each time step (decision_period,  number_compartments, number_of_regions)
+            history: compartment values for each region, time step, and age group shape: (#decision_period,  #compartments, #regions, #age groups)
         """
         # Meta-parameters
         compartments = state.get_compartments_values()
@@ -66,11 +65,9 @@ class SEAIQR:
         # Scale movement flows with alphas (movement restrictions for each region and compartment)
         realflows = [self.par.OD.copy()*a for a in information['alphas']]  
         
-        # Initialize history matrix
+        # Initialize history matrix and total new infected
         history = np.zeros((decision_period, n_compartments, n_regions, n_age_groups))
-        self.update_history(compartments, history, 0)
-
-        # Initialize infected history matrix
+        history = self.update_history(compartments, history, 0)
         total_new_infected = np.zeros(decision_period+1)
         
         # Run simulation
@@ -101,18 +98,14 @@ class SEAIQR:
             delta = self.par.fatality_rate_symptomatic
             omega = 1/self.par.post_isolation_recovery_period
             epsilon = self.par.efficacy
-
+            C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
+            
             # Calculate values for each arrow in epidemic modelS.
-            C = self.generate_contact_matrix(self.par.contact_matrices_weights)
             new_E = np.transpose(np.transpose(np.matmul(S, C) * (A + I)) * (beta / N)) 
             new_A = (1 - p) * sigma * E
             new_I = p * sigma * E
-        
-            # Add random infected to new I if it is included in modelling (NEED TO BE ADJUSTED FOR AGE GROUP DIMENSIONS)
-            if hidden_cases and (i % (decision_period/7) == 0): 
+            if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new I if hidden_cases=True
                 new_I = self.add_hidden_cases(S, I, new_I)
-            
-            # import pdb; pdb.set_trace() 
             new_Q = alpha * I
             new_R_from_A = gamma * A
             new_R_from_Q = Q * (np.ones(len(delta)) - delta) * omega
@@ -152,8 +145,6 @@ class SEAIQR:
         
         return S, E, A, I, Q, R, D, V, sum(total_new_infected)
     
-    
-
     @staticmethod
     def add_hidden_cases(S, I, new_I):
         """ Adds cases to the infection compartment, to represent hidden cases
@@ -178,19 +169,27 @@ class SEAIQR:
 
     @staticmethod
     def update_history(compartments, history, time_step):
-        """ Updates history results with new compartments values"""
+        """ Updates history results with new compartments values
+        Parameters
+            compartments: list of each compartments for a given time step
+            history: compartment values for each region, time step, and age group shape: (#decision_period,  #compartments, #regions, #age groups)
+            time_step: int indicating current time step in simulation
+        Returns
+            updated history array
+            
+        """
         for c in range(len(compartments)):
             history[time_step+1, c,:] = compartments[c]
         return history
 
     @staticmethod
     def flow_transition(realODs, age_group_flow_scaling):
-        """ Calculates the netflow for a every age group
+        """ Calculates the netflow for every region and age group
 
         Parameters
             realODs: scaled ODs for all compartments that use movement flow
         Returns
-            a list of absolute flows for each region and agegroup for compartments with movement flows shape (#compartments, #regions, #age groups)
+            an array of shape (#compartments, #regions, #age groups) of net flows within each region and age group for compartments with movement
         """
         flows = []
         for od in realODs:
@@ -200,8 +199,7 @@ class SEAIQR:
             flows.append(flow)
         return flows
 
-
-    def generate_contact_matrix(self, weights):
+    def generate_weighted_contact_matrix(self, weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
 
         Parameters
