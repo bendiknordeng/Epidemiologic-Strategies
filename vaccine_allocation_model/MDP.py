@@ -80,6 +80,12 @@ class MarkovDecisionProcess:
             integer indicating current infection level each region and age group on a scale from 1-3, 3 being most severe
         """
         S, E, A, I, Q, R, D, V = self.state.get_compartments_values()
+        pop_100k = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")/1e5
+        I_per_100k = I/pop_100k
+        # np.zeros_like(x)
+        # print(f'Max:{np.max(I_per_100k)}')
+        # print(f'Min:{np.min(I_per_100k)}')
+        # import pdb; pdb.set_trace()
         # TO DO: logic to find infection level
         # calculate I_per_100K per region
         # I_per_100k = 1e5*I/population

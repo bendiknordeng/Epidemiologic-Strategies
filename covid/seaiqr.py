@@ -64,6 +64,9 @@ class SEAIQR:
 
         # Scale movement flows with alphas (movement restrictions for each region and compartment)
         realflows = [self.par.OD.copy()*a for a in information['alphas']]  
+        alphas = information['alphas']
+        print(f'Alphas shape: {np.array(alphas).shape}')
+            
         
         # Initialize history matrix and total new infected
         history = np.zeros((decision_period, n_compartments, n_regions, n_age_groups))
@@ -99,13 +102,14 @@ class SEAIQR:
             omega = 1/self.par.post_isolation_recovery_period
             epsilon = self.par.efficacy
             C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
+            print(f'C shape: {C.shape}')
             
             # Calculate values for each arrow in epidemic modelS.
             new_E = np.transpose(np.transpose(np.matmul(S, C) * (A + I)) * (beta / N)) 
             new_A = (1 - p) * sigma * E
             new_I = p * sigma * E
-            if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new I if hidden_cases=True
-                new_I = self.add_hidden_cases(S, I, new_I)
+            # if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new I if hidden_cases=True
+            #     new_I = self.add_hidden_cases(S, I, new_I)
             new_Q = alpha * I
             new_R_from_A = gamma * A
             new_R_from_Q = Q * (np.ones(len(delta)) - delta) * omega
@@ -132,6 +136,10 @@ class SEAIQR:
             comp_pop = np.sum(S)+ np.sum(E) + np.sum(A) + np.sum(I) + np.sum(Q) + np.sum(R) + np.sum(D)
             total_pop = np.sum(N)
             assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
+
+             # Ensure all positive compartmetns
+            for c in [S, E, A, I, Q, R, D]:
+                assert round(np.min(c)) >= 0, f"Negative compartment values: {np.min(c)}"
 
         # write results to csv
         if write_to_csv:
