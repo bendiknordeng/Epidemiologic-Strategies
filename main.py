@@ -27,12 +27,16 @@ if __name__ == '__main__':
                 recovery_period=config.recovery_period*config.periods_per_day,
                 pre_isolation_infection_period=config.pre_isolation_infection_period*config.periods_per_day, 
                 post_isolation_recovery_period=config.post_isolation_recovery_period*config.periods_per_day, 
-                fatality_rate_symptomatic=config.fatality_rate_symptomatic)
+                fatality_rate_symptomatic=config.fatality_rate_symptomatic,
+                write_to_csv=False, 
+                write_weekly=False,
+                model_flow=False,
+                hidden_cases=False)
 
     # run simulation
     horizon = 60 # number of weeks
     #vaccine_supply = read_pickle(paths.municipalities_v)
-    vaccine_supply = np.ones((28,356))*5
+    vaccine_supply = np.ones((28,356))
     mdp = MarkovDecisionProcess(OD_matrices, 
                                 population, 
                                 epidemic_function, 

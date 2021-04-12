@@ -3,9 +3,9 @@ sys.path.append(os.getcwd() + "/covid") # when main is one level above this file
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-import geopandas as gpd
-import contextily as ctx 
-from pyproj import CRS
+# import geopandas as gpd
+# import contextily as ctx 
+# from pyproj import CRS
 from matplotlib.colors import LinearSegmentedColormap
 from tqdm import tqdm
 import re

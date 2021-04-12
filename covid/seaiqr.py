@@ -1,14 +1,13 @@
-import time
 import numpy as np
 from collections import namedtuple
 from covid import utils
-from random import uniform, randint
 np.random.seed(10)
 
 class SEAIQR:
     def __init__(self, OD, population, contact_matrices, age_group_flow_scaling, R0=2.4,
                 efficacy=0.95,  proportion_symptomatic_infections=0.8, latent_period=5.1*4, recovery_period=21*4,
-                pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4):
+                pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4, 
+                model_flow=True, hidden_cases=True, write_to_csv=False, write_weekly=False):
         """ 
         Parameters
         - self.par: parameters {
@@ -41,8 +40,13 @@ class SEAIQR:
                         post_isolation_recovery_period=post_isolation_recovery_period, 
                         fatality_rate_symptomatic=fatality_rate_symptomatic
                         )
+
+        self.model_flow = model_flow
+        self.hidden_cases = hidden_cases
+        self.write_to_csv = write_to_csv
+        self.write_weekly = write_weekly
     
-    def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):
+    def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
         """  simulates the development of an epidemic as modelled by current parameters
         
         Parameters:
@@ -92,24 +96,25 @@ class SEAIQR:
             S -= new_V
             R += new_V
 
-            """ # Finds the movement flow for the given period i and scales it for each 
-            realODs = [r[i % decision_period] for r in realflows]
-            total_population = np.sum(N)
-            flow_compartments = [S, E, A, I]
-            for ix, compartment in enumerate(flow_compartments):
-                comp_pop = np.sum(compartment)
-                realODs[ix] = realODs[ix] * comp_pop/total_population if comp_pop > 0 else realODs[ix]*0
-                if i % 2 == 1:
-                    flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
-            
-            S, E, A, I = flow_compartments """
+            # Finds the movement flow for the given period i and scales it for each 
+            if self.model_flow:
+                realODs = [r[i % decision_period] for r in realflows]
+                total_population = np.sum(N)
+                flow_compartments = [S, E, A, I]
+                for ix, compartment in enumerate(flow_compartments):
+                    comp_pop = np.sum(compartment)
+                    realODs[ix] = realODs[ix] * comp_pop/total_population if comp_pop > 0 else realODs[ix]*0
+                    if i % 2 == 1:
+                        flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
+                
+                S, E, A, I = flow_compartments
 
             # Calculate values for each arrow in epidemic modelS.
             draws = S.astype(int)
             prob = (np.matmul((A+I), C).T * (beta/N)).T
             new_E = np.random.binomial(draws, prob)
 
-            if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
+            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
                 new_E = self.add_hidden_cases(S, I, new_E)
 
             new_A = (1 - p) * sigma * E
@@ -130,7 +135,7 @@ class SEAIQR:
             V = V + new_V
             
             # Save number of new infected
-            total_new_infected[i + 1] = new_I.sum()
+            total_new_infected[i + 1] = np.sum([new_I, new_A])
             
             # Append simulation results
             history = self.update_history([S, E, A, I, Q, R, D, V], history, i)
@@ -138,7 +143,7 @@ class SEAIQR:
             # Ensure balance in population
             comp_pop = np.sum(S)+ np.sum(E) + np.sum(A) + np.sum(I) + np.sum(Q) + np.sum(R) + np.sum(D)
             total_pop = np.sum(N)
-            assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
+            # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 
             # Ensure all positive compartments
             try:
@@ -148,8 +153,8 @@ class SEAIQR:
                 import pdb; pdb.set_trace()
 
         # write results to csv
-        if write_to_csv:
-            utils.write_history(write_weekly,
+        if self.write_to_csv:
+            utils.write_history(self.write_weekly,
                                 history, 
                                 self.par.population, 
                                 state.time_step, 
@@ -200,15 +205,23 @@ class SEAIQR:
         """ Calculates the netflow for every region and age group
 
         Parameters
-            realODs: scaled ODs for all compartments that use movement flow
+            compartment: array of size (#regions, #age_groups) giving population for relevant compartment
+            OD: scaled ODs for relevant compartment that use movement flow
         Returns
-            an array of shape (#compartments, #regions, #age groups) of net flows within each region and age group for compartments with movement
+            an array of shape (#regions, #age groups) of net flows within each region and age group
         """
         age_flow_scaling = np.array(self.par.age_group_flow_scaling)
         total = compartment.sum(axis=1)
         inflow = np.array([age_flow_scaling * x for x in np.matmul(total, OD)])
         outflow = np.array([age_flow_scaling * x for x in total * OD.sum(axis=1)])
-        new_compartment = (compartment + inflow - outflow)
+        new_compartment = compartment + inflow - outflow
+
+        # fix negative values from rounding errors
+        negatives = np.where(new_compartment < 0)
+        for i in negatives[0]:
+            for j in negatives[1]:
+                new_compartment[i][j] = 0
+
         return new_compartment
 
     def generate_weighted_contact_matrix(self, weights):

@@ -44,7 +44,7 @@ class State:
             A new initialized State instance
         """
         # Update compartment values
-        S, E, A, I, Q, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=False)
+        S, E, A, I, Q, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information)
         self.new_infected = new_infected
 
         # Update vaccine available

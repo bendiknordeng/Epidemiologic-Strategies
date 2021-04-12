@@ -41,8 +41,7 @@ class MarkovDecisionProcess:
         """
         for _ in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
-            # print(np.sum(self.state.R), np.sum(self.population.population))
-            if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
+            if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 break
         return self.path
 
@@ -66,8 +65,8 @@ class MarkovDecisionProcess:
         Returns 
             weights for contact matrices
         """
-        # contact_matrices_weights = [0.31, 0.24, 0.16, 0.29]
-        contact_matrices_weights = [1, 1, 1, 1]
+        contact_matrices_weights = [0.31, 0.24, 0.16, 0.29]
+        # contact_matrices_weights = [1, 1, 1, 1]
         return contact_matrices_weights
 
     def get_alphas(self, infection_level):
