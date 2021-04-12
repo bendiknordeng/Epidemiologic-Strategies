@@ -16,8 +16,6 @@ if __name__ == '__main__':
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
-    #vaccine_supply = read_pickle(paths.municipalities_v)
-    vaccine_supply = np.ones((28,356))
     epidemic_function = SEAIQR(OD_matrices,
                 population,
                 contact_matrices=config.contact_matrices,
@@ -32,15 +30,17 @@ if __name__ == '__main__':
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic)
 
     # run simulation
-    horizon = 58 # number of weeks
+    horizon = 60 # number of weeks
+    #vaccine_supply = read_pickle(paths.municipalities_v)
+    vaccine_supply = np.ones((28,356))*5
     mdp = MarkovDecisionProcess(OD_matrices, 
                                 population, 
                                 epidemic_function, 
                                 vaccine_supply, 
                                 horizon, 
                                 decision_period=28, 
-                                policy="random",
-                                infection_boost=[30, 40, 30, 0, 0])
+                                policy="population_based",
+                                infection_boost=[100, 100, 100, 100, 100])
     path = mdp.run()
 
     history = utils.transform_path_to_numpy(path)

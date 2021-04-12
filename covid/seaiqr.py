@@ -3,6 +3,7 @@ import numpy as np
 from collections import namedtuple
 from covid import utils
 from random import uniform, randint
+np.random.seed(10)
 
 class SEAIQR:
     def __init__(self, OD, population, contact_matrices, age_group_flow_scaling, R0=2.4,
@@ -73,7 +74,7 @@ class SEAIQR:
         
         # Define parameters in the mathematical model
         N = self.par.population.population.to_numpy(dtype='float64')
-        beta = (self.par.R0/self.par.recovery_period)
+        beta = (self.par.R0/self.par.pre_isolation_infection_period)
         sigma = 1/self.par.latent_period
         p = self.par.proportion_symptomatic_infections
         alpha = 1/self.par.pre_isolation_infection_period
@@ -91,27 +92,32 @@ class SEAIQR:
             S -= new_V
             R += new_V
 
-            # Finds the movement flow for the given period i and scales it for each 
+            """ # Finds the movement flow for the given period i and scales it for each 
             realODs = [r[i % decision_period] for r in realflows]
             total_population = np.sum(N)
-            for ix, compartment in enumerate([S, E, A, I, Q, R]):
+            flow_compartments = [S, E, A, I]
+            for ix, compartment in enumerate(flow_compartments):
                 comp_pop = np.sum(compartment)
                 realODs[ix] = realODs[ix] * comp_pop/total_population if comp_pop > 0 else realODs[ix]*0
                 if i % 2 == 1:
-                    # Calculates netflows between regions for every age group
-                    compartment = self.flow_transition(compartment, realODs[ix])
+                    flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
+            
+            S, E, A, I = flow_compartments """
 
             # Calculate values for each arrow in epidemic modelS.
-            new_E = np.transpose(np.transpose(np.matmul(S, C) * (A + I)) * (beta / N)) 
+            draws = S.astype(int)
+            prob = (np.matmul((A+I), C).T * (beta/N)).T
+            new_E = np.random.binomial(draws, prob)
+
             if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
                 new_E = self.add_hidden_cases(S, I, new_E)
+
             new_A = (1 - p) * sigma * E
             new_I = p * sigma * E
             new_Q = alpha * I
             new_R_from_A = gamma * A
             new_R_from_Q = Q * (np.ones(len(delta)) - delta) * omega
             new_D = Q * delta * omega
-            
 
             # Calculate values for each compartment
             S = S - new_E
@@ -168,9 +174,9 @@ class SEAIQR:
         for i in range(len(I)):
             for j in range(len(I[0])):
                 if I[i][j] < 0.5:
-                    new_infections = uniform(0, 0.01) # introduce infection to region with little infections
+                    new_infections = np.random.uniform(0, 0.01) # introduce infection to region with little infections
                 else:
-                    new_infections = randint(0, min(int(I[i][j]*share), 10))
+                    new_infections = np.random.randint(0, min(int(I[i][j]*share), 10)+1)
                 if S[i][j] > new_infections:
                     new_E[i][j] += new_infections
         return new_E

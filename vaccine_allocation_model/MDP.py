@@ -1,7 +1,7 @@
 from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
-import random
+np.random.seed(10)
 
 class MarkovDecisionProcess:
     def __init__(self, OD_matrices, population, seaiqr, vaccine_supply, horizon, decision_period, policy, infection_boost):
@@ -26,6 +26,7 @@ class MarkovDecisionProcess:
         self.decision_period = decision_period
 
         policies = {
+            "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
             "population_based": self._population_based_policy
         }
@@ -40,6 +41,9 @@ class MarkovDecisionProcess:
         """
         for _ in tqdm(range(self.state.time_step, self.horizon)):
             self.update_state()
+            # print(np.sum(self.state.R), np.sum(self.population.population))
+            if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
+                break
         return self.path
 
     def get_exogenous_information(self, state):
@@ -62,7 +66,8 @@ class MarkovDecisionProcess:
         Returns 
             weights for contact matrices
         """
-        contact_matrices_weights = [0.31, 0.24, 0.16, 0.29]
+        # contact_matrices_weights = [0.31, 0.24, 0.16, 0.29]
+        contact_matrices_weights = [1, 1, 1, 1]
         return contact_matrices_weights
 
     def get_alphas(self, infection_level):
@@ -70,8 +75,7 @@ class MarkovDecisionProcess:
         Returns 
             alphas scaled with a weight for each compartment
         """
-        alpha_weights = [1, 1, 1, 0.02, 0, 1] # movement for compartments S,E,A,I,Q,R
-        alphas = [np.full(self.OD_matrices.shape, w) for w in alpha_weights]
+        alphas = [1, 1, 1, 0.05] # movement for compartments S,E,A,I
         return alphas
     
     def get_infection_level(self):
@@ -133,10 +137,9 @@ class MarkovDecisionProcess:
         # Boost infected in Oslo
         I[0] += infection_boost
         S[0] -= infection_boost
-        num_initial_infected -= 100
+        num_initial_infected -= sum(infection_boost)
 
         if initial_infected is None:
-            random.seed(10)
             initial = np.zeros(pop.shape)
             for i in range(num_initial_infected):
                 loc = (np.random.randint(0, n_regions), np.random.randint(0, n_age_groups))
@@ -151,6 +154,16 @@ class MarkovDecisionProcess:
 
         return State(S, E, A, I, Q, R, D, V, vaccines_available, time_step) 
 
+    def _no_vaccines(self):
+        """ Define allocation of vaccines to zero
+
+        Returns
+            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
+        """
+        pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
+        n_regions, n_age_groups = pop.shape
+        return np.zeros(shape=(self.decision_period, n_regions, n_age_groups))
+
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution
 
@@ -160,7 +173,6 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         n_regions, n_age_groups = pop.shape
         vaccine_allocation = np.array([np.zeros(pop.shape) for _ in range(self.decision_period)])
-        np.random.seed(10)
         demand = self.state.S.copy()
         vacc_available = self.state.vaccines_available
         while vacc_available > 0:
