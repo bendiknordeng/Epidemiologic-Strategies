@@ -69,20 +69,12 @@ def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commu
         for k in range(len(to)):
             j = np.where(region_id == to[k])
             morning[i,j] = n[k]
-
-    # for i in range(len(region_id)):
-    #     sum_travel = morning[i,:].sum()
-    #     pop_i = population.iloc[i].population
-    #     morning[i,i] = pop_i - sum_travel
-    
     afternoon = np.copy(morning.T)
     
-    # for i in range(len(region_id)):
-    #     morning[i,:] = morning[i,:]/morning[i,:].sum()
-    #     afternoon[i,:] = afternoon[i,:]/afternoon[i,:].sum() 
+    morning = np.transpose(morning.T / population.population.to_numpy())
+    afternoon = np.transpose(afternoon.T / population.population.to_numpy())
 
     midday = np.zeros((len(region_id), len(region_id)))
-    #np.fill_diagonal(midday, np.ones(len(region_id)))  # ([morning[:,i].sum() for i in range(len(region_id))])) 
     night = np.copy(midday)
     # fill od matrices with correct matrix
     for i in range(num_time_steps):

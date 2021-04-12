@@ -165,7 +165,7 @@ class MarkovDecisionProcess:
         vacc_available = self.state.vaccines_available
         while vacc_available > 0:
             period, region, age_group = np.random.randint(self.decision_period), np.random.randint(n_regions), np.random.randint(n_age_groups)
-            if demand[region][age_group] > 0:
+            if demand[region][age_group] > 100: 
                 vacc_available -= 1
                 vaccine_allocation[period][region][age_group] += 1
                 demand[region][age_group] -= 1

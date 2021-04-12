@@ -63,66 +63,63 @@ class SEAIQR:
         n_regions, n_age_groups = compartments[0].shape
 
         # Scale movement flows with alphas (movement restrictions for each region and compartment)
-        realflows = [self.par.OD.copy()*a for a in information['alphas']]  
         alphas = information['alphas']
-        print(f'Alphas shape: {np.array(alphas).shape}')
-            
-        
+        realflows = [self.par.OD.copy()*a for a in alphas]
+
         # Initialize history matrix and total new infected
         history = np.zeros((decision_period, n_compartments, n_regions, n_age_groups))
         history = self.update_history(compartments, history, 0)
         total_new_infected = np.zeros(decision_period+1)
         
+        # Define parameters in the mathematical model
+        N = self.par.population.population.to_numpy(dtype='float64')
+        beta = (self.par.R0/self.par.recovery_period)
+        sigma = 1/self.par.latent_period
+        p = self.par.proportion_symptomatic_infections
+        alpha = 1/self.par.pre_isolation_infection_period
+        gamma = 1/self.par.recovery_period
+        delta = self.par.fatality_rate_symptomatic
+        omega = 1/self.par.post_isolation_recovery_period
+        epsilon = self.par.efficacy
+        C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
+
         # Run simulation
         S, E, A, I, Q, R, D, V = compartments
         for i in range(0, decision_period-1):
+            # Vaccinate before flow
+            new_V = epsilon * decision[i % decision_period] # M
+            S -= new_V
+            R += new_V
+
             # Finds the movement flow for the given period i and scales it for each 
             realODs = [r[i % decision_period] for r in realflows]
+            total_population = np.sum(N)
+            for ix, compartment in enumerate([S, E, A, I, Q, R]):
+                comp_pop = np.sum(compartment)
+                realODs[ix] = realODs[ix] * comp_pop/total_population if comp_pop > 0 else realODs[ix]*0
+                if i % 2 == 1:
+                    # Calculates netflows between regions for every age group
+                    compartment = self.flow_transition(compartment, realODs[ix])
 
-            # Calculates netflows between regions for every age group
-            flow_S, flow_E, flow_A, flow_I, flow_Q, flow_R = self.flow_transition(realODs, np.array(self.par.age_group_flow_scaling))
-            
-            # Update compartmet values with net movement flows for each region and age group
-            S += flow_S
-            E += flow_E
-            A += flow_A
-            I += flow_I
-            Q += flow_Q
-            R += flow_R
-
-            # Define parameters in the mathematical model
-            M = decision[i % decision_period]
-            N = self.par.population.population.to_numpy(dtype='float64')
-            beta = (self.par.R0/self.par.recovery_period)
-            sigma = 1/self.par.latent_period
-            p = self.par.proportion_symptomatic_infections
-            alpha = 1/self.par.pre_isolation_infection_period
-            gamma = 1/self.par.recovery_period
-            delta = self.par.fatality_rate_symptomatic
-            omega = 1/self.par.post_isolation_recovery_period
-            epsilon = self.par.efficacy
-            C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
-            print(f'C shape: {C.shape}')
-            
             # Calculate values for each arrow in epidemic modelS.
             new_E = np.transpose(np.transpose(np.matmul(S, C) * (A + I)) * (beta / N)) 
+            if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
+                new_E = self.add_hidden_cases(S, I, new_E)
             new_A = (1 - p) * sigma * E
             new_I = p * sigma * E
-            # if hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new I if hidden_cases=True
-            #     new_I = self.add_hidden_cases(S, I, new_I)
             new_Q = alpha * I
             new_R_from_A = gamma * A
             new_R_from_Q = Q * (np.ones(len(delta)) - delta) * omega
             new_D = Q * delta * omega
-            new_V = epsilon * M
+            
 
             # Calculate values for each compartment
-            S = S - new_V - new_E
+            S = S - new_E
             E = E + new_E - new_I - new_A
             A = A + new_A - new_R_from_A
             I = I + new_I - new_Q
             Q = Q + new_Q - new_R_from_Q - new_D
-            R = R + new_R_from_Q + new_R_from_A + new_V
+            R = R + new_R_from_Q + new_R_from_A
             D = D + new_D
             V = V + new_V
             
@@ -137,9 +134,12 @@ class SEAIQR:
             total_pop = np.sum(N)
             assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 
-             # Ensure all positive compartmetns
-            for c in [S, E, A, I, Q, R, D]:
-                assert round(np.min(c)) >= 0, f"Negative compartment values: {np.min(c)}"
+            # Ensure all positive compartments
+            try:
+                for c in [S, E, A, I, Q, R, D]:
+                    assert round(np.min(c)) >= 0, f"Negative compartment values: {np.min(c)}"
+            except AssertionError:
+                import pdb; pdb.set_trace()
 
         # write results to csv
         if write_to_csv:
@@ -154,7 +154,7 @@ class SEAIQR:
         return S, E, A, I, Q, R, D, V, sum(total_new_infected)
     
     @staticmethod
-    def add_hidden_cases(S, I, new_I):
+    def add_hidden_cases(S, I, new_E):
         """ Adds cases to the infection compartment, to represent hidden cases
 
         Parameters
@@ -172,8 +172,8 @@ class SEAIQR:
                 else:
                     new_infections = randint(0, min(int(I[i][j]*share), 10))
                 if S[i][j] > new_infections:
-                    new_I[i][j] += new_infections
-        return new_I
+                    new_E[i][j] += new_infections
+        return new_E
 
     @staticmethod
     def update_history(compartments, history, time_step):
@@ -190,8 +190,7 @@ class SEAIQR:
             history[time_step+1, c,:] = compartments[c]
         return history
 
-    @staticmethod
-    def flow_transition(realODs, age_group_flow_scaling):
+    def flow_transition(self, compartment, OD):
         """ Calculates the netflow for every region and age group
 
         Parameters
@@ -199,13 +198,12 @@ class SEAIQR:
         Returns
             an array of shape (#compartments, #regions, #age groups) of net flows within each region and age group for compartments with movement
         """
-        flows = []
-        for od in realODs:
-            inflow = od.sum(axis=0)
-            outflow = od.sum(axis=1)
-            flow = np.array([age_group_flow_scaling * x for x in (inflow-outflow)])
-            flows.append(flow)
-        return flows
+        age_flow_scaling = np.array(self.par.age_group_flow_scaling)
+        total = compartment.sum(axis=1)
+        inflow = np.array([age_flow_scaling * x for x in np.matmul(total, OD)])
+        outflow = np.array([age_flow_scaling * x for x in total * OD.sum(axis=1)])
+        new_compartment = (compartment + inflow - outflow)
+        return new_compartment
 
     def generate_weighted_contact_matrix(self, weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
