@@ -33,8 +33,8 @@ if __name__ == '__main__':
                 model_flow=False,
                 hidden_cases=False)
 
-    # run simulation
-    horizon = 60 # number of weeks
+
+    horizon = 100 # number of weeks
     #vaccine_supply = read_pickle(paths.municipalities_v)
     vaccine_supply = np.ones((28,356))
     mdp = MarkovDecisionProcess(OD_matrices, 

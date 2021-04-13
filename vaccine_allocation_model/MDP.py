@@ -43,6 +43,8 @@ class MarkovDecisionProcess:
             self.update_state()
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 break
+            if np.sum([self.state.I, self.state.A]) == 0: # stop if infections are zero
+                break
         return self.path
 
     def get_exogenous_information(self, state):
@@ -194,24 +196,3 @@ class MarkovDecisionProcess:
             total_allocation = self.state.vaccines_available * self.state.S/np.sum(self.state.S)
             vaccine_allocation.append(total_allocation/self.decision_period)
         return vaccine_allocation
-
-
-class Decision:
-    def __init__(self):
-        self.region_allocation = {}
-
-    def allocate_to_region(self, region, age_allocation):
-        self.region_allocation[region] = age_allocation
-
-    @staticmethod
-    def get_age_allocation(self, allocation):
-        return {
-            '0-5':   allocation[0],
-            '6-15':  allocation[1],
-            '16-19': allocation[2],
-            '20-66': allocation[3],
-            '67+':   allocation[4]
-        }
-
-    def __str__(self):
-        return f""
