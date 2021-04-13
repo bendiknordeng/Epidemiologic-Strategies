@@ -69,7 +69,8 @@ def age_group_infected_plot_weekly(res, labels):
         try:
             plt.plot(res[:, 3, i], color=colors[i], label=label) 
         except:
-            plt.plot(res[:, 3, i], label=label) 
+            plt.plot(res[:, 3, i], label=label)
+    plt.plot(res.sum(axis=2)[:,3], color='r', linestyle='dashed', label="All")
     plt.legend()
     plt.show()
 

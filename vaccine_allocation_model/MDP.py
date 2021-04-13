@@ -21,7 +21,7 @@ class MarkovDecisionProcess:
         self.population = population
         self.vaccine_supply = vaccine_supply
         self.seaiqr = seaiqr
-        self.state = self._initialize_state(None, 1000, 1000, infection_boost=infection_boost)
+        self.state = self._initialize_state(num_initial_infected=1000, vaccines_available=1000, infection_boost=infection_boost)
         self.path = [self.state]
         self.decision_period = decision_period
 
@@ -67,8 +67,7 @@ class MarkovDecisionProcess:
         Returns 
             weights for contact matrices
         """
-        contact_matrices_weights = [0.31, 0.24, 0.16, 0.29]
-        # contact_matrices_weights = [1, 1, 1, 1]
+        contact_matrices_weights = np.array([0.31, 0.24, 0.16, 0.29])
         return contact_matrices_weights
 
     def get_alphas(self, infection_level):
@@ -76,7 +75,7 @@ class MarkovDecisionProcess:
         Returns 
             alphas scaled with a weight for each compartment
         """
-        alphas = [1, 1, 1, 0.05] # movement for compartments S,E,A,I
+        alphas = [1, 1, 1, 0.1] # movement for compartments S,E,A,I
         return alphas
     
     def get_infection_level(self):
@@ -110,7 +109,7 @@ class MarkovDecisionProcess:
         self.state = self.state.get_transition(decision, information, self.seaiqr.simulate, decision_period)
         self.path.append(self.state)
 
-    def _initialize_state(self, initial_infected, num_initial_infected, vaccines_available, infection_boost, time_step=0):
+    def _initialize_state(self, num_initial_infected, vaccines_available, infection_boost, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -124,8 +123,6 @@ class MarkovDecisionProcess:
         """
         # pop = self.population.population.to_numpy(dtype='float64')
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        n_regions = pop.shape[0]
-        n_age_groups = pop.shape[1]
         S = pop.copy()
         E = np.zeros(pop.shape)
         A = np.zeros(pop.shape)
@@ -136,20 +133,12 @@ class MarkovDecisionProcess:
         V = np.zeros(pop.shape)
 
         # Boost infected in Oslo
-        I[0] += infection_boost
-        S[0] -= infection_boost
-        num_initial_infected -= sum(infection_boost)
+        if infection_boost:
+            I[0] += infection_boost
+            S[0] -= infection_boost
+            num_initial_infected -= sum(infection_boost)
 
-        if initial_infected is None:
-            initial = np.zeros(pop.shape)
-            for i in range(num_initial_infected):
-                loc = (np.random.randint(0, n_regions), np.random.randint(0, n_age_groups))
-                if (S[loc[0]][loc[1]] > initial[loc[0]][loc[1]]):
-                    initial[loc[0]][loc[1]] += 1.0
-        else:
-            initial = initial_infected
-        assert ((S < initial).sum() == 0)
-
+        initial = S * num_initial_infected/np.sum(pop)
         S -= initial
         I += initial
 

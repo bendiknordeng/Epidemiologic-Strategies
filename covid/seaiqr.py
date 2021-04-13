@@ -1,52 +1,52 @@
 import numpy as np
-from collections import namedtuple
 from covid import utils
 np.random.seed(10)
 
 class SEAIQR:
-    def __init__(self, OD, population, contact_matrices, age_group_flow_scaling, R0=2.4,
-                efficacy=0.95,  proportion_symptomatic_infections=0.8, latent_period=5.1*4, recovery_period=21*4,
-                pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4, 
-                model_flow=True, hidden_cases=True, write_to_csv=False, write_weekly=False):
+    def __init__(self, OD, population, time_delta, contact_matrices, age_group_flow_scaling, R0,
+                efficacy, proportion_symptomatic_infections, latent_period,
+                pre_isolation_infection_period, post_isolation_recovery_period, fatality_rate_symptomatic, 
+                include_flow=True, hidden_cases=True, write_to_csv=False, write_weekly=False):
         """ 
-        Parameters
-        - self.par: parameters {
-                    OD: Origin-Destination matrix
-                    population: pd.DataFrame with columns region_id, region_name, population (quantity)
-                    contact_matrices: list of lists with measurement of the intensitity of social contacts among seven age-groups at households, schools, workplaces, and public/community
-                    age_group_flow_scaling: list of scaling factors for flow of each age group
-                    R0: Basic reproduction number (e.g 2.4)
-                    efficacy: vaccine efficacy (e.g 0.95)
-                    proportion_symptomatic_infections: Proportion of symptomatic infections(e.g 0.8)
-                    latent_period: Time before vaccine is effective (e.g 5.1*4)
-                    recovery_period: Time to recover from receiving the virus to not being  (e.g 21'4)
-                    pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6*4)
-                    post_isolation_recovery_period: Post-isolation recovery period (e.g 16.4*4)
-                    fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
+        Parameters:
+            OD: Origin-Destination matrix
+            population: pd.DataFrame with columns region_id, region_name, population (quantity)
+            contact_matrices: list of lists with measurement of the intensitity of social contacts among seven age-groups at households, schools, workplaces, and public/community
+            age_group_flow_scaling: list of scaling factors for flow of each age group
+            R0: Basic reproduction number (e.g 2.4)
+            efficacy: vaccine efficacy (e.g 0.95)
+            proportion_symptomatic_infections: Proportion of symptomatic infections(e.g 0.8)
+            latent_period: Time before vaccine is effective (e.g 5.1*4)
+            recovery_period: Time to recover from receiving the virus to not being  (e.g 21'4)
+            pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6*4)
+            post_isolation_recovery_period: Post-isolation recovery period (e.g 16.4*4)
+            fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
+            include_flow: boolean, true if we want to model population flow between regions
+            hidden_cases: boolean, true if we want to model hidden cases of infection
+            write_to_csv: boolean, true if we want to write results to csv
+            write_weekly: boolean, false if we want to write daily results, true if weekly
          """
-        self.paths = utils.create_named_tuple('filepaths.txt')
-        param = namedtuple('param', 'OD population contact_matrices age_group_flow_scaling R0 efficacy proportion_symptomatic_infections latent_period recovery_period pre_isolation_infection_period post_isolation_recovery_period fatality_rate_symptomatic')
-        self.par = param(
-                        OD=OD,
-                        population=population,
-                        contact_matrices=contact_matrices,
-                        age_group_flow_scaling=age_group_flow_scaling,
-                        R0=R0,
-                        efficacy=efficacy,  
-                        proportion_symptomatic_infections=proportion_symptomatic_infections, 
-                        latent_period=latent_period, 
-                        recovery_period=recovery_period,
-                        pre_isolation_infection_period=pre_isolation_infection_period, 
-                        post_isolation_recovery_period=post_isolation_recovery_period, 
-                        fatality_rate_symptomatic=fatality_rate_symptomatic
-                        )
+        
+        periods_per_day = 24/time_delta
+        self.OD=OD
+        self.population=population
+        self.contact_matrices=contact_matrices
+        self.age_group_flow_scaling=age_group_flow_scaling
+        self.R0=R0*periods_per_day
+        self.efficacy=efficacy
+        self.proportion_symptomatic_infections=proportion_symptomatic_infections
+        self.latent_period=latent_period*periods_per_day
+        self.pre_isolation_infection_period=pre_isolation_infection_period*periods_per_day
+        self.post_isolation_recovery_period=post_isolation_recovery_period*periods_per_day
+        self.recovery_period = self.pre_isolation_infection_period + self.post_isolation_recovery_period
+        self.fatality_rate_symptomatic=fatality_rate_symptomatic
 
-        self.model_flow = model_flow
+        self.include_flow = include_flow
         self.hidden_cases = hidden_cases
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
     
-    def simulate(self, state, decision, decision_period, information, write_to_csv=False, write_weekly=True):
+    def simulate(self, state, decision, decision_period, information):
         """  simulates the development of an epidemic as modelled by current parameters
         
         Parameters:
@@ -69,7 +69,7 @@ class SEAIQR:
 
         # Scale movement flows with alphas (movement restrictions for each region and compartment)
         alphas = information['alphas']
-        realflows = [self.par.OD.copy()*a for a in alphas]
+        realflows = [self.OD.copy()*a for a in alphas]
 
         # Initialize history matrix and total new infected
         history = np.zeros((decision_period, n_compartments, n_regions, n_age_groups))
@@ -77,15 +77,15 @@ class SEAIQR:
         total_new_infected = np.zeros(decision_period+1)
         
         # Define parameters in the mathematical model
-        N = self.par.population.population.to_numpy(dtype='float64')
-        beta = (self.par.R0/self.par.pre_isolation_infection_period)
-        sigma = 1/self.par.latent_period
-        p = self.par.proportion_symptomatic_infections
-        alpha = 1/self.par.pre_isolation_infection_period
-        gamma = 1/self.par.recovery_period
-        delta = self.par.fatality_rate_symptomatic
-        omega = 1/self.par.post_isolation_recovery_period
-        epsilon = self.par.efficacy
+        N = self.population.population.to_numpy(dtype='float64')
+        beta = (self.R0/self.pre_isolation_infection_period)
+        sigma = 1/self.latent_period
+        p = self.proportion_symptomatic_infections
+        alpha = 1/self.pre_isolation_infection_period
+        gamma = 1/self.recovery_period
+        delta = self.fatality_rate_symptomatic
+        omega = 1/self.post_isolation_recovery_period
+        epsilon = self.efficacy
         C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
 
         # Run simulation
@@ -109,6 +109,10 @@ class SEAIQR:
                 
                 S, E, A, I = flow_compartments
 
+            # Ensure all positive compartments
+            for index, c in enumerate([S, E, A, I]):
+                assert round(np.min(c)) >= 0, f"Negative value in compartment {index} after flow transition: {np.min(c)}"
+
             # Calculate values for each arrow in epidemic modelS.
             draws = S.astype(int)
             prob = (np.matmul((A+I), C).T * (beta/N)).T
@@ -116,6 +120,10 @@ class SEAIQR:
 
             if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
                 new_E = self.add_hidden_cases(S, I, new_E)
+
+            # Ensure all positive compartments
+            for index, c in enumerate([S, E, A, I]):
+                assert round(np.min(c)) >= 0, f"Negative value in compartment {index} after added hidden cases: {np.min(c)}"
 
             new_A = (1 - p) * sigma * E
             new_I = p * sigma * E
@@ -145,18 +153,11 @@ class SEAIQR:
             total_pop = np.sum(N)
             # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 
-            # Ensure all positive compartments
-            try:
-                for c in [S, E, A, I, Q, R, D]:
-                    assert round(np.min(c)) >= 0, f"Negative compartment values: {np.min(c)}"
-            except AssertionError:
-                import pdb; pdb.set_trace()
-
         # write results to csv
         if self.write_to_csv:
             utils.write_history(self.write_weekly,
                                 history, 
-                                self.par.population, 
+                                self.population, 
                                 state.time_step, 
                                 self.paths.results_weekly, 
                                 self.paths.results_history,
@@ -184,6 +185,7 @@ class SEAIQR:
                     new_infections = np.random.randint(0, min(int(I[i][j]*share), 10)+1)
                 if S[i][j] > new_infections:
                     new_E[i][j] += new_infections
+
         return new_E
 
     @staticmethod
@@ -210,11 +212,12 @@ class SEAIQR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
-        age_flow_scaling = np.array(self.par.age_group_flow_scaling)
+        age_flow_scaling = np.array(self.age_group_flow_scaling)
         total = compartment.sum(axis=1)
-        inflow = np.array([age_flow_scaling * x for x in np.matmul(total, OD)])
-        outflow = np.array([age_flow_scaling * x for x in total * OD.sum(axis=1)])
-        new_compartment = compartment + inflow - outflow
+        inflow = np.matmul(total, OD)
+        outflow = total * OD.sum(axis=1)
+        net_flow = [age_flow_scaling * x for x in (inflow-outflow)]
+        new_compartment = compartment + net_flow
 
         # fix negative values from rounding errors
         negatives = np.where(new_compartment < 0)
@@ -232,5 +235,5 @@ class SEAIQR:
         Returns
             weighted contact matrix used in modelling
         """
-        C = self.par.contact_matrices
+        C = self.contact_matrices
         return np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)

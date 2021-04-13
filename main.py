@@ -16,35 +16,37 @@ if __name__ == '__main__':
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
-    epidemic_function = SEAIQR(OD_matrices,
-                population,
+    epidemic_function = SEAIQR(
+                OD=OD_matrices,
+                population=population,
+                time_delta=config.time_delta,
                 contact_matrices=config.contact_matrices,
                 age_group_flow_scaling=config.age_group_flow_scaling,
                 R0=config.R0,
                 efficacy=config.efficacy,
                 proportion_symptomatic_infections=config.proportion_symptomatic_infections,
-                latent_period=config.latent_period*config.periods_per_day, 
-                recovery_period=config.recovery_period*config.periods_per_day,
-                pre_isolation_infection_period=config.pre_isolation_infection_period*config.periods_per_day, 
-                post_isolation_recovery_period=config.post_isolation_recovery_period*config.periods_per_day, 
+                latent_period=config.latent_period, 
+                pre_isolation_infection_period=config.pre_isolation_infection_period, 
+                post_isolation_recovery_period=config.post_isolation_recovery_period, 
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic,
                 write_to_csv=False, 
                 write_weekly=False,
-                model_flow=False,
-                hidden_cases=False)
+                include_flow=False,
+                hidden_cases=True)
 
 
-    horizon = 100 # number of weeks
+    horizon = 50 # number of weeks
     #vaccine_supply = read_pickle(paths.municipalities_v)
     vaccine_supply = np.ones((28,356))
+    policies = ['no_vaccines', 'random', 'population_based']
     mdp = MarkovDecisionProcess(OD_matrices, 
                                 population, 
                                 epidemic_function, 
                                 vaccine_supply, 
                                 horizon, 
                                 decision_period=28, 
-                                policy="population_based",
-                                infection_boost=[100, 100, 100, 100, 100])
+                                policy=policies[2],
+                                infection_boost=None)
     path = mdp.run()
 
     history = utils.transform_path_to_numpy(path)
