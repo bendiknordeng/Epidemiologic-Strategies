@@ -8,7 +8,7 @@ np.random.seed(10)
 class SEAIQR:
     def __init__(self, OD, population, contact_matrices, age_group_flow_scaling, R0=2.4,
                 efficacy=0.95,  proportion_symptomatic_infections=0.8, latent_period=5.1*4, recovery_period=21*4,
-                pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4):
+                pre_isolation_infection_period=4.6*4, post_isolation_recovery_period=16.4*4, fatality_rate_symptomatic=0.01*4, start_date=start_date):
         """ 
         Parameters
         - self.par: parameters {
@@ -26,7 +26,7 @@ class SEAIQR:
                     fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
          """
         self.paths = utils.create_named_tuple('filepaths.txt')
-        param = namedtuple('param', 'OD population contact_matrices age_group_flow_scaling R0 efficacy proportion_symptomatic_infections latent_period recovery_period pre_isolation_infection_period post_isolation_recovery_period fatality_rate_symptomatic')
+        param = namedtuple('param', 'OD population contact_matrices age_group_flow_scaling R0 efficacy proportion_symptomatic_infections latent_period recovery_period pre_isolation_infection_period post_isolation_recovery_period fatality_rate_symptomatic start_date')
         self.par = param(
                         OD=OD,
                         population=population,
@@ -39,7 +39,8 @@ class SEAIQR:
                         recovery_period=recovery_period,
                         pre_isolation_infection_period=pre_isolation_infection_period, 
                         post_isolation_recovery_period=post_isolation_recovery_period, 
-                        fatality_rate_symptomatic=fatality_rate_symptomatic
+                        fatality_rate_symptomatic=fatality_rate_symptomatic,
+                        start_date=start_date
                         )
     
     def simulate(self, state, decision, decision_period, information, hidden_cases=True, write_to_csv=False, write_weekly=True):

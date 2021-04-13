@@ -4,6 +4,21 @@ import pickle as pkl
 import ast
 from collections import namedtuple
 import os
+from datetime import datetime, timedelta
+
+
+def get_date(start_date, time_delta):
+    """ gets current date for a simulation time step
+
+    Parameters
+        start_date: str indicating start date of simulation on shape 'YYYYMMDD' 
+        time_delta: int indicating number of days from simulation start
+    Returns
+        datdatetime.date object with a given date
+    """
+    dt = datetime.strptime(start_date, '%Y%m%d').date()
+    dt += timedelta(days=time_delta)
+    return dt
 
 
 def create_named_tuple(filepath):

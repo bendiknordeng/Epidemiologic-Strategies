@@ -27,7 +27,8 @@ if __name__ == '__main__':
                 recovery_period=config.recovery_period*config.periods_per_day,
                 pre_isolation_infection_period=config.pre_isolation_infection_period*config.periods_per_day, 
                 post_isolation_recovery_period=config.post_isolation_recovery_period*config.periods_per_day, 
-                fatality_rate_symptomatic=config.fatality_rate_symptomatic)
+                fatality_rate_symptomatic=config.fatality_rate_symptomatic,
+                start_date=config.start_date)
 
     # run simulation
     horizon = 60 # number of weeks
