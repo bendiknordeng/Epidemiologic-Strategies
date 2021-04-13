@@ -4,6 +4,7 @@ import pickle as pkl
 import ast
 from collections import namedtuple
 import os
+from datetime import datetime, timedelta
 
 
 def create_named_tuple(filepath):
@@ -248,3 +249,14 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
         else:
             history_df.to_csv(results_history, index=False)
     
+def get_date(start_date, time_delta):
+    """ gets current date for a simulation time step
+    Parameters
+        start_date: str indicating start date of simulation in the format 'YYYYMMDD' 
+        time_delta: int indicating number of days from simulation start
+    Returns
+        datdatetime.date object with a given date
+    """
+    dt = datetime.strptime(start_date, '%Y%m%d').date()
+    dt += timedelta(days=time_delta)
+    return dt
