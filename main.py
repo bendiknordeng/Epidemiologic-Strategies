@@ -3,7 +3,7 @@ from covid import utils
 import numpy as np
 import pandas as pd
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.seaiqr import SEAIQR
+from covid.seair import SEAIR
 
 if __name__ == '__main__':
     # read filepaths 
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     
-    epidemic_function = SEAIQR(
+    epidemic_function = SEAIR(
                 OD=OD_matrices,
                 population=population,
                 time_delta=config.time_delta,
@@ -24,14 +24,16 @@ if __name__ == '__main__':
                 age_group_flow_scaling=config.age_group_flow_scaling,
                 R0=config.R0,
                 efficacy=config.efficacy,
-                proportion_symptomatic_infections=config.proportion_symptomatic_infections,
                 latent_period=config.latent_period, 
-                pre_isolation_infection_period=config.pre_isolation_infection_period, 
-                post_isolation_recovery_period=config.post_isolation_recovery_period, 
+                proportion_symptomatic_infections=config.proportion_symptomatic_infections,
+                presymptomatic_infectiousness=config.presymptomatic_infectiousness,
+                asymptomatic_infectiousness=config.asymptomatic_infectiousness,
+                presymptomatic_period=config.presymptomatic_period,
+                postsymptomatic_period=config.postsymptomatic_period,
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic,
                 write_to_csv=False, 
                 write_weekly=False,
-                include_flow=False,
+                include_flow=True,
                 hidden_cases=True)
 
 
@@ -48,7 +50,6 @@ if __name__ == '__main__':
                                 policy=policies[2],
                                 infection_boost=None)
     path = mdp.run()
-
     history = utils.transform_path_to_numpy(path)
     results = history.sum(axis=2)
     plot.age_group_infected_plot_weekly(results, age_labels)

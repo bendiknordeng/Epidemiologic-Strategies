@@ -26,7 +26,7 @@ def seir_plot_one_cell(history, cellid):
     """
     num_periods_per_day = 4
     colours = ['r', 'g', 'b', 'k', 'y', 'c', 'm', 'gold']
-    labels= ['S', 'E', 'A', 'I', 'Q', 'R', 'D', 'V']
+    labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
     for i in range(len(labels)):
         plt.plot(history[::num_periods_per_day, i, cellid], color=colours[i], label=labels[i])  
     plt.legend()
@@ -40,7 +40,7 @@ def seir_plot(res):
     """
     num_periods_per_day = 4
     colours = ['r', 'g', 'b', 'k', 'y', 'c', 'm', 'gold']
-    labels= ['S', 'E', 'A', 'I', 'Q', 'R', 'D', 'V']
+    labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
     for i in range(len(labels)):
         plt.plot(res[::num_periods_per_day, i], color=colours[i], label=labels[i])  
     plt.legend()
@@ -53,10 +53,10 @@ def seir_plot_weekly(res):
         res: 3D array with shape (decision_period*horizon, #compartments)
     """
     plt.plot(res[::, 0], color='r', label='S') 
-    plt.plot(res[::, 1], color='g', label='E')
-    plt.plot(res[::, 2], color='b', label='A') 
-    plt.plot(res[::, 3], color='k', label='I')
-    plt.plot(res[::, 4], color='y', label='Q') 
+    plt.plot(res[::, 1], color='g', label='E1')
+    plt.plot(res[::, 2], color='g', label='E2')
+    plt.plot(res[::, 3], color='b', label='A') 
+    plt.plot(res[::, 4], color='k', label='I')
     plt.plot(res[::, 5], color='c', label='R')
     plt.plot(res[::, 6], color='m', label='D')
     plt.plot(res[::, 7], color='gold', label='V') 
@@ -73,7 +73,6 @@ def age_group_infected_plot_weekly(res, labels):
     plt.plot(res.sum(axis=2)[:,3], color='r', linestyle='dashed', label="All")
     plt.legend()
     plt.show()
-
 
 def plot_heatmaps(C, weights, fpath=""):
     """ Plotes heatmaps for contact matrices

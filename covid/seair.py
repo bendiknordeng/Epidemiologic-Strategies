@@ -2,11 +2,11 @@ import numpy as np
 from covid import utils
 np.random.seed(10)
 
-class SEAIQR:
+class SEAIR:
     def __init__(self, OD, population, time_delta, contact_matrices, age_group_flow_scaling, R0,
-                efficacy, proportion_symptomatic_infections, latent_period,
-                pre_isolation_infection_period, post_isolation_recovery_period, fatality_rate_symptomatic, 
-                include_flow=True, hidden_cases=True, write_to_csv=False, write_weekly=False):
+                efficacy, latent_period, proportion_symptomatic_infections, presymptomatic_infectiousness, 
+                asymptomatic_infectiousness, presymptomatic_period, postsymptomatic_period, 
+                fatality_rate_symptomatic, include_flow=True, hidden_cases=True, write_to_csv=False, write_weekly=False):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -34,11 +34,13 @@ class SEAIQR:
         self.age_group_flow_scaling=age_group_flow_scaling
         self.R0=R0*periods_per_day
         self.efficacy=efficacy
-        self.proportion_symptomatic_infections=proportion_symptomatic_infections
         self.latent_period=latent_period*periods_per_day
-        self.pre_isolation_infection_period=pre_isolation_infection_period*periods_per_day
-        self.post_isolation_recovery_period=post_isolation_recovery_period*periods_per_day
-        self.recovery_period = self.pre_isolation_infection_period + self.post_isolation_recovery_period
+        self.proportion_symptomatic_infections=proportion_symptomatic_infections
+        self.presymptomatic_infectiousness=presymptomatic_infectiousness
+        self.asymptomatic_infectiousness=asymptomatic_infectiousness
+        self.presymptomatic_period=presymptomatic_period*periods_per_day
+        self.postsymptomatic_period=postsymptomatic_period*periods_per_day
+        self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
         self.fatality_rate_symptomatic=fatality_rate_symptomatic
 
         self.include_flow = include_flow
@@ -78,80 +80,84 @@ class SEAIQR:
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
-        beta = (self.R0/self.pre_isolation_infection_period)
+        beta = (self.R0/self.recovery_period)
         sigma = 1/self.latent_period
         p = self.proportion_symptomatic_infections
-        alpha = 1/self.pre_isolation_infection_period
+        r_e = self.presymptomatic_infectiousness
+        r_a = self.asymptomatic_infectiousness
+        alpha = 1/self.presymptomatic_period
+        omega = 1/self.postsymptomatic_period
         gamma = 1/self.recovery_period
         delta = self.fatality_rate_symptomatic
-        omega = 1/self.post_isolation_recovery_period
         epsilon = self.efficacy
         C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
 
         # Run simulation
-        S, E, A, I, Q, R, D, V = compartments
+        S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
             # Vaccinate before flow
             new_V = epsilon * decision[i % decision_period] # M
-            S -= new_V
-            R += new_V
+            S = S - new_V
+            R = R + new_V
+            V = V + new_V
 
             # Finds the movement flow for the given period i and scales it for each 
-            if self.model_flow:
+            if self.include_flow:
                 realODs = [r[i % decision_period] for r in realflows]
                 total_population = np.sum(N)
-                flow_compartments = [S, E, A, I]
+                flow_compartments = [S, E1, E2, A, I]
                 for ix, compartment in enumerate(flow_compartments):
                     comp_pop = np.sum(compartment)
                     realODs[ix] = realODs[ix] * comp_pop/total_population if comp_pop > 0 else realODs[ix]*0
                     if i % 2 == 1:
                         flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
                 
-                S, E, A, I = flow_compartments
+                S, E1, E2, A, I = flow_compartments
 
-            # Ensure all positive compartments
-            for index, c in enumerate([S, E, A, I]):
-                assert round(np.min(c)) >= 0, f"Negative value in compartment {index} after flow transition: {np.min(c)}"
-
-            # Calculate values for each arrow in epidemic modelS.
             draws = S.astype(int)
-            prob = (np.matmul((A+I), C).T * (beta/N)).T
-            new_E = np.random.binomial(draws, prob)
+            prob_e = (np.matmul(E2, C).T * (r_e*beta/N)).T
+            prob_a = (np.matmul(A, C).T * (r_a*beta/N)).T
+            prob_i = (np.matmul(I, C).T * (beta/N)).T
 
-            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
-                new_E = self.add_hidden_cases(S, I, new_E)
+            new_E1_from_E2 = np.random.binomial(draws, prob_e)
+            new_E1_from_A = np.random.binomial(draws, prob_a)
+            new_E1_from_I = np.random.binomial(draws, prob_i)
 
-            # Ensure all positive compartments
-            for index, c in enumerate([S, E, A, I]):
-                assert round(np.min(c)) >= 0, f"Negative value in compartment {index} after added hidden cases: {np.min(c)}"
+            new_E1 = new_E1_from_E2 + new_E1_from_A + new_E1_from_I
 
-            new_A = (1 - p) * sigma * E
-            new_I = p * sigma * E
-            new_Q = alpha * I
+            # if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
+            #     new_E1 = self.add_hidden_cases(S, I, new_E1)
+
+            new_E2 = p * sigma * E1
+            new_A = (1 - p) * sigma * E1
+            new_I = alpha * E2
             new_R_from_A = gamma * A
-            new_R_from_Q = Q * (np.ones(len(delta)) - delta) * omega
-            new_D = Q * delta * omega
+            new_R_from_I = I * (np.ones(len(delta)) - delta) * omega
+            new_D = I * delta * omega
 
             # Calculate values for each compartment
-            S = S - new_E
-            E = E + new_E - new_I - new_A
+            S = S - new_E1
+            E1 = E1 + new_E1 - new_E2 - new_A
+            E2 = E2 + new_E2 - new_I
             A = A + new_A - new_R_from_A
-            I = I + new_I - new_Q
-            Q = Q + new_Q - new_R_from_Q - new_D
-            R = R + new_R_from_Q + new_R_from_A
+            I = I + new_I - new_R_from_I
+            R = R + new_R_from_I + new_R_from_A
             D = D + new_D
-            V = V + new_V
-            
+           
             # Save number of new infected
-            total_new_infected[i + 1] = np.sum([new_I, new_A])
+            total_new_infected[i + 1] = np.sum(new_E1)
             
             # Append simulation results
-            history = self.update_history([S, E, A, I, Q, R, D, V], history, i)
+            history = self.update_history([S, E1, E2, A, I, R, D, V], history, i)
 
             # Ensure balance in population
-            comp_pop = np.sum(S)+ np.sum(E) + np.sum(A) + np.sum(I) + np.sum(Q) + np.sum(R) + np.sum(D)
-            total_pop = np.sum(N)
+            # comp_pop = np.sum(S)+ np.sum(E1) + np.sum(E2) + np.sum(A) + np.sum(I) + np.sum(R) + np.sum(D)
+            # total_pop = np.sum(N)
             # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
+
+            # Ensure all positive compartments
+            for index, c in enumerate([S, E1, E2, A, I]):
+                assert round(np.min(c)) >= 0, f"Negative value in compartment {index}: {np.min(c)}"
 
         # write results to csv
         if self.write_to_csv:
@@ -163,7 +169,7 @@ class SEAIQR:
                                 self.paths.results_history,
                                 compartments)
         
-        return S, E, A, I, Q, R, D, V, sum(total_new_infected)
+        return S, E1, E2, A, I, R, D, V, np.sum(total_new_infected)
     
     @staticmethod
     def add_hidden_cases(S, I, new_E):

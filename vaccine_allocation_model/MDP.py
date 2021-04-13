@@ -4,13 +4,13 @@ from tqdm import tqdm
 np.random.seed(10)
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, population, seaiqr, vaccine_supply, horizon, decision_period, policy, infection_boost):
+    def __init__(self, OD_matrices, population, seair, vaccine_supply, horizon, decision_period, policy, infection_boost):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
             OD_matrices: Origin-Destination matrices giving movement patterns between regions
             population: A DataFrame with region_id, region_name and population
-            seaiqr: A seaiqr model that enables simulation of the decision process
+            seair: A seair model that enables simulation of the decision process
             vaccine_supply: Information about supply of vaccines, shape e.g. (#decision_period, #regions)
             horizon: The amount of decision_periods the decision process is run 
             decision_period: The number of time steps that every decision directly affects
@@ -20,7 +20,7 @@ class MarkovDecisionProcess:
         self.OD_matrices = OD_matrices
         self.population = population
         self.vaccine_supply = vaccine_supply
-        self.seaiqr = seaiqr
+        self.seair = seair
         self.state = self._initialize_state(num_initial_infected=1000, vaccines_available=1000, infection_boost=infection_boost)
         self.path = [self.state]
         self.decision_period = decision_period
@@ -75,7 +75,7 @@ class MarkovDecisionProcess:
         Returns 
             alphas scaled with a weight for each compartment
         """
-        alphas = [1, 1, 1, 0.1] # movement for compartments S,E,A,I
+        alphas = [1, 1, 1, 1, 0.1] # movement for compartments S,E1,E2,A,I
         return alphas
     
     def get_infection_level(self):
@@ -83,7 +83,7 @@ class MarkovDecisionProcess:
         Returns
             integer indicating current infection level each region and age group on a scale from 1-3, 3 being most severe
         """
-        S, E, A, I, Q, R, D, V = self.state.get_compartments_values()
+        S, E1, E2, A, I, R, D, V = self.state.get_compartments_values()
         pop_100k = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")/1e5
         I_per_100k = I/pop_100k
         # np.zeros_like(x)
@@ -106,7 +106,7 @@ class MarkovDecisionProcess:
         """
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
-        self.state = self.state.get_transition(decision, information, self.seaiqr.simulate, decision_period)
+        self.state = self.state.get_transition(decision, information, self.seair.simulate, decision_period)
         self.path.append(self.state)
 
     def _initialize_state(self, num_initial_infected, vaccines_available, infection_boost, time_step=0):
@@ -124,25 +124,25 @@ class MarkovDecisionProcess:
         # pop = self.population.population.to_numpy(dtype='float64')
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         S = pop.copy()
-        E = np.zeros(pop.shape)
+        E1 = np.zeros(pop.shape)
+        E2 = np.zeros(pop.shape)
         A = np.zeros(pop.shape)
         I = np.zeros(pop.shape)
-        Q = np.zeros(pop.shape)
         R = np.zeros(pop.shape)
         D = np.zeros(pop.shape)
         V = np.zeros(pop.shape)
 
-        # Boost infected in Oslo
+        # Boost initial infected
         if infection_boost:
-            I[0] += infection_boost
+            E1[0] += infection_boost
             S[0] -= infection_boost
             num_initial_infected -= sum(infection_boost)
 
         initial = S * num_initial_infected/np.sum(pop)
         S -= initial
-        I += initial
+        E1 += initial
 
-        return State(S, E, A, I, Q, R, D, V, vaccines_available, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, vaccines_available, time_step) 
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero
