@@ -156,8 +156,9 @@ class SEAIR:
             # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 
             # Ensure all positive compartments
+            compartments = ['S', 'E1', 'E2', 'A', 'I']
             for index, c in enumerate([S, E1, E2, A, I]):
-                assert round(np.min(c)) >= 0, f"Negative value in compartment {['S', 'E1', 'E2', 'A', 'I'][index]}: {np.min(c)}"
+                assert round(np.min(c)) >= 0, f"Negative value in compartment {compartments[index]}: {np.min(c)}"
 
         # write results to csv
         if self.write_to_csv:

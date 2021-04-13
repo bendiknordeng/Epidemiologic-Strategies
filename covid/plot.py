@@ -32,10 +32,13 @@ def seir_plot_one_cell(history, cellid, labels):
         history: 3D array with shape (decision_period*horizon, #compartments, number of regions)
         cellid: index of the region to plot SEIR curves
     """
+    fig = plt.figure()
+    fig.suptitle('SEIAR')
     num_periods_per_day = 4
     for i in range(len(labels)):
         plt.plot(history[::num_periods_per_day, i, cellid], color=color_scheme[labels[i]], label=labels[i])  
     plt.legend()
+    plt.grid()
     plt.show()
 
 def seir_plot_weekly(res, labels):
@@ -44,23 +47,32 @@ def seir_plot_weekly(res, labels):
     Parameters
         res: 3D array with shape (decision_period*horizon, #compartments)
     """
+    fig = plt.figure()
+    fig.suptitle('Weekly compartment values')
     for i in range(len(labels)):
         plt.plot(res[::, i], color=color_scheme[labels[i]], label=labels[i])
     plt.legend()
+    plt.grid()
     plt.show()
 
 def age_group_infected_plot_weekly(res, labels):
+    fig = plt.figure()
+    fig.suptitle('Weekly infected in each age group')
     for i, label in enumerate(labels):
         plt.plot(res[:, 1, i], label=label) 
     plt.plot(res.sum(axis=2)[:,1], color='r', linestyle='dashed', label="All")
     plt.legend()
+    plt.grid()
     plt.show()
 
 def age_group_infected_plot_weekly_cumulative(res, labels):
+    fig = plt.figure()
+    fig.suptitle('Weekly cumulative infected in each age group')
     for i, label in enumerate(labels):
         plt.plot(np.cumsum(res[:, 1, i]), label=label) 
     plt.plot(np.cumsum(res.sum(axis=2)[:,1]), color='r', linestyle='dashed', label="All")
     plt.legend()
+    plt.grid()
     plt.show()
 
 
