@@ -12,12 +12,20 @@ import re
 from os import listdir
 import imageio
 from . import utils
-from matplotlib.colors import LinearSegmentedColormap
 import seaborn as sn
 
+color_scheme = {
+    "S": '#0000ff',
+    "E1": '#fbff03',
+    "E2": '#ff7803',
+    "A": '#bf00ff',
+    "I": '#ff0000',
+    "R": '#2be800',
+    "D": '#000000',
+    "V": '#00e8e0'
+}
 
-
-def seir_plot_one_cell(history, cellid):
+def seir_plot_one_cell(history, cellid, labels):
     """ plots SEIR curves for a single region
 
     Parameters
@@ -25,54 +33,36 @@ def seir_plot_one_cell(history, cellid):
         cellid: index of the region to plot SEIR curves
     """
     num_periods_per_day = 4
-    colours = ['r', 'g', 'b', 'k', 'y', 'c', 'm', 'gold']
-    labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
     for i in range(len(labels)):
-        plt.plot(history[::num_periods_per_day, i, cellid], color=colours[i], label=labels[i])  
+        plt.plot(history[::num_periods_per_day, i, cellid], color=color_scheme[labels[i]], label=labels[i])  
     plt.legend()
     plt.show()
 
-def seir_plot(res):
+def seir_plot_weekly(res, labels):
     """ plots accumulated SEIR curves
     
     Parameters
         res: 3D array with shape (decision_period*horizon, #compartments)
     """
-    num_periods_per_day = 4
-    colours = ['r', 'g', 'b', 'k', 'y', 'c', 'm', 'gold']
-    labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
     for i in range(len(labels)):
-        plt.plot(res[::num_periods_per_day, i], color=colours[i], label=labels[i])  
-    plt.legend()
-    plt.show()
-
-def seir_plot_weekly(res):
-    """ plots accumulated SEIR curves
-    
-    Parameters
-        res: 3D array with shape (decision_period*horizon, #compartments)
-    """
-    plt.plot(res[::, 0], color='r', label='S') 
-    plt.plot(res[::, 1], color='g', label='E1')
-    plt.plot(res[::, 2], color='g', label='E2')
-    plt.plot(res[::, 3], color='b', label='A') 
-    plt.plot(res[::, 4], color='k', label='I')
-    plt.plot(res[::, 5], color='c', label='R')
-    plt.plot(res[::, 6], color='m', label='D')
-    plt.plot(res[::, 7], color='gold', label='V') 
+        plt.plot(res[::, i], color=color_scheme[labels[i]], label=labels[i])
     plt.legend()
     plt.show()
 
 def age_group_infected_plot_weekly(res, labels):
-    colors = ['g','b','k','y','c','m','gold']
     for i, label in enumerate(labels):
-        try:
-            plt.plot(res[:, 3, i], color=colors[i], label=label) 
-        except:
-            plt.plot(res[:, 3, i], label=label)
-    plt.plot(res.sum(axis=2)[:,3], color='r', linestyle='dashed', label="All")
+        plt.plot(res[:, 1, i], label=label) 
+    plt.plot(res.sum(axis=2)[:,1], color='r', linestyle='dashed', label="All")
     plt.legend()
     plt.show()
+
+def age_group_infected_plot_weekly_cumulative(res, labels):
+    for i, label in enumerate(labels):
+        plt.plot(np.cumsum(res[:, 1, i]), label=label) 
+    plt.plot(np.cumsum(res.sum(axis=2)[:,1]), color='r', linestyle='dashed', label="All")
+    plt.legend()
+    plt.show()
+
 
 def plot_heatmaps(C, weights, fpath=""):
     """ Plotes heatmaps for contact matrices

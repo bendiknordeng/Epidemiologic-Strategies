@@ -125,8 +125,8 @@ class SEAIR:
 
             new_E1 = new_E1_from_E2 + new_E1_from_A + new_E1_from_I
 
-            # if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
-            #     new_E1 = self.add_hidden_cases(S, I, new_E1)
+            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
+                new_E1 += self.add_hidden_cases(S, E1, new_E1)
 
             new_E2 = p * sigma * E1
             new_A = (1 - p) * sigma * E1
@@ -157,7 +157,7 @@ class SEAIR:
 
             # Ensure all positive compartments
             for index, c in enumerate([S, E1, E2, A, I]):
-                assert round(np.min(c)) >= 0, f"Negative value in compartment {index}: {np.min(c)}"
+                assert round(np.min(c)) >= 0, f"Negative value in compartment {['S', 'E1', 'E2', 'A', 'I'][index]}: {np.min(c)}"
 
         # write results to csv
         if self.write_to_csv:
@@ -172,7 +172,7 @@ class SEAIR:
         return S, E1, E2, A, I, R, D, V, np.sum(total_new_infected)
     
     @staticmethod
-    def add_hidden_cases(S, I, new_E):
+    def add_hidden_cases(S, E1, new_E1):
         """ Adds cases to the infection compartment, to represent hidden cases
 
         Parameters
@@ -183,16 +183,16 @@ class SEAIR:
             new_I, an array of new cases including hidden cases
         """
         share = 0.1 # maximum number of hidden infections
-        for i in range(len(I)):
-            for j in range(len(I[0])):
-                if I[i][j] < 0.5:
+        for i in range(len(E1)):
+            for j in range(len(E1[0])):
+                if E1[i][j] < 0.5:
                     new_infections = np.random.uniform(0, 0.01) # introduce infection to region with little infections
                 else:
-                    new_infections = np.random.randint(0, min(int(I[i][j]*share), 10)+1)
+                    new_infections = np.random.randint(0, min(int(E1[i][j]*share), 10)+1)
                 if S[i][j] > new_infections:
-                    new_E[i][j] += new_infections
+                    new_E1[i][j] += new_infections
 
-        return new_E
+        return new_E1
 
     @staticmethod
     def update_history(compartments, history, time_step):

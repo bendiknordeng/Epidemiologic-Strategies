@@ -53,9 +53,11 @@ if __name__ == '__main__':
     history = utils.transform_path_to_numpy(path)
     results = history.sum(axis=2)
     plot.age_group_infected_plot_weekly(results, age_labels)
-
+    plot.age_group_infected_plot_weekly_cumulative(results, age_labels)
+    
     results = history.sum(axis=3).sum(axis=2)
-    plot.seir_plot_weekly(results)
+    labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+    plot.seir_plot_weekly(results, labels)
 
     # plot confusion matrices
     # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
