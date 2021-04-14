@@ -141,8 +141,8 @@ def transform_history_to_df(time_step, history, population, column_names):
     df['region_id'] = np.array([[[r]*age_groups for r in population.region_id] for _ in range(periods)]).reshape(-1)
     df['region_name'] = np.array([[[r]*age_groups for r in population.region] for _ in range(periods)]).reshape(-1)
     df['region_population'] = np.array([[[r]*age_groups for r in population.population] for _ in range(periods)]).reshape(-1)
-    df['E_per_100k'] = 1e5*df.E/df.region_population
-    return df[['timestep', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E_per_100k']]
+    df['E1_per_100k'] = 1e5*df.E1/df.region_population
+    return df[['timestep', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E1_per_100k']]
 
 def transform_df_to_history(df, column_names, n_regions, n_age_groups):
     """ transforms a dataframe to 3D array

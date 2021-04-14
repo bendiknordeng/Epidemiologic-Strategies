@@ -6,7 +6,7 @@ class SEAIR:
     def __init__(self, OD, population, time_delta, contact_matrices, age_group_flow_scaling, R0,
                 efficacy, latent_period, proportion_symptomatic_infections, presymptomatic_infectiousness, 
                 asymptomatic_infectiousness, presymptomatic_period, postsymptomatic_period, 
-                fatality_rate_symptomatic, include_flow=True, hidden_cases=True, write_to_csv=False, write_weekly=False):
+                fatality_rate_symptomatic, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -45,6 +45,7 @@ class SEAIR:
 
         self.include_flow = include_flow
         self.hidden_cases = hidden_cases
+        self.paths = paths
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
     
@@ -156,19 +157,19 @@ class SEAIR:
             # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 
             # Ensure all positive compartments
-            compartments = ['S', 'E1', 'E2', 'A', 'I']
+            compartment_labels = ['S', 'E1', 'E2', 'A', 'I']
             for index, c in enumerate([S, E1, E2, A, I]):
-                assert round(np.min(c)) >= 0, f"Negative value in compartment {compartments[index]}: {np.min(c)}"
+                assert round(np.min(c)) >= 0, f"Negative value in compartment {compartment_labels[index]}: {np.min(c)}"
 
         # write results to csv
         if self.write_to_csv:
             utils.write_history(self.write_weekly,
-                                history, 
+                                history[::4,:,:,:], 
                                 self.population, 
                                 state.time_step, 
                                 self.paths.results_weekly, 
                                 self.paths.results_history,
-                                compartments)
+                                ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V'])
         
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
     
