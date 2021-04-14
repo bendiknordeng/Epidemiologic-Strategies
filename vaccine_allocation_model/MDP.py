@@ -1,7 +1,10 @@
+from covid.utils import generate_weekly_data
 from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
+import pandas as pd
 np.random.seed(10)
+from datetime import timedelta
 
 class MarkovDecisionProcess:
     def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, historic_data=None, verbose=False):
@@ -43,7 +46,7 @@ class MarkovDecisionProcess:
         """
         run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
-            if self.verbose: print(self.state, end="\n"*3)
+            if self.verbose: print(self.state, end="\n"*2)
             self.update_state()
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 print("Reached stop-criteria. Recovered population > 70%.")
@@ -62,18 +65,18 @@ class MarkovDecisionProcess:
         Returns:
             returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights'
         """
-        year = state.date.year
-        week = state.date.isocalendar()[1]
-        information = {}
-        data = self.historic_data[(self.historic_data.year == year)&(self.historic_data.week == week)].iloc[0]
-
-        if data.empty:
+        today = pd.Timestamp(state.date)
+        end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//4))
+        mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
+        week_data = self.historic_data[mask]
+        if week_data.empty:
             alphas = [1, 1, 1, 1, 0.1]
             vaccine_supply = np.ones((356,5))
             contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
         else:
+            data = week_data.iloc[-1]
             alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
-            vaccine_supply = data['vaccine_supply_new']
+            vaccine_supply = week_data['vaccine_supply_new'].sum()
             contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4']]
         
         information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}

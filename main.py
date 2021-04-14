@@ -17,7 +17,8 @@ if __name__ == '__main__':
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
 
-    historic_data = pd.read_csv(paths.fhi_data_weekly)  # set to None if not used
+    historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
+    historic_data.date = pd.to_datetime(historic_data.date)
     
     epidemic_function = SEAIR(
                 OD=OD_matrices,
@@ -40,11 +41,15 @@ if __name__ == '__main__':
                 include_flow=False,
                 hidden_cases=False)
 
-    start_date = utils.get_date("20200221")
+    # Set start date
+    day = 21
+    month = 2
+    year = 2020
+    start_date = utils.get_date(f"{year}{month:02}{day:02}")
 
     initial_state = State.initialize_state(
                         num_initial_infected=1000,
-                        vaccines_available=1000, 
+                        vaccines_available=0, 
                         population=population,
                         start_date=start_date,
                         time_step=0)
@@ -57,7 +62,7 @@ if __name__ == '__main__':
                     initial_state=initial_state,
                     horizon=horizon, 
                     decision_period=28, 
-                    policy=policies[0],
+                    policy=policies[2],
                     historic_data=historic_data,
                     verbose=True)
 

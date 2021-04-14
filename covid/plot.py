@@ -54,8 +54,10 @@ def seir_plot_weekly(res, start_date, labels):
     fig.suptitle('Weekly compartment values')
     for i in range(len(labels)):
         plt.plot(res[::, i], color=color_scheme[labels[i]], label=labels[i])
+    ticks = min(len(res), 20)
+    step = int(np.ceil(len(res)/ticks))
     weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
-    plt.xticks(np.arange(0, len(res)), weeknumbers)
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
     plt.ylabel("Compartment values")
     plt.xlabel("Week")
     plt.legend()
@@ -75,8 +77,10 @@ def age_group_infected_plot_weekly(res, start_date, labels):
     for i, label in enumerate(labels):
         plt.plot(res[:, 1, i], label=label) 
     plt.plot(res.sum(axis=2)[:,1], color='r', linestyle='dashed', label="All")
+    ticks = min(len(res), 20)
+    step = int(np.ceil(len(res)/ticks))
     weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
-    plt.xticks(np.arange(0, len(res)), weeknumbers)
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
     plt.ylabel("Infected")
     plt.xlabel("Week")
     plt.legend()
@@ -96,8 +100,10 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
     for i, label in enumerate(labels):
         plt.plot(np.cumsum(res[:, i]), label=label) 
     plt.plot(np.cumsum(res.sum(axis=1)), color='r', linestyle='dashed', label="All")
+    ticks = min(len(res), 20)
+    step = int(np.ceil(len(res)/ticks))
     weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
-    plt.xticks(np.arange(0, len(res)), weeknumbers)
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
     plt.ylabel("Infected (cumulative)")
     plt.xlabel("Week")
     plt.legend()

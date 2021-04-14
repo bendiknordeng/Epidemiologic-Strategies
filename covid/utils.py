@@ -277,7 +277,7 @@ def generate_weekly_data(fpath_fhi_data_daily, fpath_fhi_data_weekly):
                     'H_new':'sum', 
                     'ICU_cummulative':'last',
                     'ICU_new':'sum', 
-                    'I_cumulative':'last', 
+                    'I_cumulative':'last',
                     'I_new':'sum', 
                     'D_cumulative':'last', 
                     'D_new':'sum',
