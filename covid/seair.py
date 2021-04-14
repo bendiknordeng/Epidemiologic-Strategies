@@ -151,7 +151,7 @@ class SEAIR:
             history = self.update_history([S, E1, E2, A, I, R, D, V], history, i)
 
             # Ensure balance in population
-            # comp_pop = np.sum(S)+ np.sum(E1) + np.sum(E2) + np.sum(A) + np.sum(I) + np.sum(R) + np.sum(D)
+            # comp_pop = np.sum(S+ E1 + E2 + A + I + R + D)
             # total_pop = np.sum(N)
             # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
 

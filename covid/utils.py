@@ -251,6 +251,52 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
         else:
             history_df.to_csv(results_history, index=False)
     
+def generate_weekly_data(fpath_fhi_data_daily, fpath_fhi_data_weekly):
+    """ aggregates daily data to weekly data and saves it
+    
+    Parameters
+        fpath_fhi_data_daily: str, filepath to daily historical FHI data. Saved as .xlsx file 
+        fpath_fhi_data_weekly: str, filepath where weekly data is written to. Saved as .csv file
+
+    """
+    df = pd.read_excel(fpath_fhi_data_daily)
+    df['date'] = pd.to_datetime(df['date'])
+    df.set_index('date', inplace=True)
+    df.sort_index(inplace=True)
+
+    resample_dict ={'year': 'last', 
+                    'week':'last', 
+                    'r0_average': 'mean', 
+                    'r0_conf_95_low':'mean',
+                    'r0_conf_95_high':'mean', 
+                    'H_cumulative':'last', 
+                    'H_new':'sum', 
+                    'ICU_cummulative':'last',
+                    'ICU_new':'sum', 
+                    'I_cumulative':'last', 
+                    'I_new':'sum', 
+                    'D_cumulative':'last', 
+                    'D_new':'sum',
+                    'V_1_cumulative':'last', 
+                    'V_2_cumulative':'last', 
+                    'V_1_new':'sum', 
+                    'V_2_new':'sum',
+                    'vaccine_supply_new':'sum',
+                    'alpha_s':'mean',
+                    'alpha_e1':'mean',
+                    'alpha_e2':'mean',
+                    'alpha_a':'mean',
+                    'alpha_i':'mean',
+                    'w_c1': 'mean',
+                    'w_c2': 'mean',
+                    'w_c3': 'mean',
+                    'w_c4': 'mean'}
+
+    df2 = df.groupby(['year','week']).agg(resample_dict)
+    df2.to_csv(fpath_fhi_data_weekly)
+    
+
+
 def get_date(start_date, time_delta):
     """ gets current date for a simulation time step
     Parameters

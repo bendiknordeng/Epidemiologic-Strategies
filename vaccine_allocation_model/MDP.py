@@ -4,7 +4,7 @@ from tqdm import tqdm
 np.random.seed(10)
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, population, seair, vaccine_supply, horizon, decision_period, policy, infection_boost):
+    def __init__(self, OD_matrices, population, seair, vaccine_supply, horizon, decision_period, policy, infection_boost, fhi_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -15,6 +15,7 @@ class MarkovDecisionProcess:
             horizon: The amount of decision_periods the decision process is run 
             decision_period: The number of time steps that every decision directly affects
             policy: How the available vaccines should be distributed.
+            fhi_data: dataframe, or None indicating whether or not to use fhi_data in simulation
         """
         self.horizon = horizon
         self.OD_matrices = OD_matrices
@@ -24,6 +25,7 @@ class MarkovDecisionProcess:
         self.state = self._initialize_state(num_initial_infected=1000, vaccines_available=1000, infection_boost=infection_boost)
         self.path = [self.state]
         self.decision_period = decision_period
+        self.fhi_data = fhi_data
 
         policies = {
             "no_vaccines": self._no_vaccines,
@@ -58,47 +60,28 @@ class MarkovDecisionProcess:
         Returns:
             returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights'
         """
-        infection_level = self.get_infection_level()
-        alphas = self.get_alphas(infection_level)
-        contact_matrices_weights = self.get_contact_matrices_weights(infection_level)
-        information = {'alphas': alphas, 'vaccine_supply': self.vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
+        alphas = [1, 1, 1, 1, 0.1]
+        contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
+        vaccine_supply = self.vaccine_supply
+
+        information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
+
+        if self.fhi_data is not None:
+            sim_step = state.time_step // self.decision_period
+            information['vaccine_supply'] = self.fhi_data.iloc[sim_step,:]['vaccine_supply_new']
+            alphas = [self.fhi_data.iloc[sim_step,:]['alpha_s'],
+                      self.fhi_data.iloc[sim_step,:]['alpha_e1'],
+                      self.fhi_data.iloc[sim_step,:]['alpha_e2'], 
+                      self.fhi_data.iloc[sim_step,:]['alpha_a'],
+                      self.fhi_data.iloc[sim_step,:]['alpha_i']]
+            information['alphas'] = alphas
+            weights =[self.fhi_data.iloc[sim_step,:]['w_c1'],
+                      self.fhi_data.iloc[sim_step,:]['w_c2'],
+                      self.fhi_data.iloc[sim_step,:]['w_c3'], 
+                      self.fhi_data.iloc[sim_step,:]['w_c4']]
+            information['contact_matrices_weights'] = weights
+        
         return information
-
-    def get_contact_matrices_weights(self, infection_level):
-        """ Returns the weight for contact matrices based on compartment values 
-        Returns 
-            weights for contact matrices
-        """
-        contact_matrices_weights = np.array([0.31, 0.24, 0.16, 0.29])
-        return contact_matrices_weights
-
-    def get_alphas(self, infection_level):
-        """ Scales alphas with a given weight for each compartment
-        Returns 
-            alphas scaled with a weight for each compartment
-        """
-        alphas = [1, 1, 1, 1, 0.1] # movement for compartments S,E1,E2,A,I
-        return alphas
-    
-    def get_infection_level(self):
-        """ Decide what infection level every region is currently at
-        Returns
-            integer indicating current infection level each region and age group on a scale from 1-3, 3 being most severe
-        """
-        S, E1, E2, A, I, R, D, V = self.state.get_compartments_values()
-        pop_100k = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")/1e5
-        I_per_100k = I/pop_100k
-        # np.zeros_like(x)
-        # print(f'Max:{np.max(I_per_100k)}')
-        # print(f'Min:{np.min(I_per_100k)}')
-        # import pdb; pdb.set_trace()
-        # TO DO: logic to find infection level
-        # calculate I_per_100K per region
-        # I_per_100k = 1e5*I/population
-        # 0-50 - level 1
-        # 50-100 - level 2
-        # >100 - level 3
-        return 1
 
     def update_state(self, decision_period=28):
         """ Updates the state of the decision process.

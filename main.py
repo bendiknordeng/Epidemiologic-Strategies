@@ -15,6 +15,10 @@ if __name__ == '__main__':
     age_labels = utils.generate_labels_from_bins(age_bins)
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
+    # generate FHI data
+    utils.generate_weekly_data(paths.fhi_data_daily, paths.fhi_data_weekly)
+
+    fhi_data = pd.read_csv(paths.fhi_data_weekly)  # set to None if not used
     
     epidemic_function = SEAIR(
                 OD=OD_matrices,
@@ -47,8 +51,9 @@ if __name__ == '__main__':
                                 vaccine_supply, 
                                 horizon, 
                                 decision_period=28, 
-                                policy=policies[3],
-                                infection_boost=None)
+                                policy=policies[2],
+                                infection_boost=None, 
+                                fhi_data=fhi_data)
     path = mdp.run()
     history, new_infections = utils.transform_path_to_numpy(path)
     utils.print_results(history, new_infections, population, age_labels)
