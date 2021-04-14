@@ -1,7 +1,8 @@
 import numpy as np
+from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, time_step):
+    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, date, time_step):
         """ initialize a State instance
 
         Parameters
@@ -29,8 +30,9 @@ class State:
         self.V = V
         
         self.vaccines_available = vaccines_available
-        self.time_step = time_step
         self.new_infected = new_infected
+        self.date = date
+        self.time_step = time_step
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """ 
@@ -51,9 +53,10 @@ class State:
         vaccines_available = vaccines_left + new_vaccines
 
         # Update time step
-        time_step=self.time_step+decision_period
+        time_step = self.time_step + decision_period
+        date = self.date + timedelta(decision_period//4)
 
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, time_step)
+        return State(S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, date, time_step)
     
 
     def get_compartments_values(self):
@@ -73,11 +76,10 @@ class State:
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, population, time_step=0):
+    def initialize_state(num_initial_infected, vaccines_available, population, start_date, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
-            initial_infected: array of initial infected (1,356)
             num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
             vaccines_available: int, number of vaccines available at time
             time_step: timestep in which state is initialized. Should be in the range of (0, (24/time_timedelta)*7 - 1)
@@ -99,4 +101,4 @@ class State:
         S -= initial_infected
         E1 += initial_infected
 
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1.copy(), time_step) 
+        return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1.copy(), start_date, time_step) 

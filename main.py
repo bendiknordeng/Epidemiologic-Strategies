@@ -35,17 +35,18 @@ if __name__ == '__main__':
                 postsymptomatic_period=config.postsymptomatic_period,
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic,
                 paths=paths,
-                write_to_csv=True, 
-                write_weekly=True,
-                include_flow=True,
-                hidden_cases=True)
+                write_to_csv=False, 
+                write_weekly=False,
+                include_flow=False,
+                hidden_cases=False)
 
     start_date = utils.get_date("20200221")
-    
+
     initial_state = State.initialize_state(
-                        initial_infected=1000,
-                        initial_vaccines=1000, 
-                        population=population, 
+                        num_initial_infected=1000,
+                        vaccines_available=1000, 
+                        population=population,
+                        start_date=start_date,
                         time_step=0)
 
     horizon = len(fhi_data) # number of weeks
