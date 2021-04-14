@@ -4,7 +4,7 @@ from tqdm import tqdm
 np.random.seed(10)
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, fhi_data=None, verbose=False):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, historic_data=None, verbose=False):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -15,7 +15,7 @@ class MarkovDecisionProcess:
             horizon: The amount of decision_periods the decision process is run 
             decision_period: The number of time steps that every decision directly affects
             policy: How the available vaccines should be distributed.
-            fhi_data: dataframe, or None indicating whether or not to use fhi_data in simulation
+            historic_data: dataframe, or None indicating whether or not to use fhi_data in simulation
         """
         self.horizon = horizon
         self.population = population
@@ -23,7 +23,7 @@ class MarkovDecisionProcess:
         self.state = initial_state
         self.path = [self.state]
         self.decision_period = decision_period
-        self.fhi_data = fhi_data
+        self.historic_data = historic_data
         self.verbose = verbose
 
         policies = {
@@ -62,27 +62,21 @@ class MarkovDecisionProcess:
         Returns:
             returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights'
         """
-        alphas = [1, 1, 1, 1, 0.1]
-        contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
-        vaccine_supply = np.ones((356,5))
+        year = state.date.year
+        week = state.date.isocalendar()[1]
+        information = {}
+        data = self.historic_data[(self.historic_data.year == year)&(self.historic_data.week == week)].iloc[0]
 
-        information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
-
-        if self.fhi_data is not None:
-            sim_step = state.time_step // self.decision_period
-            information['vaccine_supply'] = self.fhi_data.iloc[sim_step,:]['vaccine_supply_new']
-            alphas = [self.fhi_data.iloc[sim_step,:]['alpha_s'],
-                      self.fhi_data.iloc[sim_step,:]['alpha_e1'],
-                      self.fhi_data.iloc[sim_step,:]['alpha_e2'], 
-                      self.fhi_data.iloc[sim_step,:]['alpha_a'],
-                      self.fhi_data.iloc[sim_step,:]['alpha_i']]
-            information['alphas'] = alphas
-            weights =[self.fhi_data.iloc[sim_step,:]['w_c1'],
-                      self.fhi_data.iloc[sim_step,:]['w_c2'],
-                      self.fhi_data.iloc[sim_step,:]['w_c3'], 
-                      self.fhi_data.iloc[sim_step,:]['w_c4']]
-            information['contact_matrices_weights'] = weights
+        if data.empty:
+            alphas = [1, 1, 1, 1, 0.1]
+            vaccine_supply = np.ones((356,5))
+            contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
+        else:
+            alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
+            vaccine_supply = data['vaccine_supply_new']
+            contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4']]
         
+        information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
         return information
 
     def update_state(self, decision_period=28):

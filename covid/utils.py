@@ -297,7 +297,7 @@ def generate_weekly_data(fpath_fhi_data_daily, fpath_fhi_data_weekly):
                     'w_c4': 'mean'}
 
     df2 = df.groupby(['year','week']).agg(resample_dict)
-    df2.to_csv(fpath_fhi_data_weekly)
+    df2.to_csv(fpath_fhi_data_weekly, index=False)
 
 def get_date(start_date, time_step=0):
     """ gets current date for a simulation time step

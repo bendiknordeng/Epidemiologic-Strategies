@@ -17,7 +17,7 @@ if __name__ == '__main__':
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
 
-    fhi_data = pd.read_csv(paths.fhi_data_weekly)  # set to None if not used
+    historic_data = pd.read_csv(paths.fhi_data_weekly)  # set to None if not used
     
     epidemic_function = SEAIR(
                 OD=OD_matrices,
@@ -49,7 +49,7 @@ if __name__ == '__main__':
                         start_date=start_date,
                         time_step=0)
 
-    horizon = len(fhi_data) # number of weeks
+    horizon = len(historic_data) # number of weeks
     policies = ['no_vaccines', 'random', 'population_based', 'infection_based']
     mdp = MarkovDecisionProcess( 
                     population=population, 
@@ -58,7 +58,7 @@ if __name__ == '__main__':
                     horizon=horizon, 
                     decision_period=28, 
                     policy=policies[0],
-                    fhi_data=fhi_data,
+                    historic_data=historic_data,
                     verbose=True)
 
     path = mdp.run()
