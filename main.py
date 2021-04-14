@@ -34,7 +34,7 @@ if __name__ == '__main__':
                 postsymptomatic_period=config.postsymptomatic_period,
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic,
                 paths=paths,
-                write_to_csv=True, 
+                write_to_csv=False, 
                 write_weekly=False,
                 include_flow=True,
                 hidden_cases=True)
