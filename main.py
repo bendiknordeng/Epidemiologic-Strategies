@@ -15,6 +15,9 @@ if __name__ == '__main__':
     age_labels = utils.generate_labels_from_bins(age_bins)
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
+    # generate FHI data
+    utils.generate_weekly_data(paths.fhi_data_daily, paths.fhi_data_weekly)
+
     fhi_data = pd.read_csv(paths.fhi_data_weekly)  # set to None if not used
     
     epidemic_function = SEAIR(
