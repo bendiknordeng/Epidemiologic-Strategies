@@ -59,20 +59,20 @@ if __name__ == '__main__':
                     decision_period=28, 
                     policy=policies[0],
                     fhi_data=fhi_data,
-                    verbose=False)
+                    verbose=True)
 
     path = mdp.run()
     history, new_infections = utils.transform_path_to_numpy(path)
     utils.print_results(history, new_infections, population, age_labels, save_to_file=True)
 
     results_age = history.sum(axis=2)
-    plot.age_group_infected_plot_weekly(results_age, age_labels)
+    plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
     infection_results_age = new_infections.sum(axis=1)
-    plot.age_group_infected_plot_weekly_cumulative(infection_results_age, age_labels)
+    plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
     
     results_compartment = history.sum(axis=3).sum(axis=2)
     labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
-    plot.seir_plot_weekly(results_compartment, labels)
+    plot.seir_plot_weekly(results_compartment, start_date, labels)
 
     # plot confusion matrices
     # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)

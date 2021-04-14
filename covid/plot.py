@@ -13,6 +13,7 @@ from os import listdir
 import imageio
 from . import utils
 import seaborn as sn
+from datetime import timedelta
 
 color_scheme = {
     "S": '#0000ff',
@@ -41,36 +42,64 @@ def seir_plot_one_cell(history, cellid, labels):
     plt.grid()
     plt.show()
 
-def seir_plot_weekly(res, labels):
+def seir_plot_weekly(res, start_date, labels):
     """ plots accumulated SEIR curves
     
     Parameters
-        res: 3D array with shape (decision_period*horizon, #compartments)
+        res: numpy array with shape (decision_period*horizon, #compartments)
+        start_date: datetime object giving start date
+        labels: labels for plotted compartments 
     """
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,5))
     fig.suptitle('Weekly compartment values')
     for i in range(len(labels)):
         plt.plot(res[::, i], color=color_scheme[labels[i]], label=labels[i])
+    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+    plt.xticks(np.arange(0, len(res)), weeknumbers)
+    plt.ylabel("Compartment values")
+    plt.xlabel("Week")
     plt.legend()
     plt.grid()
     plt.show()
 
-def age_group_infected_plot_weekly(res, labels):
-    fig = plt.figure()
+def age_group_infected_plot_weekly(res, start_date, labels):
+    """ plots infection for different age groups per week
+    
+    Parameters
+        res: numpy array with shape (decision_period*horizon, #compartments)
+        start_date: datetime object giving start date
+        labels: labels for plotted age_groups 
+    """
+    fig = plt.figure(figsize=(10,5))
     fig.suptitle('Weekly infected in each age group')
     for i, label in enumerate(labels):
         plt.plot(res[:, 1, i], label=label) 
     plt.plot(res.sum(axis=2)[:,1], color='r', linestyle='dashed', label="All")
+    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+    plt.xticks(np.arange(0, len(res)), weeknumbers)
+    plt.ylabel("Infected")
+    plt.xlabel("Week")
     plt.legend()
     plt.grid()
     plt.show()
 
-def age_group_infected_plot_weekly_cumulative(res, labels):
-    fig = plt.figure()
+def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
+    """ plots cumulative infection for different age groups per week
+    
+    Parameters
+        res: numpy array with shape (decision_period*horizon, #compartments)
+        start_date: datetime object giving start date
+        labels: labels for plotted age_groups 
+    """
+    fig = plt.figure(figsize=(10,5))
     fig.suptitle('Weekly cumulative infected in each age group')
     for i, label in enumerate(labels):
         plt.plot(np.cumsum(res[:, i]), label=label) 
     plt.plot(np.cumsum(res.sum(axis=1)), color='r', linestyle='dashed', label="All")
+    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+    plt.xticks(np.arange(0, len(res)), weeknumbers)
+    plt.ylabel("Infected (cumulative)")
+    plt.xlabel("Week")
     plt.legend()
     plt.grid()
     plt.show()

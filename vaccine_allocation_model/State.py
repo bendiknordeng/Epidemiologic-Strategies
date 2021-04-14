@@ -70,7 +70,8 @@ class State:
                 "Infected", "Recovered", "Dead", "Vaccinated"]
         values = [np.sum(compartment) for compartment in self.get_compartments_values()]
         percent = 100 * np.array(values)/total_pop
-        status = f"Timestep: {self.time_step} (week {((self.time_step//28)+8)%54})\n"
+        status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
+        status += f"Timestep: {self.time_step} (day {self.time_step//28})\n"
         for i in range(len(info)):
             status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
         return status

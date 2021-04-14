@@ -48,7 +48,7 @@ class MarkovDecisionProcess:
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 print("Reached stop-criteria. Recovered population > 70%.")
                 break
-            if np.sum(self.state.E1) == 0: # stop if infections are zero
+            if np.sum(self.state.E1) < 1: # stop if infections are zero
                 print("Reached stop-criteria. Infected population is zero.")
                 break
         return self.path
