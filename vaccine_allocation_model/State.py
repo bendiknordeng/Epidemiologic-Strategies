@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, time_step):
+    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, time_step, ):
         """ initialize a State instance
 
         Parameters
