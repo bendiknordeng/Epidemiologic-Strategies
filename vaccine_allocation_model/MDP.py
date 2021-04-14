@@ -28,7 +28,8 @@ class MarkovDecisionProcess:
         policies = {
             "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
-            "population_based": self._population_based_policy
+            "population_based": self._population_based_policy,
+            "infection_based": self._infection_based_policy
         }
 
         self.policy = policies[policy]
@@ -39,7 +40,8 @@ class MarkovDecisionProcess:
         Returns
             A path that shows resulting traversal of states
         """
-        for _ in tqdm(range(self.state.time_step, self.horizon)):
+        for _ in range(self.state.time_step, self.horizon):
+            print(self.state, end="\n"*3)
             self.update_state()
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 break
@@ -142,7 +144,7 @@ class MarkovDecisionProcess:
         S -= initial
         E1 += initial
 
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1, time_step) 
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero
@@ -183,5 +185,17 @@ class MarkovDecisionProcess:
         vaccine_allocation = []
         for period in range(self.decision_period):
             total_allocation = self.state.vaccines_available * self.state.S/np.sum(self.state.S)
+            vaccine_allocation.append(total_allocation/self.decision_period)
+        return vaccine_allocation
+
+    def _infection_based_policy(self):
+        """ Define allocation of vaccines based on number of infected in each region
+
+        Returns
+            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
+        """
+        vaccine_allocation = []
+        for period in range(self.decision_period):
+            total_allocation = self.state.vaccines_available * self.state.E1/np.sum(self.state.E1)
             vaccine_allocation.append(total_allocation/self.decision_period)
         return vaccine_allocation

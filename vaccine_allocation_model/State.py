@@ -1,7 +1,7 @@
 import numpy as np
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, time_step):
+    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, time_step):
         """ initialize a State instance
 
         Parameters
@@ -30,8 +30,7 @@ class State:
         
         self.vaccines_available = vaccines_available
         self.time_step = time_step
-        self.new_infected = 0
-
+        self.new_infected = new_infected
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """ 
@@ -45,7 +44,6 @@ class State:
         """
         # Update compartment values
         S, E1, E2, A, I, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information)
-        self.new_infected = new_infected
 
         # Update vaccine available
         vaccines_left = self.vaccines_available - np.sum(decision)
@@ -55,9 +53,21 @@ class State:
         # Update time step
         time_step=self.time_step+decision_period
 
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, time_step)
+        return State(S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, time_step)
     
 
     def get_compartments_values(self):
         """ Returns compartment values """
         return [self.S, self.E1, self.E2, self.A, self.I, self.R, self.D, self.V]
+
+    def __str__(self):
+        total_pop = np.sum(self.get_compartments_values()[:-1])
+        info = ["Susceptibles", "Exposed (latent)",
+                "Exposed (presymptomatic)", "Asymptomatic infected",
+                "Infected", "Recovered", "Dead", "Vaccinated"]
+        values = [np.sum(compartment) for compartment in self.get_compartments_values()]
+        percent = 100 * np.array(values)/total_pop
+        status = f"Timestep: {self.time_step} (week {((self.time_step//28)+8)%54})\n"
+        for i in range(len(info)):
+            status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
+        return status

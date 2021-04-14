@@ -115,9 +115,11 @@ def read_pickle(filepath):
 
 def transform_path_to_numpy(path):
     history = []
+    new_infections = []
     for state in path:
         history.append(state.get_compartments_values())
-    return np.array(history)
+        new_infections.append(state.new_infected)
+    return np.array(history), np.array(new_infections)
 
 def transform_history_to_df(time_step, history, population, column_names):
     """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
@@ -260,3 +262,24 @@ def get_date(start_date, time_delta):
     dt = datetime.strptime(start_date, '%Y%m%d').date()
     dt += timedelta(days=time_delta)
     return dt
+
+def print_results(history, new_infections, population, age_labels):
+    total_pop = np.sum(population.population)
+    infected = [new_infections[:,:,i].sum(axis=0).sum(axis=0) for i in range(len(age_labels))]
+    vaccinated = history[-1,7,:,:].sum(axis=0)
+    dead = history[-1,6,:,:].sum(axis=0)
+    columns = ["Age group", "Infected", "Vaccinated", "Dead"]
+    data = np.array([age_labels, np.round(infected), np.round(vaccinated), np.round(dead)]).T
+    df = pd.DataFrame(columns=columns, data=data)
+    #print(df)
+
+    print(f"Total infected: {np.sum(new_infections):.0f} ({100 * np.sum(new_infections)/total_pop:.2f}% of total population)\n")
+    result = f"{columns[0]:^12} {columns[1]:^16} {columns[2]:^16} {columns[3]:^16}\n"
+    for i in range(len(age_labels)):
+        age_pop = np.sum(population[age_labels[i]])
+        result += f"{age_labels[i]:^12}"
+        result += f"{infected[i]:>9.0f} ({100 * infected[i]/age_pop:>4.2f}%)"
+        result += f"{vaccinated[i]:>9.0f} ({100 * vaccinated[i]/age_pop:>4.2f}%)"
+        result += f"{dead[i]:>9.0f} ({100 * dead[i]/age_pop:>4.2f}%)\n"
+
+    print(result)

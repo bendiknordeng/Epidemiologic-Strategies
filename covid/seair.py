@@ -74,9 +74,9 @@ class SEAIR:
         realflows = [self.OD.copy()*a for a in alphas]
 
         # Initialize history matrix and total new infected
-        history = np.zeros((decision_period, n_compartments, n_regions, n_age_groups))
+        history = np.zeros(shape=(decision_period, n_compartments, n_regions, n_age_groups))
         history = self.update_history(compartments, history, 0)
-        total_new_infected = np.zeros(decision_period+1)
+        total_new_infected = np.zeros(shape=(decision_period+1, n_regions, n_age_groups))
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
@@ -145,7 +145,7 @@ class SEAIR:
             D = D + new_D
            
             # Save number of new infected
-            total_new_infected[i + 1] = np.sum(new_E1)
+            total_new_infected[i + 1] = new_E1
             
             # Append simulation results
             history = self.update_history([S, E1, E2, A, I, R, D, V], history, i)
@@ -170,7 +170,7 @@ class SEAIR:
                                 self.paths.results_history,
                                 compartments)
         
-        return S, E1, E2, A, I, R, D, V, np.sum(total_new_infected)
+        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
     
     @staticmethod
     def add_hidden_cases(S, E1, new_E1):
