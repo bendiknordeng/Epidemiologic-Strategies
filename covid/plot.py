@@ -69,8 +69,8 @@ def age_group_infected_plot_weekly_cumulative(res, labels):
     fig = plt.figure()
     fig.suptitle('Weekly cumulative infected in each age group')
     for i, label in enumerate(labels):
-        plt.plot(np.cumsum(res[:, 1, i]), label=label) 
-    plt.plot(np.cumsum(res.sum(axis=2)[:,1]), color='r', linestyle='dashed', label="All")
+        plt.plot(np.cumsum(res[:, i]), label=label) 
+    plt.plot(np.cumsum(res.sum(axis=0)), color='r', linestyle='dashed', label="All")
     plt.legend()
     plt.grid()
     plt.show()

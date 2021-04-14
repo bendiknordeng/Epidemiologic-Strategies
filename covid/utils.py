@@ -333,4 +333,4 @@ def print_results(history, new_infections, population, age_labels, save_to_file=
         total = df[df.columns[1:]].sum()
         total["Age group"] = "All"
         df = df.append(total, ignore_index=True)
-        df.to_csv("results.csv")
+        df.to_csv("results.csv", index=False)

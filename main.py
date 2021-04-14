@@ -60,7 +60,8 @@ if __name__ == '__main__':
 
     results_age = history.sum(axis=2)
     plot.age_group_infected_plot_weekly(results_age, age_labels)
-    plot.age_group_infected_plot_weekly_cumulative(results_age, age_labels)
+    infection_results_age = new_infections.sum(axis=1)
+    plot.age_group_infected_plot_weekly_cumulative(infection_results_age, age_labels)
     
     results_compartment = history.sum(axis=3).sum(axis=2)
     labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
