@@ -27,19 +27,19 @@ class SEAIR:
             write_weekly: boolean, false if we want to write daily results, true if weekly
          """
         
-        periods_per_day = 24/time_delta
+        self.periods_per_day = int(24/time_delta)
         self.OD=OD
         self.population=population
         self.contact_matrices=contact_matrices
         self.age_group_flow_scaling=age_group_flow_scaling
-        self.R0=R0*periods_per_day
+        self.R0=R0*self.periods_per_day
         self.efficacy=efficacy
-        self.latent_period=latent_period*periods_per_day
+        self.latent_period=latent_period*self.periods_per_day
         self.proportion_symptomatic_infections=proportion_symptomatic_infections
         self.presymptomatic_infectiousness=presymptomatic_infectiousness
         self.asymptomatic_infectiousness=asymptomatic_infectiousness
-        self.presymptomatic_period=presymptomatic_period*periods_per_day
-        self.postsymptomatic_period=postsymptomatic_period*periods_per_day
+        self.presymptomatic_period=presymptomatic_period*self.periods_per_day
+        self.postsymptomatic_period=postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
         self.fatality_rate_symptomatic=fatality_rate_symptomatic
 
@@ -75,9 +75,8 @@ class SEAIR:
         realflows = [self.OD.copy()*a for a in alphas]
 
         # Initialize history matrix and total new infected
-        history = np.zeros(shape=(decision_period, n_compartments, n_regions, n_age_groups))
-        history = self.update_history(compartments, history, 0)
-        total_new_infected = np.zeros(shape=(decision_period+1, n_regions, n_age_groups))
+        total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
+        history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
@@ -146,10 +145,12 @@ class SEAIR:
             D = D + new_D
            
             # Save number of new infected
-            total_new_infected[i + 1] = new_E1
+            total_new_infected[i] = new_E1
             
             # Append simulation results
-            history = self.update_history([S, E1, E2, A, I, R, D, V], history, i)
+            if i%self.periods_per_day == 0: # record daily history
+                daily_new_infected = new_E1 if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
+                history = self.update_history([S, E1, E2, A, I, R, D, V], daily_new_infected, history, i//self.periods_per_day)
 
             # Ensure balance in population
             # comp_pop = np.sum(S+ E1 + E2 + A + I + R + D)
@@ -161,15 +162,14 @@ class SEAIR:
             for index, c in enumerate([S, E1, E2, A, I]):
                 assert round(np.min(c)) >= 0, f"Negative value in compartment {compartment_labels[index]}: {np.min(c)}"
 
-        # write results to csv
         if self.write_to_csv:
             utils.write_history(self.write_weekly,
-                                history[::4,:,:,:], 
+                                history, # get daily data
                                 self.population, 
                                 state.time_step, 
                                 self.paths.results_weekly, 
                                 self.paths.results_history,
-                                ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V'])
+                                ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
         
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
     
@@ -197,7 +197,7 @@ class SEAIR:
         return new_E1
 
     @staticmethod
-    def update_history(compartments, history, time_step):
+    def update_history(compartments, new_infected, history, time_step):
         """ Updates history results with new compartments values
         Parameters
             compartments: list of each compartments for a given time step
@@ -208,7 +208,8 @@ class SEAIR:
             
         """
         for c in range(len(compartments)):
-            history[time_step+1, c,:] = compartments[c]
+            history[time_step, c,:] = compartments[c]
+        history[time_step,-1,:] = new_infected
         return history
 
     def flow_transition(self, compartment, OD):

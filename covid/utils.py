@@ -218,7 +218,7 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
-def write_history(write_weekly, history, population, time_step, results_weekly, results_history, compartments):
+def write_history(write_weekly, history, population, time_step, results_weekly, results_history, labels):
     """ write history array to csv
 
     Parameters
@@ -231,7 +231,10 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
         compartments:
     """
     if write_weekly:
-        latest_df = transform_history_to_df(time_step, np.expand_dims(history[-1], axis=0), population, compartments)
+        weekly_new_infected = history[:,-1].sum(axis=0)
+        last_day = np.expand_dims(history[-1], axis=0)
+        last_day[:,-1] = weekly_new_infected
+        latest_df = transform_history_to_df(time_step, last_day, population, labels)
         if os.path.exists(results_weekly):
             if time_step == 0: # block to remove old csv file if new run is executed 
                 os.remove(results_weekly)
@@ -241,7 +244,7 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
         else:
             latest_df.to_csv(results_weekly, index=False)
     else:
-        history_df = transform_history_to_df(time_step, history, population, compartments)
+        history_df = transform_history_to_df(time_step, history, population, labels)
         if os.path.exists(results_history):
             if time_step == 0: # block to remove old csv file if new run is executed
                 os.remove(results_history)
