@@ -4,7 +4,7 @@ from tqdm import tqdm
 np.random.seed(10)
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, population, seair, vaccine_supply, horizon, decision_period, policy, infection_boost, fhi_data=None):
+    def __init__(self, OD_matrices, population, seair, vaccine_supply, horizon, decision_period, policy, infection_boost, fhi_data=None, verbose=False):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -26,6 +26,7 @@ class MarkovDecisionProcess:
         self.path = [self.state]
         self.decision_period = decision_period
         self.fhi_data = fhi_data
+        self.verbose = verbose
 
         policies = {
             "no_vaccines": self._no_vaccines,
@@ -42,12 +43,15 @@ class MarkovDecisionProcess:
         Returns
             A path that shows resulting traversal of states
         """
-        for _ in range(self.state.time_step, self.horizon):
-            print(self.state, end="\n"*3)
+        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        for _ in run_range:
+            if self.verbose: print(self.state, end="\n"*3)
             self.update_state()
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
+                print("Reached stop-criteria. Recovered population > 70%.")
                 break
-            if np.sum([self.state.I, self.state.A]) == 0: # stop if infections are zero
+            if np.sum(self.state.E1) == 0: # stop if infections are zero
+                print("Reached stop-criteria. Infected population is zero.")
                 break
         return self.path
 

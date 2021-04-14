@@ -15,8 +15,6 @@ if __name__ == '__main__':
     age_labels = utils.generate_labels_from_bins(age_bins)
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
-    # generate FHI data
-    utils.generate_weekly_data(paths.fhi_data_daily, paths.fhi_data_weekly)
 
     fhi_data = pd.read_csv(paths.fhi_data_weekly)  # set to None if not used
     
@@ -41,7 +39,7 @@ if __name__ == '__main__':
                 hidden_cases=True)
 
 
-    horizon = 2 # number of weeks
+    horizon = len(fhi_data) # number of weeks
     #vaccine_supply = read_pickle(paths.municipalities_v)
     vaccine_supply = np.ones((28,356))
     policies = ['no_vaccines', 'random', 'population_based', 'infection_based']
@@ -51,19 +49,22 @@ if __name__ == '__main__':
                                 vaccine_supply, 
                                 horizon, 
                                 decision_period=28, 
-                                policy=policies[2],
+                                policy=policies[0],
                                 infection_boost=None, 
-                                fhi_data=fhi_data)
+                                fhi_data=fhi_data,
+                                verbose=False)
+
     path = mdp.run()
     history, new_infections = utils.transform_path_to_numpy(path)
-    utils.print_results(history, new_infections, population, age_labels)
-    """ results = history.sum(axis=2)
-    plot.age_group_infected_plot_weekly(results, age_labels)
-    plot.age_group_infected_plot_weekly_cumulative(results, age_labels)
+    utils.print_results(history, new_infections, population, age_labels, save_to_file=True)
+
+    results_age = history.sum(axis=2)
+    plot.age_group_infected_plot_weekly(results_age, age_labels)
+    plot.age_group_infected_plot_weekly_cumulative(results_age, age_labels)
     
-    results = history.sum(axis=3).sum(axis=2)
+    results_compartment = history.sum(axis=3).sum(axis=2)
     labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
-    plot.seir_plot_weekly(results, labels) """
+    plot.seir_plot_weekly(results_compartment, labels)
 
     # plot confusion matrices
     # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
