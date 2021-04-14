@@ -71,3 +71,32 @@ class State:
         for i in range(len(info)):
             status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
         return status
+
+    @staticmethod
+    def initialize_state(num_initial_infected, vaccines_available, population, time_step=0):
+        """ Initializes a state, default from the moment a disease breaks out
+
+        Parameters
+            initial_infected: array of initial infected (1,356)
+            num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
+            vaccines_available: int, number of vaccines available at time
+            time_step: timestep in which state is initialized. Should be in the range of (0, (24/time_timedelta)*7 - 1)
+        Returns
+            an initialized State object, type defined in State.py
+        """
+        # pop = self.population.population.to_numpy(dtype='float64')
+        pop = population[population.columns[2:-1]].to_numpy(dtype="float64")
+        S = pop.copy()
+        E1 = np.zeros(pop.shape)
+        E2 = np.zeros(pop.shape)
+        A = np.zeros(pop.shape)
+        I = np.zeros(pop.shape)
+        R = np.zeros(pop.shape)
+        D = np.zeros(pop.shape)
+        V = np.zeros(pop.shape)
+
+        initial_infected = S * num_initial_infected/np.sum(pop)
+        S -= initial_infected
+        E1 += initial_infected
+
+        return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1.copy(), time_step) 

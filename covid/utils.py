@@ -136,13 +136,14 @@ def transform_history_to_df(time_step, history, population, column_names):
     (periods, regions, age_groups, compartments) = A.shape 
     B = A.reshape(-1, compartments)
     df = pd.DataFrame(B, columns=list(column_names))
-    df['timestep'] = np.floor_divide(df.index.values, regions*age_groups) + time_step
+    df['date'] = [get_date("20200221", int(time_step)) for time_step in np.floor_divide(df.index.values, regions*age_groups) + time_step//4]
+    df['time_step'] = np.floor_divide(df.index.values, regions*age_groups)*4 + time_step
     df['age_group'] = np.tile(np.array(population.columns[2:-1]), periods*regions)
     df['region_id'] = np.array([[[r]*age_groups for r in population.region_id] for _ in range(periods)]).reshape(-1)
     df['region_name'] = np.array([[[r]*age_groups for r in population.region] for _ in range(periods)]).reshape(-1)
     df['region_population'] = np.array([[[r]*age_groups for r in population.population] for _ in range(periods)]).reshape(-1)
     df['E1_per_100k'] = 1e5*df.E1/df.region_population
-    return df[['timestep', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E1_per_100k']]
+    return df[['date', 'time_step', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E1_per_100k']]
 
 def transform_df_to_history(df, column_names, n_regions, n_age_groups):
     """ transforms a dataframe to 3D array
@@ -244,15 +245,15 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
         else:
             latest_df.to_csv(results_weekly, index=False)
     else:
-        history_df = transform_history_to_df(time_step, history, population, labels)
+        daily_df = transform_history_to_df(time_step, history, population, labels)
         if os.path.exists(results_history):
             if time_step == 0: # block to remove old csv file if new run is executed
                 os.remove(results_history)
-                history_df.to_csv(results_history, index=False)
+                daily_df.to_csv(results_history, index=False)
             else:
-                history_df.to_csv(results_history, mode='a', header=False, index=False)
+                daily_df.to_csv(results_history, mode='a', header=False, index=False)
         else:
-            history_df.to_csv(results_history, index=False)
+            daily_df.to_csv(results_history, index=False)
     
 def generate_weekly_data(fpath_fhi_data_daily, fpath_fhi_data_weekly):
     """ aggregates daily data to weekly data and saves it
@@ -298,7 +299,7 @@ def generate_weekly_data(fpath_fhi_data_daily, fpath_fhi_data_weekly):
     df2 = df.groupby(['year','week']).agg(resample_dict)
     df2.to_csv(fpath_fhi_data_weekly)
 
-def get_date(start_date, time_delta):
+def get_date(start_date, time_step=0):
     """ gets current date for a simulation time step
     Parameters
         start_date: str indicating start date of simulation in the format 'YYYYMMDD' 
@@ -307,7 +308,7 @@ def get_date(start_date, time_delta):
         datdatetime.date object with a given date
     """
     dt = datetime.strptime(start_date, '%Y%m%d').date()
-    dt += timedelta(days=time_delta)
+    dt += timedelta(days=time_step)
     return dt
 
 def print_results(history, new_infections, population, age_labels, save_to_file=False):

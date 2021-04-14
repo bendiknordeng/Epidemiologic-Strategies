@@ -2,6 +2,7 @@ from covid import plot
 from covid import utils
 import numpy as np
 import pandas as pd
+from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seair import SEAIR
 
@@ -35,25 +36,29 @@ if __name__ == '__main__':
                 fatality_rate_symptomatic=config.fatality_rate_symptomatic,
                 paths=paths,
                 write_to_csv=True, 
-                write_weekly=False,
+                write_weekly=True,
                 include_flow=True,
                 hidden_cases=True)
 
+    start_date = utils.get_date("20200221")
+    
+    initial_state = State.initialize_state(
+                        initial_infected=1000,
+                        initial_vaccines=1000, 
+                        population=population, 
+                        time_step=0)
 
     horizon = len(fhi_data) # number of weeks
-    #vaccine_supply = read_pickle(paths.municipalities_v)
-    vaccine_supply = np.ones((28,356))
     policies = ['no_vaccines', 'random', 'population_based', 'infection_based']
-    mdp = MarkovDecisionProcess(OD_matrices, 
-                                population, 
-                                epidemic_function, 
-                                vaccine_supply, 
-                                horizon, 
-                                decision_period=28, 
-                                policy=policies[0],
-                                infection_boost=None, 
-                                fhi_data=fhi_data,
-                                verbose=False)
+    mdp = MarkovDecisionProcess( 
+                    population=population, 
+                    epidemic_function=epidemic_function,
+                    initial_state=initial_state,
+                    horizon=horizon, 
+                    decision_period=28, 
+                    policy=policies[0],
+                    fhi_data=fhi_data,
+                    verbose=False)
 
     path = mdp.run()
     history, new_infections = utils.transform_path_to_numpy(path)

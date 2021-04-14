@@ -4,13 +4,13 @@ from tqdm import tqdm
 np.random.seed(10)
 
 class MarkovDecisionProcess:
-    def __init__(self, OD_matrices, population, seair, vaccine_supply, horizon, decision_period, policy, infection_boost, fhi_data=None, verbose=False):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, fhi_data=None, verbose=False):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
             OD_matrices: Origin-Destination matrices giving movement patterns between regions
             population: A DataFrame with region_id, region_name and population
-            seair: A seair model that enables simulation of the decision process
+            epidemic_function: An epidemic model that enables simulation of the decision process
             vaccine_supply: Information about supply of vaccines, shape e.g. (#decision_period, #regions)
             horizon: The amount of decision_periods the decision process is run 
             decision_period: The number of time steps that every decision directly affects
@@ -18,11 +18,9 @@ class MarkovDecisionProcess:
             fhi_data: dataframe, or None indicating whether or not to use fhi_data in simulation
         """
         self.horizon = horizon
-        self.OD_matrices = OD_matrices
         self.population = population
-        self.vaccine_supply = vaccine_supply
-        self.seair = seair
-        self.state = self._initialize_state(num_initial_infected=1000, vaccines_available=1000, infection_boost=infection_boost)
+        self.epidemic_function = epidemic_function
+        self.state = initial_state
         self.path = [self.state]
         self.decision_period = decision_period
         self.fhi_data = fhi_data
@@ -66,7 +64,7 @@ class MarkovDecisionProcess:
         """
         alphas = [1, 1, 1, 1, 0.1]
         contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
-        vaccine_supply = self.vaccine_supply
+        vaccine_supply = np.ones((356,5))
 
         information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
 
@@ -95,43 +93,8 @@ class MarkovDecisionProcess:
         """
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
-        self.state = self.state.get_transition(decision, information, self.seair.simulate, decision_period)
+        self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
-
-    def _initialize_state(self, num_initial_infected, vaccines_available, infection_boost, time_step=0):
-        """ Initializes a state, default from the moment a disease breaks out
-
-        Parameters
-            initial_infected: array of initial infected (1,356)
-            num_initial_infected: number of infected persons to be distributed randomly across regions if initiaL_infected=None e.g 50
-            vaccines_available: int, number of vaccines available at time
-            infection_boost: array of initial infection boost for each age group
-            time_step: timestep in which state is initialized. Should be in the range of (0, (24/time_timedelta)*7 - 1)
-        Returns
-            an initialized State object, type defined in State.py
-        """
-        # pop = self.population.population.to_numpy(dtype='float64')
-        pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        S = pop.copy()
-        E1 = np.zeros(pop.shape)
-        E2 = np.zeros(pop.shape)
-        A = np.zeros(pop.shape)
-        I = np.zeros(pop.shape)
-        R = np.zeros(pop.shape)
-        D = np.zeros(pop.shape)
-        V = np.zeros(pop.shape)
-
-        # Boost initial infected
-        if infection_boost:
-            E1[0] += infection_boost
-            S[0] -= infection_boost
-            num_initial_infected -= sum(infection_boost)
-
-        initial = S * num_initial_infected/np.sum(pop)
-        S -= initial
-        E1 += initial
-
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1, time_step) 
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero

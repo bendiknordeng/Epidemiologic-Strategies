@@ -164,9 +164,9 @@ class SEAIR:
 
         if self.write_to_csv:
             utils.write_history(self.write_weekly,
-                                history, # get daily data
+                                history,
                                 self.population, 
-                                state.time_step, 
+                                state.time_step,
                                 self.paths.results_weekly, 
                                 self.paths.results_history,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
