@@ -31,8 +31,8 @@ if __name__ == '__main__':
                         hidden_cases=True)
 
     # Set start date
-    day = 20
-    month = 12
+    day = 21
+    month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
 
@@ -43,50 +43,56 @@ if __name__ == '__main__':
                         start_date=start_date,
                         time_step=0)
 
-    horizon = 15 # number of weeks
-    policies = ['no_vaccines', 'random', 'population_based', 'infection_based']
+    horizon = 60 # number of weeks
+    policy = {
+        0: 'no_vaccines', 
+        1: 'random', 
+        2: 'population_based', 
+        3: 'infection_based'
+        }[3]
     mdp = MarkovDecisionProcess( 
                     population=population, 
                     epidemic_function=epidemic_function,
                     initial_state=initial_state,
                     horizon=horizon, 
                     decision_period=28, 
-                    policy=policies[2],
+                    policy=policy,
                     historic_data=historic_data)
 
-    path = mdp.run(verbose=True)
+    path = mdp.run(verbose=False)
     history, new_infections = utils.transform_path_to_numpy(path)
-    utils.print_results(history, new_infections, population, age_labels, save_to_file=False)
+    utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=True)
+    plot = False
+    if plot:
+        results_age = history.sum(axis=2)
+        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
+        infection_results_age = new_infections.sum(axis=1)
+        plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        
+        results_compartment = history.sum(axis=3).sum(axis=2)
+        labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+        plot.seir_plot_weekly(results_compartment, start_date, labels)
 
-    results_age = history.sum(axis=2)
-    plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
-    infection_results_age = new_infections.sum(axis=1)
-    plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-    
-    results_compartment = history.sum(axis=3).sum(axis=2)
-    labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
-    plot.seir_plot_weekly(results_compartment, start_date, labels)
+        # plot confusion matrices
+        # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
 
-    # plot confusion matrices
-    # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
+        # load necessary data for SEIR development plot
+        # df = pd.read_csv(paths.results_history)
+        # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
+        # results = history.sum(axis=2)
+        
+        # accumulated SEIR development plot
+        # plot.seir_plot(results)
 
-    # load necessary data for SEIR development plot
-    # df = pd.read_csv(paths.results_history)
-    # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
-    # results = history.sum(axis=2)
-    
-    # accumulated SEIR development plot
-    # plot.seir_plot(results)
+        # load necessary data for geospatial plot 
+        # kommuner_geometry = plot.create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
 
-    # load necessary data for geospatial plot 
-    # kommuner_geometry = plot.create_geopandas(True, population, paths.municipalities_geo_pkl, paths.municipalities_geo_geojson)
+        # geospatial plot of simulation
+        # plot.plot_simulation(history[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
+        # plot.create_gif(paths.municipality_gif,paths.municipality_plots)
 
-    # geospatial plot of simulation
-    # plot.plot_simulation(history[::4,:,:], population, results[::4,4], kommuner_geometry, paths.municipality_plots)
-    # plot.create_gif(paths.municipality_gif,paths.municipality_plots)
-
-    # geospatial plot of of historical covid cases in Norway
-    # history = utils.transform_historical_df_to_history(pd.read_csv(paths.municipalities_hist_data))
-    # plot.plot_historical_infected(history[::1,:,:], population, kommuner_geometry, paths.municipality_hist_plots)
-    # plot.create_gif(paths.municipality_hist_gif,paths.municipality_hist_plots)
+        # geospatial plot of of historical covid cases in Norway
+        # history = utils.transform_historical_df_to_history(pd.read_csv(paths.municipalities_hist_data))
+        # plot.plot_historical_infected(history[::1,:,:], population, kommuner_geometry, paths.municipality_hist_plots)
+        # plot.create_gif(paths.municipality_hist_gif,paths.municipality_hist_plots)
 

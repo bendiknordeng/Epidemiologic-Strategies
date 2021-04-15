@@ -27,15 +27,13 @@ class MarkovDecisionProcess:
         self.path = [self.state]
         self.decision_period = decision_period
         self.historic_data = historic_data
-
-        policies = {
+        self.policy_name = policy
+        self.policy = {
             "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
             "population_based": self._population_based_policy,
             "infection_based": self._infection_based_policy
-        }
-
-        self.policy = policies[policy]
+        }[policy]
 
     def run(self, verbose=False):
         """ Updates states from current time_step to a specified horizon
@@ -43,6 +41,7 @@ class MarkovDecisionProcess:
         Returns
             A path that shows resulting traversal of states
         """
+        print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
         run_range = range(self.state.time_step, self.horizon) if verbose else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
             if verbose: print(self.state, end="\n"*2)

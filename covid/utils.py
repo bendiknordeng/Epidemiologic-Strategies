@@ -311,7 +311,7 @@ def get_date(start_date, time_step=0):
     dt += timedelta(days=time_step)
     return dt
 
-def print_results(history, new_infections, population, age_labels, save_to_file=False):
+def print_results(history, new_infections, population, age_labels, policy, save_to_file=False):
     total_pop = np.sum(population.population)
     infected = [new_infections[:,:,i].sum(axis=0).sum(axis=0) for i in range(len(age_labels))]
     vaccinated = history[-1,7,:,:].sum(axis=0)
@@ -340,4 +340,4 @@ def print_results(history, new_infections, population, age_labels, save_to_file=
         total = df[df.columns[1:]].sum()
         total["Age group"] = "All"
         df = df.append(total, ignore_index=True)
-        df.to_csv("results.csv", index=False)
+        df.to_csv(f"results/final_results_{policy}.csv", index=False)
