@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     initial_state = State.initialize_state(
                         num_initial_infected=1000,
-                        vaccines_available=0, 
+                        vaccines_available=1000, 
                         population=population,
                         start_date=start_date,
                         time_step=0)
@@ -48,8 +48,9 @@ if __name__ == '__main__':
         0: 'no_vaccines', 
         1: 'random', 
         2: 'population_based', 
-        3: 'infection_based'
-        }[3]
+        3: 'infection_based',
+        4: 'age_based'
+        }[4]
     mdp = MarkovDecisionProcess( 
                     population=population, 
                     epidemic_function=epidemic_function,
@@ -61,7 +62,7 @@ if __name__ == '__main__':
 
     path = mdp.run(verbose=False)
     history, new_infections = utils.transform_path_to_numpy(path)
-    utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=True)
+    utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
     plot = False
     if plot:
         results_age = history.sum(axis=2)
