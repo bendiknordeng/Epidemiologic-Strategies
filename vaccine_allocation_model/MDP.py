@@ -44,7 +44,7 @@ class MarkovDecisionProcess:
         Returns
             A path that shows resulting traversal of states
         """
-        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        run_range = range(self.state.time_step, self.horizon) #if self.verbose else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population

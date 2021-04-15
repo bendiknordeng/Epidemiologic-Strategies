@@ -21,14 +21,14 @@ if __name__ == '__main__':
     historic_data.date = pd.to_datetime(historic_data.date)
     
     epidemic_function = SEAIR(
-                OD=OD_matrices,
-                population=population,
-                config=config,
-                paths=paths,
-                write_to_csv=False, 
-                write_weekly=False,
-                include_flow=False,
-                hidden_cases=False)
+                        OD=OD_matrices,
+                        population=population,
+                        config=config,
+                        paths=paths,
+                        write_to_csv=False, 
+                        write_weekly=False,
+                        include_flow=False,
+                        hidden_cases=True)
 
     # Set start date
     day = 21
@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     path = mdp.run()
     history, new_infections = utils.transform_path_to_numpy(path)
-    utils.print_results(history, new_infections, population, age_labels, save_to_file=True)
+    utils.print_results(history, new_infections, population, age_labels, save_to_file=False)
 
     results_age = history.sum(axis=2)
     plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)

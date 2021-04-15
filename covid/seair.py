@@ -39,7 +39,7 @@ class SEAIR:
         self.presymptomatic_period=config.presymptomatic_period*self.periods_per_day
         self.postsymptomatic_period=config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
-        self.fatality_rate_symptomatic=config.fatality_rate_symptomatic
+        self.fatality_rate_symptomatic=np.array(config.fatality_rate_symptomatic)/self.periods_per_day
 
         self.include_flow = include_flow
         self.hidden_cases = hidden_cases
@@ -128,10 +128,6 @@ class SEAIR:
             new_E1_from_I = np.random.binomial(draws, prob_i)
 
             new_E1 = new_E1_from_E2 + new_E1_from_A + new_E1_from_I
-
-            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
-                new_E1 += self.add_hidden_cases(S, E1, new_E1)
-
             new_E2 = p * sigma * E1
             new_A = (1 - p) * sigma * E1
             new_I = alpha * E2
@@ -148,6 +144,11 @@ class SEAIR:
             R = R + new_R_from_I + new_R_from_A
             D = D + new_D
            
+            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
+                hidden_cases = self.add_hidden_cases(S, E1, new_E1)
+                S = S - hidden_cases
+                E1 = E1 + hidden_cases
+
             # Save number of new infected
             total_new_infected[i] = new_E1
             
@@ -161,11 +162,13 @@ class SEAIR:
             total_pop = np.sum(N)
             assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
             
+            print(np.min(S))
+            """
             # Ensure all positive compartments
             compartment_labels = ['S', 'E1', 'E2', 'A', 'I']
             for index, c in enumerate([S, E1, E2, A, I]):
                 assert round(np.min(c)) >= 0, f"Negative value in compartment {compartment_labels[index]}: {np.min(c)}"
-
+            """
         if self.write_to_csv:
             utils.write_history(self.write_weekly,
                                 history,
@@ -178,27 +181,27 @@ class SEAIR:
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
     
     @staticmethod
-    def add_hidden_cases(S, E1, new_E1):
+    def add_hidden_cases(S, E1, hidden_cases):
         """ Adds cases to the infection compartment, to represent hidden cases
 
         Parameters
             S: array of susceptible in each region for each age group
             I: array of infected in each region for each age group
-            new_I: array of new cases of infected individuals for each region and age group
+            hidden_cases: array of new cases of infected individuals for each region and age group
         Returns
-            new_I, an array of new cases including hidden cases
+            hidden_cases, an array of new cases including hidden cases
         """
-        share = 0.1 # maximum number of hidden infections
-        for i in range(len(E1)):
-            for j in range(len(E1[0])):
+        share = 1e-5 # maximum number of hidden infections
+        hidden_cases = np.random.binomial(S.astype(int), share)
+        """ for i in range(len(E1)):
+            for j in range(len(E1[i])):
                 if E1[i][j] < 0.5:
                     new_infections = np.random.uniform(0, 0.01) # introduce infection to region with little infections
                 else:
-                    new_infections = np.random.randint(0, min(int(E1[i][j]*share), 10)+1)
+                    new_infections = np.random.randint(0, min(int(E1[i][j]*share), 1)+1)
                 if S[i][j] > new_infections:
-                    new_E1[i][j] += new_infections
-
-        return new_E1
+                    hidden_cases[i][j] += new_infections """
+        return hidden_cases
 
     @staticmethod
     def update_history(compartments, new_infected, history, time_step):
