@@ -318,17 +318,17 @@ def print_results(history, new_infections, population, age_labels, save_to_file=
     dead = history[-1,6,:,:].sum(axis=0)
     age_total = population[age_labels].sum().to_numpy()
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
-    result = f"{columns[0]:^12} {columns[1]:^16} {columns[2]:^16} {columns[3]:^16}\n"
+    result = f"{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
     for i in range(len(age_labels)):
         age_pop = np.sum(population[age_labels[i]])
-        result += f"{age_labels[i]:^12}"
-        result += f"{infected[i]:>9.0f} ({100 * infected[i]/age_pop:>4.2f}%)"
-        result += f"{vaccinated[i]:>9.0f} ({100 * vaccinated[i]/age_pop:>4.2f}%)"
-        result += f"{dead[i]:>9.0f} ({100 * dead[i]/age_pop:>4.2f}%)\n"
-    result += f"{'All':^12}"
-    result += f"{np.sum(infected):>9.0f} ({100 * np.sum(infected)/total_pop:>4.2f}%)"
-    result += f"{np.sum(vaccinated):>9.0f} ({100 * np.sum(vaccinated)/total_pop:>4.2f}%)"
-    result += f"{np.sum(dead):>9.0f} ({100 * np.sum(dead)/total_pop:>4.2f}%)"
+        result += f"{age_labels[i]:<9}"
+        result += f"{infected[i]:>12.0f} ({100 * infected[i]/age_pop:>5.2f}%)"
+        result += f"{vaccinated[i]:>12.0f} ({100 * vaccinated[i]/age_pop:>5.2f}%)"
+        result += f"{dead[i]:>12.0f} ({100 * dead[i]/age_pop:>5.2f}%)\n"
+    result += f"{'All':<9}"
+    result += f"{np.sum(infected):>12.0f} ({100 * np.sum(infected)/total_pop:>5.2f}%)"
+    result += f"{np.sum(vaccinated):>12.0f} ({100 * np.sum(vaccinated)/total_pop:>5.2f}%)"
+    result += f"{np.sum(dead):>12.0f} ({100 * np.sum(dead)/total_pop:>5.2f}%)"
     print(result)
 
     if save_to_file:

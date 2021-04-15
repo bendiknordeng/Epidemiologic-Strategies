@@ -47,13 +47,13 @@ class MarkovDecisionProcess:
         run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
             if self.verbose: print(self.state, end="\n"*2)
-            self.update_state()
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
-                print("Reached stop-criteria. Recovered population > 70%.")
+                print("\033[1mReached stop-criteria. Recovered population > 70%.\033[0m\n")
                 break
             if np.sum(self.state.E1) < 1: # stop if infections are zero
-                print("Reached stop-criteria. Infected population is zero.")
+                print("\033[1mReached stop-criteria. Infected population is zero.\033[0m\n")
                 break
+            self.update_state()
         return self.path
 
     def get_exogenous_information(self, state):
@@ -71,7 +71,7 @@ class MarkovDecisionProcess:
         week_data = self.historic_data[mask]
         if week_data.empty:
             alphas = [1, 1, 1, 1, 0.1]
-            vaccine_supply = np.ones((356,5))
+            vaccine_supply = np.ones((356,5))*10
             contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
         else:
             data = week_data.iloc[-1]
