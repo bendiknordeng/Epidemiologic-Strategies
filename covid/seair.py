@@ -113,8 +113,14 @@ class SEAIR:
                         flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
                 
                 S, E1, E2, A, I = flow_compartments
+            
+            """ # fix negative values from rounding errors
+            negatives = np.where(S < 0)
+            for x in negatives[0]:
+                for y in negatives[1]:
+                    S[x][y] = 0 """
 
-            draws = S.astype(int)
+            draws = np.maximum(S.astype(int), 0)
             prob_e = (np.matmul(E2, C).T * (r_e*beta/N)).T
             prob_a = (np.matmul(A, C).T * (r_a*beta/N)).T
             prob_i = (np.matmul(I, C).T * (beta/N)).T
@@ -140,7 +146,7 @@ class SEAIR:
             E1 = E1 + new_E1 - new_E2 - new_A
             E2 = E2 + new_E2 - new_I
             A = A + new_A - new_R_from_A
-            I = I + new_I - new_R_from_I
+            I = I + new_I - new_R_from_I - new_D
             R = R + new_R_from_I + new_R_from_A
             D = D + new_D
            
@@ -153,10 +159,10 @@ class SEAIR:
                 history = self.update_history([S, E1, E2, A, I, R, D, V], daily_new_infected, history, i//self.periods_per_day)
 
             # Ensure balance in population
-            # comp_pop = np.sum(S+ E1 + E2 + A + I + R + D)
-            # total_pop = np.sum(N)
-            # assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
-
+            comp_pop = np.sum(S + E1 + E2 + A + I + R + D)
+            total_pop = np.sum(N)
+            assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
+            
             # Ensure all positive compartments
             compartment_labels = ['S', 'E1', 'E2', 'A', 'I']
             for index, c in enumerate([S, E1, E2, A, I]):
@@ -227,12 +233,6 @@ class SEAIR:
         outflow = total * OD.sum(axis=1)
         net_flow = [age_flow_scaling * x for x in (inflow-outflow)]
         new_compartment = compartment + net_flow
-
-        # fix negative values from rounding errors
-        negatives = np.where(new_compartment < 0)
-        for i in negatives[0]:
-            for j in negatives[1]:
-                new_compartment[i][j] = 0
 
         return new_compartment
 
