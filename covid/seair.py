@@ -3,45 +3,43 @@ from covid import utils
 np.random.seed(10)
 
 class SEAIR:
-    def __init__(self, OD, population, time_delta, contact_matrices, age_group_flow_scaling, R0,
-                efficacy, latent_period, proportion_symptomatic_infections, presymptomatic_infectiousness, 
-                asymptomatic_infectiousness, presymptomatic_period, postsymptomatic_period, 
-                fatality_rate_symptomatic, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
+    def __init__(self, OD, population, config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
             population: pd.DataFrame with columns region_id, region_name, population (quantity)
-            contact_matrices: list of lists with measurement of the intensitity of social contacts among seven age-groups at households, schools, workplaces, and public/community
-            age_group_flow_scaling: list of scaling factors for flow of each age group
-            R0: Basic reproduction number (e.g 2.4)
-            efficacy: vaccine efficacy (e.g 0.95)
-            proportion_symptomatic_infections: Proportion of symptomatic infections(e.g 0.8)
-            latent_period: Time before vaccine is effective (e.g 5.1*4)
-            recovery_period: Time to recover from receiving the virus to not being  (e.g 21'4)
-            pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6*4)
-            post_isolation_recovery_period: Post-isolation recovery period (e.g 16.4*4)
-            fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
+            config: named tuple with following parameters
+                contact_matrices: list of lists with measurement of the intensitity of social contacts among seven age-groups at households, schools, workplaces, and public/community
+                age_group_flow_scaling: list of scaling factors for flow of each age group
+                R0: Basic reproduction number (e.g 2.4)
+                efficacy: vaccine efficacy (e.g 0.95)
+                proportion_symptomatic_infections: Proportion of symptomatic infections(e.g 0.8)
+                latent_period: Time before vaccine is effective (e.g 5.1*4)
+                recovery_period: Time to recover from receiving the virus to not being  (e.g 21'4)
+                pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6*4)
+                post_isolation_recovery_period: Post-isolation recovery period (e.g 16.4*4)
+                fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
             include_flow: boolean, true if we want to model population flow between regions
             hidden_cases: boolean, true if we want to model hidden cases of infection
             write_to_csv: boolean, true if we want to write results to csv
             write_weekly: boolean, false if we want to write daily results, true if weekly
          """
         
-        self.periods_per_day = int(24/time_delta)
+        self.periods_per_day = int(24/config.time_delta)
         self.OD=OD
         self.population=population
-        self.contact_matrices=contact_matrices
-        self.age_group_flow_scaling=age_group_flow_scaling
-        self.R0=R0*self.periods_per_day
-        self.efficacy=efficacy
-        self.latent_period=latent_period*self.periods_per_day
-        self.proportion_symptomatic_infections=proportion_symptomatic_infections
-        self.presymptomatic_infectiousness=presymptomatic_infectiousness
-        self.asymptomatic_infectiousness=asymptomatic_infectiousness
-        self.presymptomatic_period=presymptomatic_period*self.periods_per_day
-        self.postsymptomatic_period=postsymptomatic_period*self.periods_per_day
+        self.contact_matrices=config.contact_matrices
+        self.age_group_flow_scaling=config.age_group_flow_scaling
+        self.R0=config.R0*self.periods_per_day
+        self.efficacy=config.efficacy
+        self.latent_period=config.latent_period*self.periods_per_day
+        self.proportion_symptomatic_infections=config.proportion_symptomatic_infections
+        self.presymptomatic_infectiousness=config.presymptomatic_infectiousness
+        self.asymptomatic_infectiousness=config.asymptomatic_infectiousness
+        self.presymptomatic_period=config.presymptomatic_period*self.periods_per_day
+        self.postsymptomatic_period=config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
-        self.fatality_rate_symptomatic=fatality_rate_symptomatic
+        self.fatality_rate_symptomatic=config.fatality_rate_symptomatic
 
         self.include_flow = include_flow
         self.hidden_cases = hidden_cases
