@@ -94,10 +94,12 @@ class SEAIR:
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
             # Vaccinate before flow
-            new_V = epsilon * decision[i % decision_period] # M
-            S = S - new_V
-            R = R + new_V
-            V = V + new_V
+            new_vaccinated = np.minimum(S, decision[i % decision_period]) # M
+            new_vaccinated = new_vaccinated.clip(min=0)
+            successfully_new_V = epsilon * new_vaccinated
+            S = S - successfully_new_V
+            R = R + successfully_new_V
+            V = V + new_vaccinated
 
             # Finds the movement flow for the given period i and scales it for each 
             if self.include_flow:
@@ -111,12 +113,6 @@ class SEAIR:
                         flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
                 
                 S, E1, E2, A, I = flow_compartments
-            
-            """ # fix negative values from rounding errors
-            negatives = np.where(S < 0)
-            for x in negatives[0]:
-                for y in negatives[1]:
-                    S[x][y] = 0 """
 
             draws = np.maximum(S.astype(int), 0)
             prob_e = (np.matmul(E2, C).T * (r_e*beta/N)).T
@@ -162,13 +158,6 @@ class SEAIR:
             total_pop = np.sum(N)
             assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
             
-            print(np.min(S))
-            """
-            # Ensure all positive compartments
-            compartment_labels = ['S', 'E1', 'E2', 'A', 'I']
-            for index, c in enumerate([S, E1, E2, A, I]):
-                assert round(np.min(c)) >= 0, f"Negative value in compartment {compartment_labels[index]}: {np.min(c)}"
-            """
         if self.write_to_csv:
             utils.write_history(self.write_weekly,
                                 history,
@@ -192,15 +181,7 @@ class SEAIR:
             hidden_cases, an array of new cases including hidden cases
         """
         share = 1e-5 # maximum number of hidden infections
-        hidden_cases = np.random.binomial(S.astype(int), share)
-        """ for i in range(len(E1)):
-            for j in range(len(E1[i])):
-                if E1[i][j] < 0.5:
-                    new_infections = np.random.uniform(0, 0.01) # introduce infection to region with little infections
-                else:
-                    new_infections = np.random.randint(0, min(int(E1[i][j]*share), 1)+1)
-                if S[i][j] > new_infections:
-                    hidden_cases[i][j] += new_infections """
+        hidden_cases = np.random.binomial(np.maximum(S.astype(int), 0), share)
         return hidden_cases
 
     @staticmethod
@@ -229,12 +210,13 @@ class SEAIR:
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
         age_flow_scaling = np.array(self.age_group_flow_scaling)
-        total = compartment.sum(axis=1)
-        inflow = np.matmul(total, OD)
-        outflow = total * OD.sum(axis=1)
-        net_flow = [age_flow_scaling * x for x in (inflow-outflow)]
-        new_compartment = compartment + net_flow
-
+        age_ODs = [OD.copy()*a for a in age_flow_scaling]
+        new_compartment = compartment.copy()
+        for age_group in range(compartment.shape[1]):
+            total = compartment[:,age_group]
+            inflow = np.matmul(total, age_ODs[age_group])
+            outflow = total * age_ODs[age_group].sum(axis=1)
+            new_compartment[:,age_group] = new_compartment[:,age_group] + inflow - outflow
         return new_compartment
 
     def generate_weighted_contact_matrix(self, weights):

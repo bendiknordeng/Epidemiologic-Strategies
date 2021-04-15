@@ -7,7 +7,7 @@ np.random.seed(10)
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, historic_data=None, verbose=False):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,7 +27,6 @@ class MarkovDecisionProcess:
         self.path = [self.state]
         self.decision_period = decision_period
         self.historic_data = historic_data
-        self.verbose = verbose
 
         policies = {
             "no_vaccines": self._no_vaccines,
@@ -38,15 +37,15 @@ class MarkovDecisionProcess:
 
         self.policy = policies[policy]
 
-    def run(self):
+    def run(self, verbose=False):
         """ Updates states from current time_step to a specified horizon
 
         Returns
             A path that shows resulting traversal of states
         """
-        run_range = range(self.state.time_step, self.horizon) #if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        run_range = range(self.state.time_step, self.horizon) if verbose else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
-            if self.verbose: print(self.state, end="\n"*2)
+            if verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 70%.\033[0m\n")
                 break

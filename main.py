@@ -27,12 +27,12 @@ if __name__ == '__main__':
                         paths=paths,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=False,
+                        include_flow=True,
                         hidden_cases=True)
 
     # Set start date
-    day = 21
-    month = 2
+    day = 20
+    month = 12
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
 
@@ -43,7 +43,7 @@ if __name__ == '__main__':
                         start_date=start_date,
                         time_step=0)
 
-    horizon = 60 # number of weeks
+    horizon = 15 # number of weeks
     policies = ['no_vaccines', 'random', 'population_based', 'infection_based']
     mdp = MarkovDecisionProcess( 
                     population=population, 
@@ -52,17 +52,16 @@ if __name__ == '__main__':
                     horizon=horizon, 
                     decision_period=28, 
                     policy=policies[2],
-                    historic_data=historic_data,
-                    verbose=False)
+                    historic_data=historic_data)
 
-    path = mdp.run()
+    path = mdp.run(verbose=True)
     history, new_infections = utils.transform_path_to_numpy(path)
     utils.print_results(history, new_infections, population, age_labels, save_to_file=False)
 
     results_age = history.sum(axis=2)
     plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
-    #infection_results_age = new_infections.sum(axis=1)
-    #plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+    infection_results_age = new_infections.sum(axis=1)
+    plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
     
     results_compartment = history.sum(axis=3).sum(axis=2)
     labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
