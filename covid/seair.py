@@ -141,7 +141,7 @@ class SEAIR:
             D = D + new_D
            
             if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
-                hidden_cases = self.add_hidden_cases(S, E1, new_E1)
+                hidden_cases = self.add_hidden_cases(S)
                 S = S - hidden_cases
                 E1 = E1 + hidden_cases
 
@@ -163,14 +163,14 @@ class SEAIR:
                                 history,
                                 self.population, 
                                 state.time_step,
-                                self.paths.results_weekly, 
-                                self.paths.results_history,
+                                self.paths.results_history_weekly,
+                                self.paths.results_history_daily,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
         
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
     
     @staticmethod
-    def add_hidden_cases(S, E1, hidden_cases):
+    def add_hidden_cases(S):
         """ Adds cases to the infection compartment, to represent hidden cases
 
         Parameters

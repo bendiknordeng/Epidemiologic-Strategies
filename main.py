@@ -27,8 +27,8 @@ if __name__ == '__main__':
                         paths=paths,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=True,
-                        hidden_cases=True)
+                        include_flow=False,
+                        hidden_cases=False)
 
     # Set start date
     day = 21
@@ -63,8 +63,8 @@ if __name__ == '__main__':
     path = mdp.run(verbose=False)
     history, new_infections = utils.transform_path_to_numpy(path)
     utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
-    plot = False
-    if plot:
+    plot_results = True
+    if plot_results:
         results_age = history.sum(axis=2)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
         infection_results_age = new_infections.sum(axis=1)
