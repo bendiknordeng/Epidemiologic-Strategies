@@ -8,7 +8,7 @@
 "asymptomatic_infectiousness":0.33,
 "presymptomatic_period": 2,
 "postsymptomatic_period": 5,
-"age_bins" = [0, 6, 15, 20, 40, 66]
+"age_bins": [0, 6, 15, 20, 40, 66],
 "fatality_rate_symptomatic": [0.0, 0.0, 0.0, 0.0, 0.04, 0.25],
 "age_group_flow_scaling": [0.0, 0.0, 0.25, 0.4, 0.25, 0.1]
 }

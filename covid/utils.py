@@ -235,6 +235,11 @@ def generate_contact_matrices(bins, labels, country=None):
         matrices.append(matrix)
     return matrices
 
+def get_historic_data(path):
+    historic_data = pd.read_csv(path)  # set to None if not used
+    historic_data.date = pd.to_datetime(historic_data.date)
+    return historic_data
+
 def write_history(write_weekly, history, population, time_step, results_weekly, results_history, labels):
     """ write history array to csv
 
