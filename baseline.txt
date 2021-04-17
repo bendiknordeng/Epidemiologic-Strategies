@@ -1,0 +1,13 @@
+{"R0":3,
+"periods_per_day":4,
+"time_delta":6,
+"efficacy":0.95,
+"latent_period": 3,
+"proportion_symptomatic_infections":0.8,
+"presymptomatic_infectiousness":1.5,
+"asymptomatic_infectiousness":0.33,
+"presymptomatic_period": 2,
+"postsymptomatic_period": 5,
+"fatality_rate_symptomatic": [0.0, 0.0, 0.0, 0.0, 0.04, 0.25],
+"age_group_flow_scaling": [0.0, 0.0, 0.25, 0.4, 0.25, 0.1]
+}

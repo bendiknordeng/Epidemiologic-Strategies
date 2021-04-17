@@ -219,6 +219,21 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
+def generate_contact_matrices(bins, labels):
+    df = pd.read_csv('data/contact_data.csv')
+    df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
+    df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
+    df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).sum()).reset_index()
+    age_pop = (df.contact_age_0.value_counts()[labels] + df.contact_age_1.value_counts()[labels])/2
+    matrices = []
+    for col in ['home', 'work', 'school', 'transport', 'leisure']:
+        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1')
+        matrix += matrix.T
+        matrix.values[tuple([np.arange(matrix.shape[0])]*2)] = matrix.values[tuple([np.arange(matrix.shape[0])]*2)]/2
+        matrix = np.array([[np.round(matrix[i][j]/(age_pop[i]+age_pop[j]),2) for i in labels] for j in labels])
+        matrices.append(matrix)
+    return matrices
+
 def write_history(write_weekly, history, population, time_step, results_weekly, results_history, labels):
     """ write history array to csv
 

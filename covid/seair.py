@@ -3,13 +3,13 @@ from covid import utils
 np.random.seed(10)
 
 class SEAIR:
-    def __init__(self, OD, population, config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
+    def __init__(self, OD, contact_matrices, population, config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
+            contact_matrices: Contact matrices between age groups
             population: pd.DataFrame with columns region_id, region_name, population (quantity)
             config: named tuple with following parameters
-                contact_matrices: list of lists with measurement of the intensitity of social contacts among seven age-groups at households, schools, workplaces, and public/community
                 age_group_flow_scaling: list of scaling factors for flow of each age group
                 R0: Basic reproduction number (e.g 2.4)
                 efficacy: vaccine efficacy (e.g 0.95)
@@ -27,8 +27,8 @@ class SEAIR:
         
         self.periods_per_day = int(24/config.time_delta)
         self.OD=OD
+        self.contact_matrices = contact_matrices
         self.population=population
-        self.contact_matrices=config.contact_matrices
         self.age_group_flow_scaling=config.age_group_flow_scaling
         self.R0=config.R0*self.periods_per_day
         self.efficacy=config.efficacy

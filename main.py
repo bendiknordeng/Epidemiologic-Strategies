@@ -12,9 +12,11 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = utils.create_named_tuple(paths.config)
-    age_bins = [0,15,20,40,66]
+    age_bins = [0, 6, 15, 20, 40, 66]
     age_labels = utils.generate_labels_from_bins(age_bins)
     population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
+    contact_matrices = utils.generate_contact_matrices(age_bins, age_labels)
+
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
 
     historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
@@ -22,6 +24,7 @@ if __name__ == '__main__':
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
+                        contact_matrices=contact_matrices,
                         population=population,
                         config=config,
                         paths=paths,
@@ -50,7 +53,7 @@ if __name__ == '__main__':
         2: 'population_based', 
         3: 'infection_based',
         4: 'age_based'
-        }[4]
+        }[0]
     mdp = MarkovDecisionProcess( 
                     population=population, 
                     epidemic_function=epidemic_function,
@@ -74,14 +77,13 @@ if __name__ == '__main__':
         labels= ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
         plot.seir_plot_weekly(results_compartment, start_date, labels)
 
-        # plot confusion matrices
-        # plot.plot_heatmaps(config.contact_matrices, config.contact_matrices_weights, paths.heat_maps)
-
         # load necessary data for SEIR development plot
         # df = pd.read_csv(paths.results_history)
         # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
         # results = history.sum(axis=2)
         
+        # plot.plot_heatmaps(contact_matrices, [0.5, 0.5, 0.5, 0.5, 0.5], age_labels, paths.heat_maps)
+
         # accumulated SEIR development plot
         # plot.seir_plot(results)
 

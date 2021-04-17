@@ -1,5 +1,5 @@
 {
-'config':                       'configs/baseline.txt',
+'config':                       'baseline.txt',
 'od':                           'data/od_municipalities.pkl',
 'age_divided_population':       'data/age_divided_population.csv',
 'municipalities_names':         'data/Kommunenummer_navn_2020.csv',

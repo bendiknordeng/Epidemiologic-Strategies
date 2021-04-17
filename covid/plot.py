@@ -12,7 +12,7 @@ import re
 from os import listdir
 import imageio
 from . import utils
-import seaborn as sn
+import seaborn as sns
 from datetime import timedelta
 
 color_scheme = {
@@ -111,25 +111,22 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
     plt.show()
 
 
-def plot_heatmaps(C, weights, fpath=""):
+def plot_heatmaps(C, weights, age_labels, fpath=""):
     """ Plotes heatmaps for contact matrices
 
     Parameters
-        C: lists of lists with contact matrices for households, schools, workplaces and public 
+        C: lists of lists with contact matrices for home, work, schools, transport and leisure 
         fpath: file paths where the heat mats is saved
         weights: weights used to weight different contact matrices
     """
-    age_groups = ["0-5", "6-15", "16-19", "20-66", "67+"]
-    c_descriptions = ['Households', 'Schools', 'Workplaces', 'Public', 'Weighted']   
-    sn.set(font_scale=1.2) 
-    
+    matrices = C.copy()
+    c_descriptions = ['Home', 'Work', 'School', 'Transport', 'Leisure', 'Combined']   
+    sns.set(font_scale=1.2)
     c_combined =  np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)
-    C.append(c_combined)
-    
-    for i in range(len(C)):
+    matrices.append(c_combined)
+    for i in range(len(matrices)):
         plt.figure(figsize = (10,7))
-        sn.heatmap(C[i], annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_groups, yticklabels=age_groups)
-        # plt.title(c_descriptions[i])
+        sns.heatmap(matrices[i], annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_labels, yticklabels=age_labels)
         if fpath != "":
             plt.savefig(fpath + c_descriptions[i])
 
