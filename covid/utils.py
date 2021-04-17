@@ -219,8 +219,9 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
-def generate_contact_matrices(bins, labels):
+def generate_contact_matrices(bins, labels, country=None):
     df = pd.read_csv('data/contact_data.csv')
+    if country: df = df[df.country == country]
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
     df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).sum()).reset_index()
