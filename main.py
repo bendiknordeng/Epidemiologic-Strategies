@@ -12,15 +12,11 @@ if __name__ == '__main__':
     
     # read in data from filepaths 
     config = utils.create_named_tuple(paths.config)
-    age_bins = [0, 6, 15, 20, 40, 66]
-    age_labels = utils.generate_labels_from_bins(age_bins)
-    population = utils.generate_custom_population(age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
-    contact_matrices = utils.generate_contact_matrices(age_bins, age_labels)
-
+    age_labels = utils.generate_labels_from_bins(config.age_bins)
+    population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
+    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, country='GB')
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
-
-    historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
-    historic_data.date = pd.to_datetime(historic_data.date)
+    historic_data = utils.get_historic_data(paths.fhi_data_daily)
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -66,7 +62,7 @@ if __name__ == '__main__':
     path = mdp.run(verbose=False)
     history, new_infections = utils.transform_path_to_numpy(path)
     utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
-    plot_results = True
+    plot_results = False
     if plot_results:
         results_age = history.sum(axis=2)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
