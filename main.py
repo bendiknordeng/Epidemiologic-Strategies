@@ -23,6 +23,7 @@ if __name__ == '__main__':
     policies = ['no_vaccines', 'random', 'population_based', 'infection_based', 'age_based']
 
     # Set initial parameters
+    np.random.seed(10)
     day = 21
     month = 2
     year = 2022
@@ -43,8 +44,8 @@ if __name__ == '__main__':
                         paths=paths,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=False,
-                        hidden_cases=False)
+                        include_flow=True,
+                        hidden_cases=True)
 
     initial_state = State.initialize_state(
                         num_initial_infected=initial_infected,

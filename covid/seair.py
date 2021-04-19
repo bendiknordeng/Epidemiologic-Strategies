@@ -1,6 +1,5 @@
 import numpy as np
 from covid import utils
-np.random.seed(10)
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,

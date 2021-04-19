@@ -3,7 +3,6 @@ from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-np.random.seed(10)
 from datetime import timedelta
 
 class MarkovDecisionProcess:
