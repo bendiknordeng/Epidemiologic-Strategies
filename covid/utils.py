@@ -244,6 +244,13 @@ def get_age_group_flow_scaling(bins, labels, population):
     age_group_commuter_percent = commuters/sum_age_groups
     return age_group_commuter_percent/age_group_commuter_percent.sum()
 
+def get_age_group_fatality_prob(bins, labels):
+    df = pd.read_csv('data/death_by_age.csv')
+    df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    infected = df.groupby('age').sum()['infected'].to_numpy()
+    dead = df.groupby('age').sum()['dead'].to_numpy()
+    return dead/infected
+
 def get_historic_data(path):
     historic_data = pd.read_csv(path)  # set to None if not used
     historic_data.date = pd.to_datetime(historic_data.date)

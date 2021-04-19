@@ -3,7 +3,7 @@ from covid import utils
 np.random.seed(10)
 
 class SEAIR:
-    def __init__(self, OD, contact_matrices, population, age_group_flow_scaling,
+    def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
                 config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
         """ 
         Parameters:
@@ -31,6 +31,7 @@ class SEAIR:
         self.contact_matrices = contact_matrices
         self.population=population
         self.age_group_flow_scaling=age_group_flow_scaling
+        self.fatality_rate_symptomatic=death_rates
         self.R0=config.R0*self.periods_per_day
         self.efficacy=config.efficacy
         self.latent_period=config.latent_period*self.periods_per_day
@@ -40,7 +41,6 @@ class SEAIR:
         self.presymptomatic_period=config.presymptomatic_period*self.periods_per_day
         self.postsymptomatic_period=config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
-        self.fatality_rate_symptomatic=np.array(config.fatality_rate_symptomatic)/self.periods_per_day
 
         self.include_flow = include_flow
         self.hidden_cases = hidden_cases

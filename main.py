@@ -16,13 +16,17 @@ if __name__ == '__main__':
     population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
     contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, country='IT')
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
+    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
+    population.to_csv('data/temp_pop.csv', index=False)
+    
     epidemic_function = SEAIR(
                         OD=OD_matrices,
                         contact_matrices=contact_matrices,
                         population=population,
                         age_group_flow_scaling=age_group_flow_scaling,
+                        death_rates=death_rates,
                         config=config,
                         paths=paths,
                         write_to_csv=False, 
