@@ -71,7 +71,7 @@ class State:
         values = [np.sum(compartment) for compartment in self.get_compartments_values()]
         percent = 100 * np.array(values)/total_pop
         status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
-        status += f"Timestep: {self.time_step} (day {self.time_step//28})\n"
+        status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"
         for i in range(len(info)):
             status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
         return status
@@ -98,7 +98,12 @@ class State:
         D = np.zeros(pop.shape)
         V = np.zeros(pop.shape)
 
-        initial_infected = S * num_initial_infected/np.sum(pop)
+        initial_infected = np.zeros(pop.shape)
+        for _ in range(num_initial_infected):
+            region = np.random.randint(0, pop.shape[0])
+            age_group = np.random.randint(0, pop.shape[1])
+            initial_infected[region][age_group] += 1
+
         S -= initial_infected
         E1 += initial_infected
 

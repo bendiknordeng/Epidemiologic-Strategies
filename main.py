@@ -29,8 +29,9 @@ if __name__ == '__main__':
     year = 2022
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
+    decision_period = 28
     policy = policies[0]
-    initial_infected = 1000
+    initial_infected = 1
     initial_vaccines_available = 0
     plot_results = True
 
@@ -58,7 +59,8 @@ if __name__ == '__main__':
                         epidemic_function=epidemic_function,
                         initial_state=initial_state,
                         horizon=horizon, 
-                        decision_period=28, 
+                        decision_period=decision_period,
+                        periods_per_day=config.periods_per_day,
                         policy=policy,
                         historic_data=historic_data)
 
