@@ -14,7 +14,9 @@ if __name__ == '__main__':
     config = utils.create_named_tuple(paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
     population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
-    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, country='IT')
+    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
+    plot.plot_heatmaps(contact_matrices, [0.1,0.3,0.3,0.1,0.2], age_labels, paths.heat_maps)
+    
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)

@@ -219,20 +219,21 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
-def generate_contact_matrices(bins, labels, country=None):
+def generate_contact_matrices(bins, labels, population, country=None):
     df = pd.read_csv('data/contact_data.csv')
     if country: df = df[df.country == country]
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
-    df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).sum()).reset_index()
-    age_pop = (df.contact_age_0.value_counts()[labels] + df.contact_age_1.value_counts()[labels])/2
+    df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).mean()).reset_index()
+    N = population[population.columns[2:-1]].sum().to_numpy()
     matrices = []
     for col in ['home', 'work', 'school', 'transport', 'leisure']:
-        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1')
-        matrix += matrix.T
-        matrix.values[tuple([np.arange(matrix.shape[0])]*2)] = matrix.values[tuple([np.arange(matrix.shape[0])]*2)]/2
-        matrix = np.array([[np.round(matrix[i][j]/(age_pop[i]+age_pop[j]),2) for i in labels] for j in labels])
-        matrices.append(matrix)
+        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1').to_numpy()
+        symmetric_matrix = np.zeros((matrix.shape))
+        for i in range(len(N)):
+            for j in range(len(N)):
+                symmetric_matrix[i][j] = 1/(N[i]+N[j]) * (matrix[i][j] * N[i] + matrix[j][i] * N[j])
+        matrices.append(symmetric_matrix)
     return matrices
 
 def get_age_group_flow_scaling(bins, labels, population):

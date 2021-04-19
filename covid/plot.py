@@ -127,6 +127,8 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
     for i in range(len(matrices)):
         plt.figure(figsize = (10,7))
         sns.heatmap(matrices[i], annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_labels, yticklabels=age_labels)
+        plt.tick_params(axis='both', which='major', labelsize=10, labelbottom=False, bottom=False, top=False, labeltop=True)
+        plt.yticks(rotation=0)
         if fpath != "":
             plt.savefig(fpath + c_descriptions[i])
 
