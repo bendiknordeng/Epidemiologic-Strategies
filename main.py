@@ -20,7 +20,7 @@ if __name__ == '__main__':
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
-    
+
     epidemic_function = SEAIR(
                         OD=OD_matrices,
                         contact_matrices=contact_matrices,
@@ -32,7 +32,7 @@ if __name__ == '__main__':
                         write_to_csv=False, 
                         write_weekly=False,
                         include_flow=True,
-                        hidden_cases=True)
+                        hidden_cases=False)
 
     # Set start date
     day = 21

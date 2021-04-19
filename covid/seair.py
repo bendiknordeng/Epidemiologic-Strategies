@@ -27,19 +27,19 @@ class SEAIR:
          """
         
         self.periods_per_day = int(24/config.time_delta)
-        self.OD=OD
+        self.OD = OD
         self.contact_matrices = contact_matrices
-        self.population=population
-        self.age_group_flow_scaling=age_group_flow_scaling
-        self.fatality_rate_symptomatic=death_rates
-        self.R0=config.R0*self.periods_per_day
-        self.efficacy=config.efficacy
-        self.latent_period=config.latent_period*self.periods_per_day
-        self.proportion_symptomatic_infections=config.proportion_symptomatic_infections
-        self.presymptomatic_infectiousness=config.presymptomatic_infectiousness
-        self.asymptomatic_infectiousness=config.asymptomatic_infectiousness
-        self.presymptomatic_period=config.presymptomatic_period*self.periods_per_day
-        self.postsymptomatic_period=config.postsymptomatic_period*self.periods_per_day
+        self.population = population
+        self.age_group_flow_scaling = age_group_flow_scaling
+        self.fatality_rate_symptomatic = death_rates
+        self.R0 = config.R0 * self.periods_per_day
+        self.efficacy = config.efficacy
+        self.latent_period = config.latent_period * self.periods_per_day
+        self.proportion_symptomatic_infections = config.proportion_symptomatic_infections
+        self.presymptomatic_infectiousness = config.presymptomatic_infectiousness
+        self.asymptomatic_infectiousness = config.asymptomatic_infectiousness
+        self.presymptomatic_period = config.presymptomatic_period*self.periods_per_day
+        self.postsymptomatic_period = config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
 
         self.include_flow = include_flow
@@ -48,6 +48,7 @@ class SEAIR:
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
     
+
     def simulate(self, state, decision, decision_period, information):
         """  simulates the development of an epidemic as modelled by current parameters
         
