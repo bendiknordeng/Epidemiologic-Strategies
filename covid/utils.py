@@ -235,6 +235,15 @@ def generate_contact_matrices(bins, labels, country=None):
         matrices.append(matrix)
     return matrices
 
+def get_age_group_flow_scaling(bins, labels, population):
+    percent_commuters = 0.36 # numbers from SSB
+    df = pd.read_csv('data/employed_per_age.csv')
+    df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    commuters = df.groupby('age').sum()['employed'].to_numpy() * percent_commuters
+    sum_age_groups = population[population.columns[2:-1]].sum().to_numpy()
+    age_group_commuter_percent = commuters/sum_age_groups
+    return age_group_commuter_percent/age_group_commuter_percent.sum()
+
 def get_historic_data(path):
     historic_data = pd.read_csv(path)  # set to None if not used
     historic_data.date = pd.to_datetime(historic_data.date)

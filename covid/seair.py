@@ -3,7 +3,8 @@ from covid import utils
 np.random.seed(10)
 
 class SEAIR:
-    def __init__(self, OD, contact_matrices, population, config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
+    def __init__(self, OD, contact_matrices, population, age_group_flow_scaling,
+                config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -29,7 +30,7 @@ class SEAIR:
         self.OD=OD
         self.contact_matrices = contact_matrices
         self.population=population
-        self.age_group_flow_scaling=config.age_group_flow_scaling
+        self.age_group_flow_scaling=age_group_flow_scaling
         self.R0=config.R0*self.periods_per_day
         self.efficacy=config.efficacy
         self.latent_period=config.latent_period*self.periods_per_day
