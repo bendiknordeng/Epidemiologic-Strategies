@@ -71,7 +71,7 @@ class MarkovDecisionProcess:
         if week_data.empty:
             alphas = [1, 1, 1, 1, 0.1]
             vaccine_supply = np.ones((356,5))*10
-            contact_matrices_weights =  np.array([0.5, 0.5, 0.5, 0.5, 0.5])
+            contact_matrices_weights =  np.array([0.1,0.3,0.3,0.1,0.2])
         else:
             data = week_data.iloc[-1]
             alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]

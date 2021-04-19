@@ -2,7 +2,7 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, date, time_step):
+    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, date, time_step=0):
         """ initialize a State instance
 
         Parameters

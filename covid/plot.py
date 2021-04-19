@@ -129,8 +129,11 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
         sns.heatmap(matrices[i], annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_labels, yticklabels=age_labels)
         plt.tick_params(axis='both', which='major', labelsize=10, labelbottom=False, bottom=False, top=False, labeltop=True)
         plt.yticks(rotation=0)
-        if fpath != "":
+        if fpath:
             plt.savefig(fpath + c_descriptions[i])
+        else:
+            plt.title(c_descriptions[i])
+            plt.show()
 
 
 def create_geopandas(geopandas_from_pkl, population, fpath_region_geo_pkl, fpath_region_geo_geojson):
