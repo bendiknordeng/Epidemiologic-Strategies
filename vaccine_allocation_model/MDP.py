@@ -85,7 +85,7 @@ class MarkovDecisionProcess:
         """ Updates the state of the decision process.
 
         Parameters
-            decision_period: number of periods forward in time that the decision directly affects
+            decision_period: number of periods forward whein time that the decision directly affects
         """
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
