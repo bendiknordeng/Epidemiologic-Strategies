@@ -176,12 +176,10 @@ class SEAIR:
 
         Parameters
             S: array of susceptible in each region for each age group
-            I: array of infected in each region for each age group
-            hidden_cases: array of new cases of infected individuals for each region and age group
         Returns
             hidden_cases, an array of new cases including hidden cases
         """
-        share = 1e-5 # maximum number of hidden infections
+        share = 5e-5 # maximum number of hidden infections
         hidden_cases = np.random.binomial(np.maximum(S.astype(int), 0), share)
         return hidden_cases
 
