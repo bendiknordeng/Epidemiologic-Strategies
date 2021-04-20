@@ -219,6 +219,44 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
+def generate_contact_matrices(bins, labels, population, country=None):
+    df = pd.read_csv('data/contact_data.csv')
+    if country: df = df[df.country == country]
+    df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
+    df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
+    df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).mean()).reset_index()
+    N = population[population.columns[2:-1]].sum().to_numpy()
+    matrices = []
+    for col in ['home', 'work', 'school', 'transport', 'leisure']:
+        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1').to_numpy()
+        symmetric_matrix = np.zeros((matrix.shape))
+        for i in range(len(N)):
+            for j in range(len(N)):
+                symmetric_matrix[i][j] = 1/(N[i]+N[j]) * (matrix[i][j] * N[i] + matrix[j][i] * N[j])
+        matrices.append(symmetric_matrix)
+    return matrices
+
+def get_age_group_flow_scaling(bins, labels, population):
+    percent_commuters = 0.36 # numbers from SSB
+    df = pd.read_csv('data/employed_per_age.csv')
+    df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    commuters = df.groupby('age').sum()['employed'].to_numpy() * percent_commuters
+    sum_age_groups = population[population.columns[2:-1]].sum().to_numpy()
+    age_group_commuter_percent = commuters/sum_age_groups
+    return age_group_commuter_percent/age_group_commuter_percent.sum()
+
+def get_age_group_fatality_prob(bins, labels):
+    df = pd.read_csv('data/death_by_age.csv')
+    df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    infected = df.groupby('age').sum()['infected'].to_numpy()
+    dead = df.groupby('age').sum()['dead'].to_numpy()
+    return dead/infected
+
+def get_historic_data(path):
+    historic_data = pd.read_csv(path)  # set to None if not used
+    historic_data.date = pd.to_datetime(historic_data.date)
+    return historic_data
+
 def write_history(write_weekly, history, population, time_step, results_weekly, results_history, labels):
     """ write history array to csv
 

@@ -3,7 +3,6 @@ from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
-np.random.seed(10)
 from datetime import timedelta
 
 class MarkovDecisionProcess:
@@ -71,14 +70,14 @@ class MarkovDecisionProcess:
         if week_data.empty:
             alphas = [1, 1, 1, 1, 0.1]
             vaccine_supply = np.ones((356,5))*10
-            contact_matrices_weights =  np.array([0.31, 0.24, 0.16, 0.29])
+            contact_matrices_weights =  np.array([0.1,0.3,0.3,0.1,0.2])
         else:
             data = week_data.iloc[-1]
             alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
             vaccine_supply = week_data['vaccine_supply_new'].sum()
-            contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4']]
+            contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4'], data['w_c5']]
         
-        information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights':contact_matrices_weights}
+        information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights': contact_matrices_weights}
         return information
 
     def update_state(self, decision_period=28):
