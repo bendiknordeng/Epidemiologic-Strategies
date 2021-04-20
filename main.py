@@ -31,7 +31,7 @@ if __name__ == '__main__':
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
     decision_period = 28
-    for i in ['no_vaccines', 'population_based', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']:
+    for i in ['infection_based', 'adults_first', 'oldest_first']:
         policy = i
         initial_infected = 1
         initial_vaccines_available = 0
@@ -61,11 +61,12 @@ if __name__ == '__main__':
                             epidemic_function=epidemic_function,
                             initial_state=initial_state,
                             horizon=horizon, 
-                            decision_period=28, 
+                            decision_period=28,
+                            periods_per_day=int(24/config.time_delta),
                             policy=policy,
                             historic_data=historic_data)
 
-        path = mdp.run(verbose=False)
+        path = mdp.run(verbose=True)
 
         history, new_infections = utils.transform_path_to_numpy(path)
         utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
