@@ -64,7 +64,7 @@ if __name__ == '__main__':
                         policy=policy,
                         historic_data=historic_data)
 
-    path = mdp.run(verbose=False)
+    path = mdp.run(verbose=True)
 
     history, new_infections = utils.transform_path_to_numpy(path)
     utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)

@@ -116,15 +116,12 @@ class SEAIR:
                 S, E1, E2, A, I = flow_compartments
 
             draws = np.maximum(S.astype(int), 0)
-            prob_e = (np.matmul(E2, C).T * (r_e*beta/N)).T
-            prob_a = (np.matmul(A, C).T * (r_a*beta/N)).T
-            prob_i = (np.matmul(I, C).T * (beta/N)).T
+            prob_e = beta*r_e * np.matmul(C, (E2.T/N)).T
+            prob_a = beta*r_a * np.matmul(C, (A.T/N)).T
+            prob_i = beta * np.matmul(C, (I.T/N)).T
+            new_E1 = np.random.binomial(draws, prob_e + prob_a + prob_i)
 
-            new_E1_from_E2 = np.random.binomial(draws, prob_e)
-            new_E1_from_A = np.random.binomial(draws, prob_a)
-            new_E1_from_I = np.random.binomial(draws, prob_i)
-
-            new_E1 = new_E1_from_E2 + new_E1_from_A + new_E1_from_I
+            
             new_E2 = p * sigma * E1
             new_A = (1 - p) * sigma * E1
             new_I = alpha * E2

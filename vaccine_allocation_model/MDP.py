@@ -45,7 +45,7 @@ class MarkovDecisionProcess:
         print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
         run_range = range(self.state.time_step, self.horizon) if verbose else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
-            if verbose: print(self.state, end="\n"*2)
+            # if verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 70%.\033[0m\n")
                 break
@@ -69,11 +69,11 @@ class MarkovDecisionProcess:
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
         if week_data.empty:
-            alphas = [1, 1, 1, 1, 0.1] # S, E1, E2, A, I
             vaccine_supply = np.ones((356,5))*10
             contact_matrices_weights = np.array([0.1,0.3,0.3,0.1,0.2]) # Home, School, Work, Transport, Leisure
+            alphas = np.array([1, 1, 1, 0.9, 0.5]) # S, E1, E2, A, I
             if len(self.path) > 2:
-                contact_matrices_weights = self._map_infection_to_control_measures(contact_matrices_weights)
+                contact_matrices_weights, alphas = self._map_infection_to_control_measures(contact_matrices_weights, alphas)
         else:
             data = week_data.iloc[-1]
             alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
@@ -91,23 +91,25 @@ class MarkovDecisionProcess:
         """
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
+        # print(f"Timestep: {self.state.time_step}\nContact matrices weights: {information['contact_matrices_weights']}\nAlphas: {information['alphas']}\n\n")
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
-    def _map_infection_to_control_measures(self, previous_weighting):
+    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
         new_infected_historic = np.sum(self.path[-3].new_infected)
         new_infected_current = np.sum(self.state.new_infected)
         if new_infected_current > self.decision_period/self.periods_per_day: # one case per day
             infection_rate_slope = new_infected_current/new_infected_historic
             maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            if infection_rate_slope > 0.15: # and new_infected_current > maximum_new_infected: # increasing trend
-                return previous_weighting * 0.5
-            elif infection_rate_slope < -0.15: # decreasing trend
-                return previous_weighting * 2
+            print(new_infected_historic, new_infected_current, maximum_new_infected, infection_rate_slope)
+            if infection_rate_slope > 1.15 and new_infected_current > 0.1 * maximum_new_infected: # and new_infected_current > maximum_new_infected: # increasing trend
+                return previous_cw * 0.5, previous_alphas * 0.5
+            elif infection_rate_slope < 0.85: # decreasing trend
+                return previous_cw * 2, previous_alphas * 2
             else: # neutral trend
-                return previous_weighting
+                return previous_cw, previous_alphas
         else:
-            return previous_weighting
+            return previous_cw, previous_alphas
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero

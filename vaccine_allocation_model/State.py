@@ -103,7 +103,7 @@ class State:
             age_group = np.random.randint(0, pop.shape[1])
             if S[region][age_group] > 0:
                 num_initial_infected -= 1
-                S -= 1
-                E1 += 1
+                S[region][age_group] -= 1
+                E1[region][age_group] += 1
 
         return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1.copy(), start_date, time_step) 
