@@ -227,7 +227,7 @@ def generate_contact_matrices(bins, labels, population, country=None):
     df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).mean()).reset_index()
     N = population[population.columns[2:-1]].sum().to_numpy()
     matrices = []
-    for col in ['home', 'work', 'school', 'transport', 'leisure']:
+    for col in ['home', 'school', 'work', 'transport', 'leisure']:
         matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1').to_numpy()
         symmetric_matrix = np.zeros((matrix.shape))
         for i in range(len(N)):

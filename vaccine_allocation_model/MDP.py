@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, policy, historic_data=None):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -25,6 +25,7 @@ class MarkovDecisionProcess:
         self.state = initial_state
         self.path = [self.state]
         self.decision_period = decision_period
+        self.periods_per_day = periods_per_day
         self.historic_data = historic_data
         self.policy_name = policy
         self.policy = {
@@ -70,9 +71,11 @@ class MarkovDecisionProcess:
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
         if week_data.empty:
-            alphas = [1, 1, 1, 1, 0.1]
+            alphas = [1, 1, 1, 1, 0.1] # S, E1, E2, A, I
             vaccine_supply = np.ones((356,5))*10
-            contact_matrices_weights =  np.array([0.1,0.3,0.3,0.1,0.2])
+            contact_matrices_weights = np.array([0.15,0.3,0.3,0.05,0.2]) # Home, School, Work, Transport, Leisure
+            if len(self.path) > 2:
+                contact_matrices_weights = self._map_infection_to_control_measures(contact_matrices_weights)
         else:
             data = week_data.iloc[-1]
             alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
@@ -92,6 +95,21 @@ class MarkovDecisionProcess:
         information = self.get_exogenous_information(self.state)
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
+
+    def _map_infection_to_control_measures(self, previous_weighting):
+        new_infected_historic = np.sum(self.path[-3].new_infected)
+        new_infected_current = np.sum(self.state.new_infected)
+        if new_infected_current > self.decision_period/self.periods_per_day: # one case per day
+            infection_rate_slope = new_infected_current/new_infected_historic
+            maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
+            if infection_rate_slope > 0.15: # and new_infected_current > maximum_new_infected: # increasing trend
+                return previous_weighting * 0.5
+            elif infection_rate_slope < -0.15: # decreasing trend
+                return previous_weighting * 2
+            else: # neutral trend
+                return previous_weighting
+        else:
+            return previous_weighting
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero
