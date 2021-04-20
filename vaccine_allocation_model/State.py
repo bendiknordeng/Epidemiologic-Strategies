@@ -98,13 +98,12 @@ class State:
         D = np.zeros(pop.shape)
         V = np.zeros(pop.shape)
 
-        initial_infected = np.zeros(pop.shape)
-        for _ in range(num_initial_infected):
+        while num_initial_infected > 0:
             region = np.random.randint(0, pop.shape[0])
             age_group = np.random.randint(0, pop.shape[1])
-            initial_infected[region][age_group] += 1
-
-        S -= initial_infected
-        E1 += initial_infected
+            if S[region][age_group] > 0:
+                num_initial_infected -= 1
+                S -= 1
+                E1 += 1
 
         return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1.copy(), start_date, time_step) 

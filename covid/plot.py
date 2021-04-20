@@ -120,7 +120,7 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
         weights: weights used to weight different contact matrices
     """
     matrices = C.copy()
-    c_descriptions = ['Home', 'Work', 'School', 'Transport', 'Leisure', 'Combined']   
+    c_descriptions = ['Home', 'School', 'Work', 'Transport', 'Leisure', 'Combined']   
     sns.set(font_scale=1.2)
     c_combined =  np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)
     matrices.append(c_combined)
