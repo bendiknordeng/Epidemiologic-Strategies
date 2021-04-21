@@ -379,3 +379,18 @@ def print_results(history, new_infections, population, age_labels, policy, save_
         total["Age group"] = "All"
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
+
+
+def create_timeline(horizon, decision_period):
+    nr_waves = int(np.random.poisson(horizon/13)) # assumption: a wave happens on average every 13 weeks
+    duration_waves = [int(np.random.exponential(2*decision_period)) for _ in range(nr_waves)] # assumption, a wave lasts on average 2 weeks
+    mean = (horizon*decision_period - np.sum(duration_waves))/(nr_waves+1) # evenly distributed time between waves
+    std_dev = mean/3
+    time_between_waves = [int(np.random.normal(mean, std_dev)) for _ in range(nr_waves+1)] # time between waves, normally distributed
+    timeline = [[time_between_waves[0], 0]]
+    for i in range(len(duration_waves)):
+        timeline.append([duration_waves[i]/2 + timeline[-1][0], 1]) # wave incline
+        timeline.append([duration_waves[i]/2 + timeline[-1][0], -1]) # wave decline
+        timeline.append([time_between_waves[i+1] + timeline[-1][0], 0]) # neutral start
+    timeline.append([horizon*decision_period, 0])
+    return np.array(timeline, int)

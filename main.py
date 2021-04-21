@@ -31,11 +31,13 @@ if __name__ == '__main__':
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
     decision_period = 28
-    for i in ['infection_based', 'adults_first', 'oldest_first']:
+    timeline = utils.create_timeline(horizon, decision_period)
+    
+    for i in ['oldest_first']:
         policy = i
         initial_infected = 1
         initial_vaccines_available = 0
-        plot_results = False
+        plot_results = True
 
         epidemic_function = SEAIR(
                             OD=OD_matrices,
@@ -64,12 +66,14 @@ if __name__ == '__main__':
                             decision_period=28,
                             periods_per_day=int(24/config.time_delta),
                             policy=policy,
+                            timeline=timeline,
                             historic_data=historic_data)
 
         path = mdp.run(verbose=True)
 
         history, new_infections = utils.transform_path_to_numpy(path)
         utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
+        print("timeline", timeline)
         if plot_results:
             results_age = history.sum(axis=2)
             plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)

@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, historic_data=None):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, timeline, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,6 +27,7 @@ class MarkovDecisionProcess:
         self.decision_period = decision_period
         self.periods_per_day = periods_per_day
         self.historic_data = historic_data
+        self.timeline = timeline
         self.policy_name = policy
         self.policy = {
             "no_vaccines": self._no_vaccines,
@@ -64,25 +65,29 @@ class MarkovDecisionProcess:
             t: time_step
             state: state that 
         Returns:
-            returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights'
+            returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
         """
         today = pd.Timestamp(state.date)
         end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//4))
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
-        if week_data.empty:
+        if True: #week_data.empty:
             alphas = [1, 1, 1, 1, 0.1] # S, E1, E2, A, I
             vaccine_supply = np.ones((356,5))*10
             contact_matrices_weights = np.array([0.15,0.3,0.3,0.05,0.2]) # Home, School, Work, Transport, Leisure
             if len(self.path) > 2:
                 contact_matrices_weights = self._map_infection_to_control_measures(contact_matrices_weights)
+            wave_state = self._find_wave_state(state)
         else:
             data = week_data.iloc[-1]
             alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
             contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4'], data['w_c5']]
         
-        information = {'alphas': alphas, 'vaccine_supply': vaccine_supply, 'contact_matrices_weights': contact_matrices_weights}
+        information = {'alphas': alphas, 
+                       'vaccine_supply': vaccine_supply,
+                       'contact_matrices_weights': contact_matrices_weights,
+                       'wave_state': wave_state}
         return information
 
     def update_state(self, decision_period=28):
@@ -95,6 +100,13 @@ class MarkovDecisionProcess:
         information = self.get_exogenous_information(self.state)
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
+
+    def _find_wave_state(self, state):
+        wave_state = np.zeros(28)
+        for i in range(self.decision_period-1):
+            loc = np.where(state.time_step + i <= self.timeline[:,0])[0][0]
+            wave_state[i] = self.timeline[loc][1]
+        return wave_state
 
     def _map_infection_to_control_measures(self, previous_weighting):
         new_infected_historic = np.sum(self.path[-3].new_infected)
