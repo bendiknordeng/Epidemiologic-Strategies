@@ -14,8 +14,7 @@ if __name__ == '__main__':
     config = utils.create_named_tuple(paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
     population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
-    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population, country='GB')
-    plot.plot_heatmaps(contact_matrices, [0.15,0.3,0.3,0.05,0.2], age_labels, paths.heat_maps)
+    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
@@ -24,7 +23,7 @@ if __name__ == '__main__':
     policies = ['no_vaccines', 'population_based', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']
 
     # Set initial parameters
-    np.random.seed(10)
+    np.random.seed(100)
     day = 1
     month = 12
     year = 2020
@@ -50,7 +49,7 @@ if __name__ == '__main__':
                             write_to_csv=False, 
                             write_weekly=False,
                             include_flow=True,
-                            hidden_cases=True)
+                            hidden_cases=False)
 
         initial_state = State.initialize_state(
                             num_initial_infected=initial_infected,

@@ -74,7 +74,7 @@ class MarkovDecisionProcess:
         if True: #week_data.empty:
             alphas = [1, 1, 1, 1, 0.1] # S, E1, E2, A, I
             vaccine_supply = np.ones((356,5))*10
-            contact_matrices_weights = np.array([0.15,0.3,0.3,0.05,0.2]) # Home, School, Work, Transport, Leisure
+            contact_matrices_weights = np.array([1, 1, 1, 1, 1]) # Home, School, Work, Transport, Leisure
             if len(self.path) > 2:
                 contact_matrices_weights = self._map_infection_to_control_measures(contact_matrices_weights)
             wave_state = self._find_wave_state(state)
