@@ -46,7 +46,6 @@ class SEAIR:
         self.paths = paths
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
-    
 
     def simulate(self, state, decision, decision_period, information):
         """  simulates the development of an epidemic as modelled by current parameters
@@ -94,6 +93,10 @@ class SEAIR:
         # Run simulation
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
+            if information['wave_state'][i] > 0:
+                C = self.generate_weighted_contact_matrix(np.array([3,3,3,3,3]))
+            if information['wave_state'][i] < 0:
+                C = self.generate_weighted_contact_matrix(np.array([0.05,0.05,0.05,0.05,0.05]))
             # Vaccinate before flow
             new_vaccinated = np.minimum(S, decision[i % decision_period]) # M
             new_vaccinated = new_vaccinated.clip(min=0)
@@ -173,12 +176,10 @@ class SEAIR:
 
         Parameters
             S: array of susceptible in each region for each age group
-            I: array of infected in each region for each age group
-            hidden_cases: array of new cases of infected individuals for each region and age group
         Returns
             hidden_cases, an array of new cases including hidden cases
         """
-        share = 1e-5 # maximum number of hidden infections
+        share = 5e-5 # maximum number of hidden infections
         hidden_cases = np.random.binomial(np.maximum(S.astype(int), 0), share)
         return hidden_cases
 

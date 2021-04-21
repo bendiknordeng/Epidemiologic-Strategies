@@ -33,6 +33,7 @@ class State:
         self.new_infected = new_infected
         self.date = date
         self.time_step = time_step
+        self.days_since_wave = 0
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """ 
