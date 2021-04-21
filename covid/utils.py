@@ -394,7 +394,7 @@ def print_results(history, new_infections, population, age_labels, policy, save_
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
 
-def create_timeline(horizon, decision_period):
+def create_wave_timeline(horizon, decision_period):
     nr_waves = int(np.random.poisson(horizon/13)) # assumption: a wave happens on average every 13 weeks
     duration_waves = [int(np.random.exponential(2*decision_period)) for _ in range(nr_waves)] # assumption, a wave lasts on average 2 weeks
     mean = (horizon*decision_period - np.sum(duration_waves))/(nr_waves+1) # evenly distributed time between waves

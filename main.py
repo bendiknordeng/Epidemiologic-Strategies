@@ -23,18 +23,17 @@ if __name__ == '__main__':
     policies = ['no_vaccines', 'population_based', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']
 
     # Set initial parameters
-    np.random.seed(100)
+    np.random.seed(10)
     day = 1
     month = 12
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
     decision_period = 28
-    timeline = utils.create_timeline(horizon, decision_period)
+    wave_timeline = utils.create_wave_timeline(horizon, decision_period)
     
-    for i in ['oldest_first']:
-        policy = i
-        initial_infected = 1
+    for policy in ['no_vaccines']:
+        initial_infected = 1000
         initial_vaccines_available = 0
         plot_results = True
 
@@ -48,12 +47,13 @@ if __name__ == '__main__':
                             paths=paths,
                             write_to_csv=False, 
                             write_weekly=False,
-                            include_flow=True,
-                            hidden_cases=False)
+                            include_flow=True)
 
         initial_state = State.initialize_state(
                             num_initial_infected=initial_infected,
-                            vaccines_available=initial_vaccines_available, 
+                            vaccines_available=initial_vaccines_available,
+                            contact_weights=config.initial_contact_weights,
+                            alphas=config.initial_alphas,
                             population=population,
                             start_date=start_date)
 
@@ -63,17 +63,18 @@ if __name__ == '__main__':
                             initial_state=initial_state,
                             horizon=horizon, 
                             decision_period=28,
-                            periods_per_day=int(24/config.time_delta),
+                            periods_per_day=config.periods_per_day,
                             policy=policy,
-                            timeline=timeline,
+                            wave_timeline=wave_timeline,
                             historic_data=historic_data)
 
-        path = mdp.run(verbose=True)
-
-        history, new_infections = utils.transform_path_to_numpy(path)
+        mdp.run(verbose=True)
+        history, new_infections = utils.transform_path_to_numpy(mdp.path)
         utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
-        print("timeline", timeline)
+        # print("Timeline:\n", wave_timeline)
         if plot_results:
+            plot.plot_control_measures(mdp.path)
+
             results_age = history.sum(axis=2)
             plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
             infection_results_age = new_infections.sum(axis=1)

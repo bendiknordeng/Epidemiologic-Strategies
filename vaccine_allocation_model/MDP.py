@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, timeline, historic_data=None):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, wave_timeline, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,7 +27,7 @@ class MarkovDecisionProcess:
         self.decision_period = decision_period
         self.periods_per_day = periods_per_day
         self.historic_data = historic_data
-        self.timeline = timeline
+        self.wave_timeline = wave_timeline
         self.policy_name = policy
         self.policy = {
             "no_vaccines": self._no_vaccines,
@@ -56,7 +56,6 @@ class MarkovDecisionProcess:
                 print("\033[1mReached stop-criteria. Infected population is zero.\033[0m\n")
                 break
             self.update_state()
-        return self.path
 
     def get_exogenous_information(self, state):
         """ Recieves the exogenous information at time_step t
@@ -71,22 +70,17 @@ class MarkovDecisionProcess:
         end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//4))
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
-        if True: #week_data.empty:
-            alphas = [1, 1, 1, 1, 0.1] # S, E1, E2, A, I
+        if week_data.empty:
             vaccine_supply = np.ones((356,5))*10
-            contact_matrices_weights = np.array([1, 1, 1, 1, 1]) # Home, School, Work, Transport, Leisure
-            if len(self.path) > 2:
-                contact_matrices_weights = self._map_infection_to_control_measures(contact_matrices_weights, alphas)
-            wave_state = self._find_wave_state(state)
         else:
-            data = week_data.iloc[-1]
-            alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
-            contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4'], data['w_c5']]
+
+        wave_state = self._find_wave_state(state)
+        contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas, wave_state)
         
         information = {'alphas': alphas, 
                        'vaccine_supply': vaccine_supply,
-                       'contact_matrices_weights': contact_matrices_weights,
+                       'contact_weights': contact_weights,
                        'wave_state': wave_state}
         return information
 
@@ -98,28 +92,46 @@ class MarkovDecisionProcess:
         """
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
-        # print(f"Timestep: {self.state.time_step}\nContact matrices weights: {information['contact_matrices_weights']}\nAlphas: {information['alphas']}\n\n")
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
     def _find_wave_state(self, state):
         wave_state = np.zeros(28)
         for i in range(self.decision_period-1):
-            loc = np.where(state.time_step + i <= self.timeline[:,0])[0][0]
-            wave_state[i] = self.timeline[loc][1]
+            loc = np.where(state.time_step + i <= self.wave_timeline[:,0])[0][0]
+            wave_state[i] = self.wave_timeline[loc][1]
         return wave_state
 
-    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
-        new_infected_historic = np.sum(self.path[-3].new_infected)
+    def _map_infection_to_control_measures(self, previous_cw, previous_alphas, wave_state):
         new_infected_current = np.sum(self.state.new_infected)
-        if new_infected_current > self.decision_period/self.periods_per_day: # one case per day
-            infection_rate_slope = new_infected_current/new_infected_historic
+        n_days = self.decision_period/self.periods_per_day
+        if len(self.path) > 1 and new_infected_current >= n_days: # one case per day
+            new_infected_historic = np.sum(self.path[-2].new_infected)
+            infection_rate = new_infected_current/new_infected_historic
             maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            print(new_infected_historic, new_infected_current, maximum_new_infected, infection_rate_slope)
-            if infection_rate_slope > 1.15 and new_infected_current > 0.1 * maximum_new_infected: # and new_infected_current > maximum_new_infected: # increasing trend
-                return previous_cw * 0.5, previous_alphas * 0.5
-            elif infection_rate_slope < 0.85: # decreasing trend
-                return previous_cw * 2, previous_alphas * 2
+            increasing_trend = infection_rate > 1.075 # and new_infected_current > 0.1 * maximum_new_infected
+            decreasing_trend = infection_rate < 0.925
+            slope = (new_infected_current-new_infected_historic)/n_days
+            factor = max(2/(1+np.exp(0.01*slope)), 0.2)
+            if increasing_trend:
+                print("\033[1mIncreasing trend\033[0m")
+            elif decreasing_trend:
+                print("\033[1mDecreasing trend\033[0m")
+            else:
+                print("\033[1mNeutral trend\033[0m")
+            print(f"New infected last week: {new_infected_historic}")
+            print(f"New infected current week: {new_infected_current}")
+            print(f"Maximum new infected: {maximum_new_infected}")
+            print(f"Current infections/last week infections: {infection_rate:.3f}")
+            print(f"Change in new infections: {slope:.3f}")
+            print(f"Control measure factor: {factor:.3f}")
+            print(f"Previous weights: {previous_cw}\n\n")
+
+            # factor = max(np.random.normal(loc, 0.05), 0.05)
+            if increasing_trend:
+                return previous_cw * factor, previous_alphas * factor
+            elif decreasing_trend:
+                return previous_cw * factor,  previous_alphas * factor
             else: # neutral trend
                 return previous_cw, previous_alphas
         else:

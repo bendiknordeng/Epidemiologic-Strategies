@@ -3,7 +3,7 @@ from covid import utils
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
-                config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
+                config, paths, include_flow, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -25,7 +25,7 @@ class SEAIR:
             write_weekly: boolean, false if we want to write daily results, true if weekly
          """
         
-        self.periods_per_day = int(24/config.time_delta)
+        self.periods_per_day = config.periods_per_day
         self.OD = OD
         self.contact_matrices = contact_matrices
         self.population = population
@@ -42,7 +42,6 @@ class SEAIR:
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
 
         self.include_flow = include_flow
-        self.hidden_cases = hidden_cases
         self.paths = paths
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
@@ -88,15 +87,15 @@ class SEAIR:
         gamma = 1/self.recovery_period
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
-        C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
+        C = self.generate_weighted_contact_matrix(information['contact_weights'])
 
         # Run simulation
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
-            if information['wave_state'][i] > 0:
-                C = self.generate_weighted_contact_matrix(np.array([3,3,3,3,3]))
-            if information['wave_state'][i] < 0:
-                C = self.generate_weighted_contact_matrix(np.array([0.05,0.05,0.05,0.05,0.05]))
+            # if information['wave_state'][i] > 0:
+            #     C = self.generate_weighted_contact_matrix(np.array([3,3,3,3,3]))
+            # if information['wave_state'][i] < 0:
+            #     C = self.generate_weighted_contact_matrix(np.array([0.05,0.05,0.05,0.05,0.05]))
             # Vaccinate before flow
             new_vaccinated = np.minimum(S, decision[i % decision_period]) # M
             new_vaccinated = new_vaccinated.clip(min=0)
@@ -140,11 +139,6 @@ class SEAIR:
             I = I + new_I - new_R_from_I - new_D
             R = R + new_R_from_I + new_R_from_A
             D = D + new_D
-           
-            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
-                hidden_cases = self.add_hidden_cases(S)
-                S = S - hidden_cases
-                E1 = E1 + hidden_cases
 
             # Save number of new infected
             total_new_infected[i] = new_E1
@@ -169,19 +163,6 @@ class SEAIR:
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
         
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
-    
-    @staticmethod
-    def add_hidden_cases(S):
-        """ Adds cases to the infection compartment, to represent hidden cases
-
-        Parameters
-            S: array of susceptible in each region for each age group
-        Returns
-            hidden_cases, an array of new cases including hidden cases
-        """
-        share = 5e-5 # maximum number of hidden infections
-        hidden_cases = np.random.binomial(np.maximum(S.astype(int), 0), share)
-        return hidden_cases
 
     @staticmethod
     def update_history(compartments, new_infected, history, time_step):
@@ -218,7 +199,7 @@ class SEAIR:
             new_compartment[:,age_group] = new_compartment[:,age_group] + inflow - outflow
         return new_compartment
 
-    def generate_weighted_contact_matrix(self, weights):
+    def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
 
         Parameters
@@ -227,4 +208,4 @@ class SEAIR:
             weighted contact matrix used in modelling
         """
         C = self.contact_matrices
-        return np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)
+        return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)

@@ -8,5 +8,7 @@
 "asymptomatic_infectiousness":0.33,
 "presymptomatic_period": 2,
 "postsymptomatic_period": 5,
-"age_bins": [0, 9, 19, 29, 39, 49, 59, 69]
+"age_bins": [0, 6, 15, 19, 40, 66],
+"initial_contact_weights": [0.3, 0.3, 0.3, 0.3, 0.3],
+"initial_alphas": [1, 1, 1, 1, 0.4]
 }
