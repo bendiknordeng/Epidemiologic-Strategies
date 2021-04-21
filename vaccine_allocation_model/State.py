@@ -2,7 +2,7 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available, new_infected, date, time_step=0):
+    def __init__(self, S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, new_infected, date, time_step=0):
         """ initialize a State instance
 
         Parameters
@@ -31,6 +31,7 @@ class State:
         self.D = D
         self.V = V
         
+        self.r_eff = r_eff
         self.contact_weights = np.array(contact_weights)
         self.alphas = np.array(alphas)
         self.vaccines_available = vaccines_available
@@ -49,7 +50,7 @@ class State:
             A new initialized State instance
         """
         # Update compartment values
-        S, E1, E2, A, I, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information)
+        S, E1, E2, A, I, R, D, V, r_eff, new_infected = epidemic_function(self, decision, decision_period, information)
 
         # Update vaccine available
         vaccines_left = self.vaccines_available - np.sum(decision)
@@ -64,7 +65,7 @@ class State:
         contact_weights = information['contact_weights']
         alphas = information['alphas']
 
-        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available, new_infected, date, time_step)
+        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, new_infected, date, time_step)
     
 
     def get_compartments_values(self):
@@ -85,7 +86,7 @@ class State:
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, contact_weights, alphas, population, start_date, time_step=0):
+    def initialize_state(num_initial_infected, vaccines_available, r_eff, contact_weights, alphas, population, start_date, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -114,4 +115,4 @@ class State:
                 S[region][age_group] -= 1
                 E1[region][age_group] += 1
 
-        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available, E1.copy(), start_date, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, E1.copy(), start_date, time_step) 

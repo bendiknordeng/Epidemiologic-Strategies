@@ -6,7 +6,8 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, wave_timeline, historic_data=None):
+    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period,
+                periods_per_day, policy, wave_weeks, government_strictness, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,8 +28,10 @@ class MarkovDecisionProcess:
         self.decision_period = decision_period
         self.periods_per_day = periods_per_day
         self.historic_data = historic_data
-        self.wave_timeline = wave_timeline
+        self.wave_weeks = wave_weeks
+        self.government_strictness = government_strictness
         self.policy_name = policy
+        self.verbose = verbose
         self.policy = {
             "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
@@ -39,20 +42,20 @@ class MarkovDecisionProcess:
             "oldest_first": self._oldest_first_policy,
         }[policy]
 
-    def run(self, verbose=False):
+    def run(self):
         """ Updates states from current time_step to a specified horizon
 
         Returns
             A path that shows resulting traversal of states
         """
         print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if verbose else tqdm(range(self.state.time_step, self.horizon))
-        for _ in run_range:
-            # if verbose: print(self.state, end="\n"*2)
+        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        for week in run_range:
+            if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 70%.\033[0m\n")
                 break
-            if np.sum(self.state.E1) < 1: # stop if infections are zero
+            if week > 1 and np.sum(self.state.E1) < 1: # stop if infections are zero
                 print("\033[1mReached stop-criteria. Infected population is zero.\033[0m\n")
                 break
             self.update_state()
@@ -75,13 +78,11 @@ class MarkovDecisionProcess:
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
-        wave_state = self._find_wave_state(state)
-        contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas, wave_state)
+        contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
         
         information = {'alphas': alphas, 
                        'vaccine_supply': vaccine_supply,
-                       'contact_weights': contact_weights,
-                       'wave_state': wave_state}
+                       'contact_weights': contact_weights}
         return information
 
     def update_state(self, decision_period=28):
@@ -95,44 +96,49 @@ class MarkovDecisionProcess:
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
-    def _find_wave_state(self, state):
-        wave_state = np.zeros(28)
-        for i in range(self.decision_period-1):
-            loc = np.where(state.time_step + i <= self.wave_timeline[:,0])[0][0]
-            wave_state[i] = self.wave_timeline[loc][1]
-        return wave_state
+    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
+        simulation_week = self.state.time_step//self.decision_period
+        if simulation_week in self.wave_weeks:
+            wave_strength = np.random.normal(1.5, 0.1)
+            if self.verbose:
+                print("\033[1mInfection wave\033[0m")
+                print(f"Wavestrength: {wave_strength}\n\n")
+                previous_cw *= wave_strength
+                previous_alphas *= wave_strength
 
-    def _map_infection_to_control_measures(self, previous_cw, previous_alphas, wave_state):
         new_infected_current = np.sum(self.state.new_infected)
         n_days = self.decision_period/self.periods_per_day
-        if len(self.path) > 1 and new_infected_current >= n_days: # one case per day
-            new_infected_historic = np.sum(self.path[-2].new_infected)
+        if len(self.path) > 2 and new_infected_current >= n_days:
+            new_infected_historic = np.sum(self.path[-3].new_infected)
             infection_rate = new_infected_current/new_infected_historic
             maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            increasing_trend = infection_rate > 1.075 # and new_infected_current > 0.1 * maximum_new_infected
-            decreasing_trend = infection_rate < 0.925
+            increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
+            decreasing_trend = infection_rate < 0.85
             slope = (new_infected_current-new_infected_historic)/n_days
-            factor = max(2/(1+np.exp(0.01*slope)), 0.2)
-            if increasing_trend:
-                print("\033[1mIncreasing trend\033[0m")
-            elif decreasing_trend:
-                print("\033[1mDecreasing trend\033[0m")
-            else:
-                print("\033[1mNeutral trend\033[0m")
-            print(f"New infected last week: {new_infected_historic}")
-            print(f"New infected current week: {new_infected_current}")
-            print(f"Maximum new infected: {maximum_new_infected}")
-            print(f"Current infections/last week infections: {infection_rate:.3f}")
-            print(f"Change in new infections: {slope:.3f}")
-            print(f"Control measure factor: {factor:.3f}")
-            print(f"Previous weights: {previous_cw}\n\n")
+            loc = 2/(1+np.exp(0.01*slope))
+            factor = max(np.random.normal(loc, 0.05), 1-self.government_strictness)
 
-            # factor = max(np.random.normal(loc, 0.05), 0.05)
+            if self.verbose:
+                if increasing_trend:
+                    print("\033[1mIncreasing trend\033[0m")
+                elif decreasing_trend:
+                    print("\033[1mDecreasing trend\033[0m")
+                else:
+                    print("\033[1mNeutral trend\033[0m")
+                print(f"R_eff: {self.state.r_eff:.2f}")
+                print(f"New infected last week: {new_infected_historic}")
+                print(f"New infected current week: {new_infected_current}")
+                print(f"Maximum new infected: {maximum_new_infected}")
+                print(f"Current infections/last week infections: {infection_rate:.3f}")
+                print(f"Change in new infected per day: {slope:.3f}")
+                print(f"Control measure factor: {factor:.3f}")
+                print(f"Previous weights: {previous_cw}\n\n")
+
             if increasing_trend:
                 return previous_cw * factor, previous_alphas * factor
             elif decreasing_trend:
                 return previous_cw * factor,  previous_alphas * factor
-            else: # neutral trend
+            else:
                 return previous_cw, previous_alphas
         else:
             return previous_cw, previous_alphas
@@ -175,9 +181,9 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
                 total_allocation = self.state.vaccines_available * pop/np.sum(pop)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2) # only vaccinate each morning and midday
+                vaccine_allocation[i] = total_allocation/(self.decision_period/2) 
         return vaccine_allocation
 
     def _susceptible_based_policy(self):
@@ -189,9 +195,9 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
                 total_allocation = self.state.vaccines_available * self.state.S/np.sum(self.state.S)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2) # only vaccinate each morning and midday
+                vaccine_allocation[i] = total_allocation/(self.decision_period/2)
         return vaccine_allocation
 
     def _infection_based_policy(self):

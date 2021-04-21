@@ -71,9 +71,10 @@ class SEAIR:
         alphas = information['alphas']
         realflows = [self.OD.copy()*a for a in alphas]
 
-        # Initialize history matrix and total new infected
+        # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
+        r_eff = np.zeros(decision_period)
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
@@ -88,14 +89,11 @@ class SEAIR:
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
+        
 
         # Run simulation
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
-            # if information['wave_state'][i] > 0:
-            #     C = self.generate_weighted_contact_matrix(np.array([3,3,3,3,3]))
-            # if information['wave_state'][i] < 0:
-            #     C = self.generate_weighted_contact_matrix(np.array([0.05,0.05,0.05,0.05,0.05]))
             # Vaccinate before flow
             new_vaccinated = np.minimum(S, decision[i % decision_period]) # M
             new_vaccinated = new_vaccinated.clip(min=0)
@@ -123,7 +121,6 @@ class SEAIR:
             prob_i = beta * np.matmul(C, (I.T/N)).T
             new_E1 = np.random.binomial(draws, prob_e + prob_a + prob_i)
 
-            
             new_E2 = p * sigma * E1
             new_A = (1 - p) * sigma * E1
             new_I = alpha * E2
@@ -143,6 +140,9 @@ class SEAIR:
             # Save number of new infected
             total_new_infected[i] = new_E1
             
+            # TODO: Define formula for calculating r_effective
+            r_eff[i] = self.recovery_period * np.sum(new_E1)/np.sum([E2, A, I])
+
             # Append simulation results
             if i%self.periods_per_day == 0: # record daily history
                 daily_new_infected = new_E1 if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
@@ -162,7 +162,7 @@ class SEAIR:
                                 self.paths.results_history_daily,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
         
-        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
+        return S, E1, E2, A, I, R, D, V, np.mean(r_eff), total_new_infected.sum(axis=0)
 
     @staticmethod
     def update_history(compartments, new_infected, history, time_step):
