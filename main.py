@@ -24,18 +24,18 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    day = 21
-    month = 2
+    day = 1
+    month = 12
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 200 # number of weeks
+    horizon = 30 # number of weeks
     decision_period = 28
     wave_weeks = utils.get_wave_weeks(horizon)
     
-    for policy in ['infection_based']:
+    for policy in ['oldest_first']:
         initial_infected = 1
         initial_vaccines_available = 0
-        government_strictness = 0.8
+        government_strictness = 0.5
         plot_results = True
 
         epidemic_function = SEAIR(
@@ -59,13 +59,13 @@ if __name__ == '__main__':
                             population=population,
                             start_date=start_date)
 
-        mdp = MarkovDecisionProcess( 
+        mdp = MarkovDecisionProcess(
+                            config=config,
+                            decision_period=decision_period,
                             population=population, 
                             epidemic_function=epidemic_function,
                             initial_state=initial_state,
-                            horizon=horizon, 
-                            decision_period=28,
-                            periods_per_day=config.periods_per_day,
+                            horizon=horizon,
                             policy=policy,
                             wave_weeks=wave_weeks,
                             government_strictness=government_strictness,
@@ -76,7 +76,7 @@ if __name__ == '__main__':
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         utils.print_results(history, new_infections, population, age_labels, policy, save_to_file=False)
         if plot_results:
-            # plot.plot_r_effective(mdp.path)
+            #plot.plot_r_effective(mdp.path)
             plot.plot_control_measures(mdp.path)
 
             results_age = history.sum(axis=2)

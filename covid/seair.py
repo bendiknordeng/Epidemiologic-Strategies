@@ -95,12 +95,12 @@ class SEAIR:
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
             # Vaccinate before flow
-            new_vaccinated = np.minimum(S, decision[i % decision_period]) # M
-            new_vaccinated = new_vaccinated.clip(min=0)
-            successfully_new_V = epsilon * new_vaccinated
+            new_V = np.minimum(S, decision[i % decision_period]) # M
+            new_V = new_V.clip(min=0)
+            successfully_new_V = epsilon * new_V
             S = S - successfully_new_V
             R = R + successfully_new_V
-            V = V + new_vaccinated
+            V = V + new_V
 
             # Finds the movement flow for the given period i and scales it for each 
             if self.include_flow:
