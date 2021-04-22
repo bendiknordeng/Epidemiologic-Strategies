@@ -2,7 +2,8 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, new_infected, date, time_step=0):
+    def __init__(self, S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas,
+                vaccines_available, new_infected, total_infected, date, time_step=0):
         """ initialize a State instance
 
         Parameters
@@ -36,6 +37,7 @@ class State:
         self.alphas = np.array(alphas)
         self.vaccines_available = vaccines_available
         self.new_infected = new_infected
+        self.total_infected = total_infected
         self.date = date
         self.time_step = time_step
 
@@ -65,7 +67,8 @@ class State:
         contact_weights = information['contact_weights']
         alphas = information['alphas']
 
-        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, new_infected, date, time_step)
+        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available,
+                    new_infected, self.total_infected+new_infected, date, time_step)
     
 
     def get_compartments_values(self):
@@ -115,4 +118,4 @@ class State:
                 S[region][age_group] -= 1
                 E1[region][age_group] += 1
 
-        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, E1.copy(), start_date, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, E1.copy(), E1.copy(), start_date, time_step) 

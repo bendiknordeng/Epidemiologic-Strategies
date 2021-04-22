@@ -1,4 +1,4 @@
-from covid.utils import generate_weekly_data
+from covid.utils import get_wave_weeks
 from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
@@ -6,8 +6,8 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, initial_state, horizon,
-                policy, wave_weeks, government_strictness, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, initial_state,
+                horizon, policy, government_strictness, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -26,9 +26,7 @@ class MarkovDecisionProcess:
         self.population = population
         self.epidemic_function = epidemic_function
         self.state = initial_state
-        self.path = [self.state]
         self.historic_data = historic_data
-        self.wave_weeks = wave_weeks
         self.government_strictness = government_strictness
         self.policy_name = policy
         self.verbose = verbose
@@ -41,6 +39,8 @@ class MarkovDecisionProcess:
             "adults_first": self._adults_first_policy,
             "oldest_first": self._oldest_first_policy,
         }[policy]
+        self.path = [self.state]
+        self.wave_weeks = get_wave_weeks(self.horizon)
 
     def run(self):
         """ Updates states from current time_step to a specified horizon
@@ -79,7 +79,6 @@ class MarkovDecisionProcess:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
         contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
-        
         information = {'alphas': alphas, 
                        'vaccine_supply': vaccine_supply,
                        'contact_weights': contact_weights}
@@ -97,53 +96,63 @@ class MarkovDecisionProcess:
         self.path.append(self.state)
 
     def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
+        max_cw = np.array(self.config.initial_contact_weights)
+        max_alphas = np.array(self.config.initial_alphas)
+        new_cw = previous_cw.copy()
+        new_alphas = previous_alphas.copy()
         simulation_week = self.state.time_step//self.decision_period
         if simulation_week in self.wave_weeks:
             wave_strength = np.random.normal(1.5, 0.1)
             if self.verbose:
                 print("\033[1mInfection wave\033[0m")
                 print(f"Wavestrength: {wave_strength}\n\n")
-                previous_cw *= wave_strength
-                previous_alphas *= wave_strength
+                new_cw *= wave_strength
+                new_alphas *= wave_strength
 
-        new_infected_current = np.sum(self.state.new_infected)
-        n_days = self.decision_period/self.config.periods_per_day
-        if len(self.path) > 2 and new_infected_current >= n_days:
+        if len(self.path) > 2:
+            new_infected_current = np.sum(self.state.new_infected)
             new_infected_historic = np.sum(self.path[-3].new_infected)
-            infection_rate = new_infected_current/new_infected_historic
-            maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
-            increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
-            decreasing_trend = infection_rate < 0.85
-            slope = (new_infected_current-new_infected_historic)/n_days
-            loc = 4/((1+np.exp(0.01*slope))*(1+np.exp(0.01*infected_per_100k)))
-            factor = max(np.random.normal(loc, 0.05), 1-self.government_strictness)
+            n_days = self.decision_period/self.config.periods_per_day
+            if new_infected_current >= n_days and new_infected_historic > 0:
+                infection_rate = new_infected_current/new_infected_historic
+                maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
+                infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
+                increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
+                decreasing_trend = infection_rate < 0.85
+                slope = (new_infected_current-new_infected_historic)/n_days
+                loc = 4/((1+np.exp(0.005*slope))*(1+np.exp(0.01*infected_per_100k)))
+                factor = max(np.random.normal(loc, 0.05), 1-self.government_strictness)
 
-            if self.verbose:
-                if increasing_trend:
-                    print("\033[1mIncreasing trend\033[0m")
-                elif decreasing_trend:
-                    print("\033[1mDecreasing trend\033[0m")
+                if self.verbose:
+                    if increasing_trend:
+                        print("\033[1mIncreasing trend\033[0m")
+                    elif decreasing_trend:
+                        print("\033[1mDecreasing trend\033[0m")
+                    else:
+                        print("\033[1mNeutral trend\033[0m")
+                    print(f"R_eff: {self.state.r_eff:.2f}")
+                    print(f"Infected per 100k: {infected_per_100k:.1f}")
+                    print(f"New infected last week: {new_infected_historic}")
+                    print(f"New infected current week: {new_infected_current}")
+                    print(f"Maximum new infected: {maximum_new_infected}")
+                    print(f"Current infections/last week infections: {infection_rate:.3f}")
+                    print(f"Change in new infected per day: {slope:.3f}")
+                    print(f"Control measure factor: {factor:.3f}")
+                    print(f"Previous weights: {previous_cw}\n\n")
+
+                if increasing_trend or decreasing_trend:
+                    new_cw = (new_cw * factor).clip(max=max_cw)
+                    new_alphas = (new_alphas * factor).clip(max=max_alphas)
+                    if np.max(new_cw) > 1:import pdb;pdb.set_trace()
+                    return new_cw, new_alphas
                 else:
-                    print("\033[1mNeutral trend\033[0m")
-                print(f"R_eff: {self.state.r_eff:.2f}")
-                print(f"Infected per 100k: {infected_per_100k:.1f}")
-                print(f"New infected last week: {new_infected_historic}")
-                print(f"New infected current week: {new_infected_current}")
-                print(f"Maximum new infected: {maximum_new_infected}")
-                print(f"Current infections/last week infections: {infection_rate:.3f}")
-                print(f"Change in new infected per day: {slope:.3f}")
-                print(f"Control measure factor: {factor:.3f}")
-                print(f"Previous weights: {previous_cw}\n\n")
-
-            if increasing_trend:
-                return previous_cw * factor, previous_alphas * factor
-            elif decreasing_trend:
-                return previous_cw * factor,  previous_alphas * factor
-            else:
-                return previous_cw, previous_alphas
+                    new_cw = new_cw.clip(max=max_cw)
+                    new_alphas = new_alphas.clip(max=max_alphas)
+                    return new_cw, new_alphas
         else:
-            return previous_cw, previous_alphas
+            new_cw = new_cw.clip(max=max_cw)
+            new_alphas = new_alphas.clip(max=max_alphas)
+            return new_cw, new_alphas
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero

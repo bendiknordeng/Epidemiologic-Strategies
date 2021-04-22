@@ -113,14 +113,6 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
-def transform_path_to_numpy(path):
-    history = []
-    new_infections = []
-    for state in path:
-        history.append(state.get_compartments_values())
-        new_infections.append(state.new_infected)
-    return np.array(history), np.array(new_infections)
-
 def transform_history_to_df(time_step, history, population, column_names):
     """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
 
@@ -362,11 +354,19 @@ def get_date(start_date, time_step=0):
     dt += timedelta(days=time_step)
     return dt
 
-def print_results(history, new_infections, population, age_labels, policy, save_to_file=False):
+def transform_path_to_numpy(path):
+    history = []
+    new_infections = []
+    for state in path:
+        history.append(state.get_compartments_values())
+        new_infections.append(state.new_infected)
+    return np.array(history), np.array(new_infections)
+
+def print_results(path, population, age_labels, policy, save_to_file=False):
     total_pop = np.sum(population.population)
-    infected = [new_infections[:,:,i].sum(axis=0).sum(axis=0) for i in range(len(age_labels))]
-    vaccinated = history[-1,7,:,:].sum(axis=0)
-    dead = history[-1,6,:,:].sum(axis=0)
+    infected = path[-1].total_infected.sum(axis=0)
+    vaccinated = path[-1].V.sum(axis=0)
+    dead = path[-1].D.sum(axis=0)
     age_total = population[age_labels].sum().to_numpy()
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
     result = f"{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
@@ -393,6 +393,49 @@ def print_results(history, new_infections, population, age_labels, policy, save_
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
+def get_average_results(final_states, population, age_labels, policy, save_to_file=False):
+    final_infected = []
+    final_vaccinated = []
+    final_dead = []
+    for state in final_states:
+        final_infected.append(state.total_infected.sum(axis=0))
+        final_vaccinated.append(state.V.sum(axis=0))
+        final_dead.append(state.D.sum(axis=0))
+    average_infected = np.average(np.array(final_infected), axis=0)
+    average_vaccinated = np.average(np.array(final_vaccinated), axis=0)
+    average_dead = np.average(np.array(final_dead), axis=0)
+
+    std_infected = np.std(np.array(final_infected), axis=0)
+    std_vaccinated = np.std(np.array(final_vaccinated), axis=0)
+    std_dead = np.std(np.array(final_dead), axis=0)
+
+    total_pop = np.sum(population.population)
+    age_total = population[age_labels].sum().to_numpy()
+    columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
+    result = f"{columns[0]:<10} {columns[1]:^34} {columns[2]:^34} {columns[3]:^34}\n"
+    for i in range(len(age_labels)):
+        age_pop = np.sum(population[age_labels[i]])
+        result += f"{age_labels[i]:<10}"
+        result += f"{average_infected[i]:>12,.0f} ({100 * average_infected[i]/age_pop:>5.2f}%) SD: {std_infected[i]:>9.2f}"
+        result += f"{average_vaccinated[i]:>12,.0f} ({100 * average_vaccinated[i]/age_pop:>5.2f}%) SD: {std_vaccinated[i]:>4.2f}"
+        result += f"{average_dead[i]:>12,.0f} ({100 * average_dead[i]/age_pop:>5.2f}%) SD: {std_dead[i]:>6.2f}\n"
+    result += f"{'All':<10}"
+    result += f"{np.sum(average_infected):>12,.0f} ({100 * np.sum(average_infected)/total_pop:>5.2f}%) SD: {np.sum(std_infected):>9.2f}"
+    result += f"{np.sum(average_vaccinated):>12,.0f} ({100 * np.sum(average_vaccinated)/total_pop:>5.2f}%) SD: {np.sum(std_vaccinated):>4.2f}"
+    result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {np.sum(std_dead):>6.2f}"
+    print(result)
+    
+    if save_to_file:
+        data = np.array([age_labels, np.round(average_infected), np.round(average_vaccinated), np.round(average_dead), age_total]).T
+        df = pd.DataFrame(columns=columns, data=data)
+        for col in columns[1:]:
+            df[col] = df[col].astype(float)
+            df[col] = df[col].astype(int)
+        total = df[df.columns[1:]].sum()
+        total["Age group"] = "All"
+        df = df.append(total, ignore_index=True)
+        df.to_csv(f"results/final_results_{policy}.csv", index=False)
+    
 
 def get_wave_weeks(horizon):
     nr_waves = np.random.poisson(horizon/20) # assumption: a wave happens on average every 20 weeks
