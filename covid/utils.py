@@ -5,6 +5,7 @@ import ast
 from collections import namedtuple
 import os
 from datetime import datetime, timedelta
+from scipy import stats as sps
 
 
 def create_named_tuple(filepath):
@@ -394,3 +395,121 @@ def create_timeline(horizon, decision_period):
         timeline.append([time_between_waves[i+1] + timeline[-1][0], 0]) # neutral start
     timeline.append([horizon*decision_period, 0])
     return np.array(timeline, int)
+
+
+def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
+    """ function to calculate posteriors
+
+    Parameters
+        new_infected: pandas.core.series.Series with new infected per day with date and new_infected as columns
+        gamma: 1/recovery period e.g 1/7
+        r_t_range: np.array with range R_t can be in
+        sigma: Gaussian noise to the prior distribution. represent standard deviation of Gaussian distribution.
+    Returns
+        posteriors: 
+        log_likelihood:
+
+    """
+
+    # (1) Calculate Lambda
+    lam = new_infected[:-1].values * np.exp(gamma * (r_t_range[:, None] - 1))
+
+    
+    # (2) Calculate each day's likelihood
+    likelihoods = pd.DataFrame(
+        data = sps.poisson.pmf(new_infected[1:].values, lam),
+        index = r_t_range,
+        columns = new_infected.index[1:])
+    
+    # (3) Create the Gaussian Matrix
+    process_matrix = sps.norm(loc=r_t_range,
+                              scale=sigma
+                             ).pdf(r_t_range[:, None]) 
+
+    # (3a) Normalize all rows to sum to 1
+    process_matrix /= process_matrix.sum(axis=0)
+    
+    # (4) Calculate the initial prior
+    #prior0 = sps.gamma(a=4).pdf(r_t_range)
+    prior0 = np.ones_like(r_t_range)/len(r_t_range)
+    prior0 /= prior0.sum()
+
+    # Create a DataFrame that will hold our posteriors for each day
+    # Insert our prior as the first posterior.
+    posteriors = pd.DataFrame(
+        index=r_t_range,
+        columns=new_infected.index,
+        data={new_infected.index[0]: prior0}
+    )
+    
+    # Keep track of the sum of the log of the probability of the data for maximum likelihood calculation.
+    log_likelihood = 0.0
+
+    # (5) Iteratively apply Bayes' rule
+    for previous_day, current_day in zip(new_infected.index[:-1], new_infected.index[1:]):
+
+        #(5a) Calculate the new prior
+        current_prior = process_matrix @ posteriors[previous_day]
+        
+        #(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
+        numerator = likelihoods[current_day] * current_prior
+        
+        #(5c) Calcluate the denominator of Bayes' Rule P(k)
+        denominator = np.sum(numerator)
+        
+        # Execute full Bayes' Rule
+        posteriors[current_day] = numerator/denominator
+        
+        # Add to the running sum of log likelihoods
+        log_likelihood += np.log(denominator)
+    
+    return posteriors, log_likelihood
+
+
+def smooth_data(new_cases):
+    """ returns smoothed values of a pandas.core.series.Series
+
+    Parameters
+        new_cases: pandas.core.series.Series, with date and daily new infected
+    Returns
+        smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
+
+    """
+    smoothed = new_cases.rolling(7,
+        win_type='gaussian',
+        min_periods=1,
+        center=True).mean(std=2).round()
+
+    return smoothed
+
+
+def highest_density_interval(posteriors, percentile=.9):
+    """ finds intervall for the posteriors
+
+    Parameters
+        posteriors: pandas.core.frame.DataFrame with posteriors values
+        percentile: percentile to find the R_t values for
+    Returns
+        pandas.core.frame.DataFrame
+    """
+    if(isinstance(posteriors, pd.DataFrame)):
+        return pd.DataFrame([highest_density_interval(posteriors[col], percentile=percentile) for col in posteriors],
+                            index=posteriors.columns)
+
+    cumsum = np.cumsum(posteriors.values)
+    
+    # N x N matrix of total probability mass for each low, high
+    total_p = cumsum - cumsum[:, None]
+    
+    # Return all indices with total_p > p
+    lows, highs = (total_p > percentile).nonzero()
+    
+    # Find the smallest range (highest density)
+    best = (highs - lows).argmin()
+    low = posteriors.index[lows[best]]
+    high = posteriors.index[highs[best]]
+    
+    return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
+
+
+
