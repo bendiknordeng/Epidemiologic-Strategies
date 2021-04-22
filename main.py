@@ -33,7 +33,7 @@ if __name__ == '__main__':
     decision_period = 28
     initial_infected = 1
     initial_vaccines_available = 0
-    government_strictness = 0.45
+    government_strictness = 0.3
     policy = policies[0]
     plot_results = False
     
@@ -59,7 +59,7 @@ if __name__ == '__main__':
                         start_date=start_date)
     
     final_states = []
-    for i in range(10):
+    for i in range(100):
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,
@@ -72,7 +72,7 @@ if __name__ == '__main__':
                             historic_data=historic_data,
                             verbose=False)
         mdp.run()
-        #utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
+        utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
     utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)

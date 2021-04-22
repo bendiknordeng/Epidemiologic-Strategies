@@ -145,14 +145,10 @@ class MarkovDecisionProcess:
                     new_alphas = (new_alphas * factor).clip(max=max_alphas)
                     if np.max(new_cw) > 1:import pdb;pdb.set_trace()
                     return new_cw, new_alphas
-                else:
-                    new_cw = new_cw.clip(max=max_cw)
-                    new_alphas = new_alphas.clip(max=max_alphas)
-                    return new_cw, new_alphas
-        else:
-            new_cw = new_cw.clip(max=max_cw)
-            new_alphas = new_alphas.clip(max=max_alphas)
-            return new_cw, new_alphas
+                    
+        new_cw = new_cw.clip(max=max_cw)
+        new_alphas = new_alphas.clip(max=max_alphas)
+        return new_cw, new_alphas
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero

@@ -438,7 +438,7 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
     
 
 def get_wave_weeks(horizon):
-    nr_waves = np.random.poisson(horizon/20) # assumption: a wave happens on average every 20 weeks
+    nr_waves = int(horizon/20) # np.random.poisson(horizon/20) # assumption: a wave happens on average every 20 weeks
     duration_waves = [max(1,int(np.random.exponential(2))) for _ in range(nr_waves)] # assumption: a wave lasts on average 2 weeks
     mean = (horizon - np.sum(duration_waves))/(nr_waves) # evenly distributed time between waves
     std = mean/3
