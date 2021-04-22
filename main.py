@@ -59,7 +59,7 @@ if __name__ == '__main__':
                         start_date=start_date)
     
     final_states = []
-    for i in range(100):
+    for i in range(1):
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,
@@ -74,6 +74,8 @@ if __name__ == '__main__':
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
+
+    utils.get_r_effective(mdp.path, population, config, from_data=False)
 
     utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 

@@ -185,17 +185,13 @@ def plot_rt(result, start_date):
     """
     fig, ax = plt.subplots(figsize=(600/72,400/72))
     ax.set_title('Real-time $R_t$ for Norway')
-        
+
     # Colors
     ABOVE = [1,0,0]
     MIDDLE = [1,1,1]
     BELOW = [0,0,0]
-    cmap = ListedColormap(np.r_[
-        np.linspace(BELOW,MIDDLE,25),
-        np.linspace(MIDDLE,ABOVE,25)
-    ])
+    cmap = ListedColormap(np.r_[np.linspace(BELOW, MIDDLE, 25), np.linspace(MIDDLE, ABOVE, 25)])
     color_mapped = lambda y: np.clip(y, .5, 1.5)-.5
-    
     index = result['ML'].index.get_level_values('date')
     values = result['ML'].values
     
@@ -207,7 +203,7 @@ def plot_rt(result, start_date):
                lw=.5,
                c=cmap(color_mapped(values)),
                edgecolors='k', zorder=2)
-    
+
     # Aesthetically, extrapolate credible interval by 1 day either side
     lowfn = interp1d(date2num(index),
                      result['Low_90'].values,
@@ -230,13 +226,12 @@ def plot_rt(result, start_date):
                     lw=0,
                     zorder=3)
 
-    ax.axhline(1.0, c='k', lw=1, label='$R_t=1.0$', alpha=.25);
+    ax.axhline(1.0, c='k', lw=1, label='$R_t=1.0$', alpha=.25)
     
     # Formatting
     ax.xaxis.set_major_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
     ax.xaxis.set_minor_locator(mdates.DayLocator())
-    
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
     ax.yaxis.tick_right()
@@ -246,13 +241,18 @@ def plot_rt(result, start_date):
     ax.margins(0)
     ax.grid(which='major', axis='y', c='k', alpha=.1, zorder=-2)
     ax.margins(0)
-    ax.set_ylim(0.0, 5.0)
-    ax.set_xlim(pd.Timestamp(start_date), result.index.get_level_values('date')[-1]+pd.Timedelta(days=1), )
+    ax.set_ylim(0.0, 10.0)
+    ax.set_xlim(pd.Timestamp(start_date), result.index.get_level_values('date')[-1]+pd.Timedelta(days=1),)
+
+    # ticks = min(len(result), 20)
+    # step = int(np.ceil(len(ticks)/ticks))
+    # dates = result.index.get_level_values('date')
+    # ax.xticks(np.arange(0, len(result), step), dates[::step])
+
     fig.set_facecolor('w')
     fig.autofmt_xdate()
     ax.xaxis.set_major_locator(mdates.WeekdayLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
-
     plt.show()
 
 def plot_heatmaps(C, weights, age_labels, fpath=""):

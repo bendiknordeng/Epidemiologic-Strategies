@@ -1,3 +1,4 @@
+from numpy.core.fromnumeric import squeeze
 import pandas as pd
 import numpy as np
 import pickle as pkl
@@ -6,6 +7,7 @@ from collections import namedtuple
 import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
+from covid import plot
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
@@ -530,7 +532,6 @@ def smooth_data(new_cases):
         win_type='gaussian',
         min_periods=1,
         center=True).mean(std=2).round()
-
     return smoothed
 
 def highest_density_interval(posteriors, percentile=.9):
@@ -560,5 +561,59 @@ def highest_density_interval(posteriors, percentile=.9):
     
     return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
 
+def get_r_effective(path, population, config, from_data=False):
+    # Read in data
+    if from_data:
+        states = pd.read_csv('data/fhi_data_daily.csv',
+                            usecols=['date', 'region', 'I_new'],
+                            parse_dates=['date'],
+                            index_col=['region', 'date'],
+                            squeeze=True).sort_index()
+        states = states.astype('float64')
+    else:
+        regions = np.tile(np.append(population.region.to_numpy(), 'NORWAY'), len(path)).T
+        I_new = np.array([s.new_infected.sum(axis=1) for s in path])
+        total_I_new = I_new.sum(axis=1)
+        I_new = np.hstack((I_new,total_I_new.reshape(-1,1)))
+        dates = np.array([s.date for s in path]).repeat(I_new.shape[1]).T
+        I_new = I_new.reshape(-1).T
+        states = pd.DataFrame(data=np.array([regions, dates, I_new]).T, columns=['region','date','I_new'])
+        states = states.set_index(['region','date']).sort_values(['region','date'])
+        states = states.squeeze().astype('float64')
 
+    # define region and redefine first level in Series
+    state_name = 'NORWAY'
+    cases = states.xs(state_name).rename(f"{state_name} cases")
+
+    # gets the original and smoothed data 
+    smoothed = smooth_data(cases)
+
+    # Need the increment to start with one to calculate posteriors
+    idx_start = np.searchsorted(smoothed, 1)
+    smoothed = smoothed.iloc[idx_start:]
+
+    # plots the original and smoothed data
+    # original = cases.loc[smoothed.index]
+    # plot.smoothed_development(original, smoothed, "Norway - New Cases per Day")
+
+    # define parameters to calculate posteriors
+    R_T_MAX = 12
+    r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
+    gamma = config.presymptomatic_period + config.postsymptomatic_period
+
+    # calculate posteriors 
+    posteriors, log_likelihood = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
+
+    # plot daily posteriors
+    # plot.posteriors(posteriors, 'Norway- Daily Posterior for $R_t$')
+
+    # finds the posterior intervals
+    hdis = highest_density_interval(posteriors, percentile=0.9)
+    most_likely = posteriors.idxmax().rename('ML')
+    result = pd.concat([most_likely, hdis], axis=1)
+    # print(hdi.head())
+
+    # plot R_t development
+    start_date = cases.index[0].strftime("%Y-%m-%d")
+    plot.plot_rt(result, start_date)
 
