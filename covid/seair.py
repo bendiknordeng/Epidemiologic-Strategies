@@ -3,7 +3,7 @@ from covid import utils
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
-                config, paths, include_flow, hidden_cases, write_to_csv, write_weekly):
+                config, paths, include_flow, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -25,7 +25,7 @@ class SEAIR:
             write_weekly: boolean, false if we want to write daily results, true if weekly
          """
         
-        self.periods_per_day = int(24/config.time_delta)
+        self.periods_per_day = config.periods_per_day
         self.OD = OD
         self.contact_matrices = contact_matrices
         self.population = population
@@ -42,7 +42,6 @@ class SEAIR:
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
 
         self.include_flow = include_flow
-        self.hidden_cases = hidden_cases
         self.paths = paths
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
@@ -72,9 +71,10 @@ class SEAIR:
         alphas = information['alphas']
         realflows = [self.OD.copy()*a for a in alphas]
 
-        # Initialize history matrix and total new infected
+        # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
+        r_eff = np.zeros(decision_period)
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
@@ -88,22 +88,19 @@ class SEAIR:
         gamma = 1/self.recovery_period
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
-        C = self.generate_weighted_contact_matrix(information['contact_matrices_weights'])
+        C = self.generate_weighted_contact_matrix(information['contact_weights'])
+        
 
         # Run simulation
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
-            if information['wave_state'][i] > 0:
-                C = self.generate_weighted_contact_matrix(np.array([3,3,3,3,3]))
-            if information['wave_state'][i] < 0:
-                C = self.generate_weighted_contact_matrix(np.array([0.05,0.05,0.05,0.05,0.05]))
             # Vaccinate before flow
-            new_vaccinated = np.minimum(S, decision[i % decision_period]) # M
-            new_vaccinated = new_vaccinated.clip(min=0)
-            successfully_new_V = epsilon * new_vaccinated
+            new_V = np.minimum(S, decision[i % decision_period]) # M
+            new_V = new_V.clip(min=0)
+            successfully_new_V = epsilon * new_V
             S = S - successfully_new_V
             R = R + successfully_new_V
-            V = V + new_vaccinated
+            V = V + new_V
 
             # Finds the movement flow for the given period i and scales it for each 
             if self.include_flow:
@@ -119,15 +116,11 @@ class SEAIR:
                 S, E1, E2, A, I = flow_compartments
 
             draws = np.maximum(S.astype(int), 0)
-            prob_e = (np.matmul(E2, C).T * (r_e*beta/N)).T
-            prob_a = (np.matmul(A, C).T * (r_a*beta/N)).T
-            prob_i = (np.matmul(I, C).T * (beta/N)).T
+            prob_e = beta*r_e * np.matmul(C, (E2.T/N)).T
+            prob_a = beta*r_a * np.matmul(C, (A.T/N)).T
+            prob_i = beta * np.matmul(C, (I.T/N)).T
+            new_E1 = np.random.binomial(draws, prob_e + prob_a + prob_i)
 
-            new_E1_from_E2 = np.random.binomial(draws, prob_e)
-            new_E1_from_A = np.random.binomial(draws, prob_a)
-            new_E1_from_I = np.random.binomial(draws, prob_i)
-
-            new_E1 = new_E1_from_E2 + new_E1_from_A + new_E1_from_I
             new_E2 = p * sigma * E1
             new_A = (1 - p) * sigma * E1
             new_I = alpha * E2
@@ -143,15 +136,13 @@ class SEAIR:
             I = I + new_I - new_R_from_I - new_D
             R = R + new_R_from_I + new_R_from_A
             D = D + new_D
-           
-            if self.hidden_cases and (i % (decision_period/7) == 0): # Add random infected to new E if hidden_cases=True
-                hidden_cases = self.add_hidden_cases(S)
-                S = S - hidden_cases
-                E1 = E1 + hidden_cases
 
             # Save number of new infected
             total_new_infected[i] = new_E1
             
+            # TODO: Define formula for calculating r_effective
+            r_eff[i] = self.recovery_period * np.sum(new_E1)/np.sum([E2, A, I])
+
             # Append simulation results
             if i%self.periods_per_day == 0: # record daily history
                 daily_new_infected = new_E1 if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
@@ -171,20 +162,7 @@ class SEAIR:
                                 self.paths.results_history_daily,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
         
-        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
-    
-    @staticmethod
-    def add_hidden_cases(S):
-        """ Adds cases to the infection compartment, to represent hidden cases
-
-        Parameters
-            S: array of susceptible in each region for each age group
-        Returns
-            hidden_cases, an array of new cases including hidden cases
-        """
-        share = 5e-5 # maximum number of hidden infections
-        hidden_cases = np.random.binomial(np.maximum(S.astype(int), 0), share)
-        return hidden_cases
+        return S, E1, E2, A, I, R, D, V, np.mean(r_eff), total_new_infected.sum(axis=0)
 
     @staticmethod
     def update_history(compartments, new_infected, history, time_step):
@@ -221,7 +199,7 @@ class SEAIR:
             new_compartment[:,age_group] = new_compartment[:,age_group] + inflow - outflow
         return new_compartment
 
-    def generate_weighted_contact_matrix(self, weights):
+    def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
 
         Parameters
@@ -230,4 +208,4 @@ class SEAIR:
             weighted contact matrix used in modelling
         """
         C = self.contact_matrices
-        return np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)
+        return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)

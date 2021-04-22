@@ -2,7 +2,8 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, date, time_step=0):
+    def __init__(self, S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas,
+                vaccines_available, new_infected, total_infected, date, time_step=0):
         """ initialize a State instance
 
         Parameters
@@ -14,6 +15,8 @@ class State:
             R: array with shape (356,5) indicating number of recovered in each region for each age group
             D: array with shape (356,5) indicating number of accumulated deaths in each region for each age group
             V: array with shape (356,5) indicating number of vaccinated in each region for each age group
+            contact_weights: weights indicating weighting of contact matrices (Home, School, Work, Transport, Leisure)
+            alphas, scaling factors indicating flow in compartments S, E1, E2, A and I
             vaccines_available: integer indicating number of vaccines available at initialization time step
             time_step: integer indicating the time step when state is intialized in the range(0, (24/time_delta)*7 -1)
         Returns
@@ -29,11 +32,14 @@ class State:
         self.D = D
         self.V = V
         
+        self.r_eff = r_eff
+        self.contact_weights = np.array(contact_weights)
+        self.alphas = np.array(alphas)
         self.vaccines_available = vaccines_available
         self.new_infected = new_infected
+        self.total_infected = total_infected
         self.date = date
         self.time_step = time_step
-        self.days_since_wave = 0
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """ 
@@ -46,7 +52,7 @@ class State:
             A new initialized State instance
         """
         # Update compartment values
-        S, E1, E2, A, I, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information)
+        S, E1, E2, A, I, R, D, V, r_eff, new_infected = epidemic_function(self, decision, decision_period, information)
 
         # Update vaccine available
         vaccines_left = self.vaccines_available - np.sum(decision)
@@ -57,7 +63,12 @@ class State:
         time_step = self.time_step + decision_period
         date = self.date + timedelta(decision_period//4)
 
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, new_infected, date, time_step)
+        # Update information
+        contact_weights = information['contact_weights']
+        alphas = information['alphas']
+
+        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available,
+                    new_infected, self.total_infected+new_infected, date, time_step)
     
 
     def get_compartments_values(self):
@@ -78,7 +89,7 @@ class State:
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, population, start_date, time_step=0):
+    def initialize_state(num_initial_infected, vaccines_available, r_eff, contact_weights, alphas, population, start_date, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -107,4 +118,4 @@ class State:
                 S[region][age_group] -= 1
                 E1[region][age_group] += 1
 
-        return State(S, E1, E2, A, I, R, D, V, vaccines_available, E1.copy(), start_date, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, E1.copy(), E1.copy(), start_date, time_step) 

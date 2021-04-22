@@ -113,14 +113,6 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
-def transform_path_to_numpy(path):
-    history = []
-    new_infections = []
-    for state in path:
-        history.append(state.get_compartments_values())
-        new_infections.append(state.new_infected)
-    return np.array(history), np.array(new_infections)
-
 def transform_history_to_df(time_step, history, population, column_names):
     """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
 
@@ -220,19 +212,32 @@ def generate_labels_from_bins(bins):
     return labels
 
 def generate_contact_matrices(bins, labels, population, country=None):
+    # Load contact data
     df = pd.read_csv('data/contact_data.csv')
-    if country: df = df[df.country == country]
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
     df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).mean()).reset_index()
-    N = population[population.columns[2:-1]].sum().to_numpy()
+
+    # Get population data
+    N_eu = pd.read_csv('data/population_europe_2008.csv')
+    N_eu.age = pd.cut(N_eu['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    N_eu = N_eu.groupby('age').sum()['population']
+    N_eu_tot = N_eu.sum()
+    N_norway = population[population.columns[2:-1]].sum()
+    N_norway_tot = np.sum(N_norway)
+    
+    # Create matrices
     matrices = []
     for col in ['home', 'school', 'work', 'transport', 'leisure']:
-        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1').to_numpy()
+        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1')
+        corrected_matrix = np.zeros((matrix.shape))
+        for i, a_i in enumerate(labels):
+            for j, a_j in enumerate(labels):
+                corrected_matrix[i][j] = matrix[a_i][a_j] * (N_eu_tot * N_norway[a_j])/(N_eu[a_j] * N_norway_tot) # Density correction
         symmetric_matrix = np.zeros((matrix.shape))
-        for i in range(len(N)):
-            for j in range(len(N)):
-                symmetric_matrix[i][j] = 1/(N[i]+N[j]) * (matrix[i][j] * N[i] + matrix[j][i] * N[j])
+        for i, a_i in enumerate(labels):
+            for j, a_j in enumerate(labels):
+                symmetric_matrix[i][j] = 1/(N_norway[a_i]+N_norway[a_j]) * (corrected_matrix[i][j] * N_norway[a_i] + corrected_matrix[j][i] * N_norway[a_j]) # Symmetry
         matrices.append(symmetric_matrix)
     return matrices
 
@@ -349,11 +354,19 @@ def get_date(start_date, time_step=0):
     dt += timedelta(days=time_step)
     return dt
 
-def print_results(history, new_infections, population, age_labels, policy, save_to_file=False):
+def transform_path_to_numpy(path):
+    history = []
+    new_infections = []
+    for state in path:
+        history.append(state.get_compartments_values())
+        new_infections.append(state.new_infected)
+    return np.array(history), np.array(new_infections)
+
+def print_results(path, population, age_labels, policy, save_to_file=False):
     total_pop = np.sum(population.population)
-    infected = [new_infections[:,:,i].sum(axis=0).sum(axis=0) for i in range(len(age_labels))]
-    vaccinated = history[-1,7,:,:].sum(axis=0)
-    dead = history[-1,6,:,:].sum(axis=0)
+    infected = path[-1].total_infected.sum(axis=0)
+    vaccinated = path[-1].V.sum(axis=0)
+    dead = path[-1].D.sum(axis=0)
     age_total = population[age_labels].sum().to_numpy()
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
     result = f"{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
@@ -380,17 +393,60 @@ def print_results(history, new_infections, population, age_labels, policy, save_
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
+def get_average_results(final_states, population, age_labels, policy, save_to_file=False):
+    final_infected = []
+    final_vaccinated = []
+    final_dead = []
+    for state in final_states:
+        final_infected.append(state.total_infected.sum(axis=0))
+        final_vaccinated.append(state.V.sum(axis=0))
+        final_dead.append(state.D.sum(axis=0))
+    average_infected = np.average(np.array(final_infected), axis=0)
+    average_vaccinated = np.average(np.array(final_vaccinated), axis=0)
+    average_dead = np.average(np.array(final_dead), axis=0)
 
-def create_timeline(horizon, decision_period):
-    nr_waves = int(np.random.poisson(horizon/13)) # assumption: a wave happens on average every 13 weeks
-    duration_waves = [int(np.random.exponential(2*decision_period)) for _ in range(nr_waves)] # assumption, a wave lasts on average 2 weeks
-    mean = (horizon*decision_period - np.sum(duration_waves))/(nr_waves+1) # evenly distributed time between waves
-    std_dev = mean/3
-    time_between_waves = [int(np.random.normal(mean, std_dev)) for _ in range(nr_waves+1)] # time between waves, normally distributed
-    timeline = [[time_between_waves[0], 0]]
-    for i in range(len(duration_waves)):
-        timeline.append([duration_waves[i]/2 + timeline[-1][0], 1]) # wave incline
-        timeline.append([duration_waves[i]/2 + timeline[-1][0], -1]) # wave decline
-        timeline.append([time_between_waves[i+1] + timeline[-1][0], 0]) # neutral start
-    timeline.append([horizon*decision_period, 0])
-    return np.array(timeline, int)
+    std_infected = np.std(np.array(final_infected), axis=0)
+    std_vaccinated = np.std(np.array(final_vaccinated), axis=0)
+    std_dead = np.std(np.array(final_dead), axis=0)
+
+    total_pop = np.sum(population.population)
+    age_total = population[age_labels].sum().to_numpy()
+    columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
+    result = f"{columns[0]:<10} {columns[1]:^34} {columns[2]:^34} {columns[3]:^34}\n"
+    for i in range(len(age_labels)):
+        age_pop = np.sum(population[age_labels[i]])
+        result += f"{age_labels[i]:<10}"
+        result += f"{average_infected[i]:>12,.0f} ({100 * average_infected[i]/age_pop:>5.2f}%) SD: {std_infected[i]:>9.2f}"
+        result += f"{average_vaccinated[i]:>12,.0f} ({100 * average_vaccinated[i]/age_pop:>5.2f}%) SD: {std_vaccinated[i]:>4.2f}"
+        result += f"{average_dead[i]:>12,.0f} ({100 * average_dead[i]/age_pop:>5.2f}%) SD: {std_dead[i]:>6.2f}\n"
+    result += f"{'All':<10}"
+    result += f"{np.sum(average_infected):>12,.0f} ({100 * np.sum(average_infected)/total_pop:>5.2f}%) SD: {np.sum(std_infected):>9.2f}"
+    result += f"{np.sum(average_vaccinated):>12,.0f} ({100 * np.sum(average_vaccinated)/total_pop:>5.2f}%) SD: {np.sum(std_vaccinated):>4.2f}"
+    result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {np.sum(std_dead):>6.2f}"
+    print(result)
+    
+    if save_to_file:
+        data = np.array([age_labels, np.round(average_infected), np.round(average_vaccinated), np.round(average_dead), age_total]).T
+        df = pd.DataFrame(columns=columns, data=data)
+        for col in columns[1:]:
+            df[col] = df[col].astype(float)
+            df[col] = df[col].astype(int)
+        total = df[df.columns[1:]].sum()
+        total["Age group"] = "All"
+        df = df.append(total, ignore_index=True)
+        df.to_csv(f"results/final_results_{policy}.csv", index=False)
+    
+
+def get_wave_weeks(horizon):
+    nr_waves = int(horizon/20) # np.random.poisson(horizon/20) # assumption: a wave happens on average every 20 weeks
+    duration_waves = [max(1,int(np.random.exponential(2))) for _ in range(nr_waves)] # assumption: a wave lasts on average 2 weeks
+    mean = (horizon - np.sum(duration_waves))/(nr_waves) # evenly distributed time between waves
+    std = mean/3
+    time_between_waves = [int(np.random.normal(mean, std)) for _ in range(nr_waves)] # time between waves, exponentially distributed
+    wave_weeks = np.cumsum(time_between_waves)
+    wave_weeks[1:len(duration_waves)] += np.cumsum(duration_waves)[:-1]
+    weeks = []
+    for i in range(nr_waves):
+        for j in range(duration_waves[i]):
+            weeks.append(wave_weeks[i]+j)
+    return weeks

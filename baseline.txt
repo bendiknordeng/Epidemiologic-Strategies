@@ -1,12 +1,14 @@
-{"R0":3,
+{"R0":3.1,
 "periods_per_day":4,
 "time_delta":6,
 "efficacy":0.95,
 "latent_period": 3,
-"proportion_symptomatic_infections":0.8,
-"presymptomatic_infectiousness":1.5,
-"asymptomatic_infectiousness":0.33,
 "presymptomatic_period": 2,
 "postsymptomatic_period": 5,
-"age_bins": [0, 9, 19, 29, 39, 49, 59, 69]
+"presymptomatic_infectiousness":1.25,
+"proportion_symptomatic_infections":0.6,
+"asymptomatic_infectiousness":0.1,
+"age_bins": [0, 6, 15, 19, 40, 66],
+"initial_contact_weights": [1, 1, 1, 1, 1],
+"initial_alphas": [1, 1, 1, 1, 0.6]
 }

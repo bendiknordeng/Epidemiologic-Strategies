@@ -1,4 +1,4 @@
-from covid.utils import generate_weekly_data
+from covid.utils import get_wave_weeks
 from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
@@ -6,7 +6,8 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, population, epidemic_function, initial_state, horizon, decision_period, periods_per_day, policy, timeline, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, initial_state,
+                horizon, policy, government_strictness, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -19,16 +20,16 @@ class MarkovDecisionProcess:
             policy: How the available vaccines should be distributed.
             historic_data: dataframe, or None indicating whether or not to use fhi_data in simulation
         """
+        self.config = config
+        self.decision_period = decision_period
         self.horizon = horizon
         self.population = population
         self.epidemic_function = epidemic_function
         self.state = initial_state
-        self.path = [self.state]
-        self.decision_period = decision_period
-        self.periods_per_day = periods_per_day
         self.historic_data = historic_data
-        self.timeline = timeline
+        self.government_strictness = government_strictness
         self.policy_name = policy
+        self.verbose = verbose
         self.policy = {
             "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
@@ -38,25 +39,26 @@ class MarkovDecisionProcess:
             "adults_first": self._adults_first_policy,
             "oldest_first": self._oldest_first_policy,
         }[policy]
+        self.path = [self.state]
+        self.wave_weeks = get_wave_weeks(self.horizon)
 
-    def run(self, verbose=False):
+    def run(self):
         """ Updates states from current time_step to a specified horizon
 
         Returns
             A path that shows resulting traversal of states
         """
         print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if verbose else tqdm(range(self.state.time_step, self.horizon))
-        for _ in run_range:
-            if verbose: print(self.state, end="\n"*2)
-            if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
-                print("\033[1mReached stop-criteria. Recovered population > 70%.\033[0m\n")
+        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        for week in run_range:
+            if self.verbose: print(self.state, end="\n"*2)
+            if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
+                print("\033[1mReached stop-criteria. Recovered population > 90%.\033[0m\n")
                 break
-            if np.sum(self.state.E1) < 1: # stop if infections are zero
+            if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
                 print("\033[1mReached stop-criteria. Infected population is zero.\033[0m\n")
                 break
             self.update_state()
-        return self.path
 
     def get_exogenous_information(self, state):
         """ Recieves the exogenous information at time_step t
@@ -71,23 +73,15 @@ class MarkovDecisionProcess:
         end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//4))
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
-        if True: #week_data.empty:
-            alphas = [1, 1, 1, 1, 0.1] # S, E1, E2, A, I
+        if week_data.empty:
             vaccine_supply = np.ones((356,5))*10
-            contact_matrices_weights = np.array([1, 1, 1, 1, 1]) # Home, School, Work, Transport, Leisure
-            if len(self.path) > 2:
-                contact_matrices_weights = self._map_infection_to_control_measures(contact_matrices_weights)
-            wave_state = self._find_wave_state(state)
         else:
-            data = week_data.iloc[-1]
-            alphas = [data['alpha_s'], data['alpha_e1'], data['alpha_e2'], data['alpha_a'], data['alpha_i']]
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
-            contact_matrices_weights = [data['w_c1'], data['w_c2'], data['w_c3'], data['w_c4'], data['w_c5']]
-        
+
+        contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
         information = {'alphas': alphas, 
                        'vaccine_supply': vaccine_supply,
-                       'contact_matrices_weights': contact_matrices_weights,
-                       'wave_state': wave_state}
+                       'contact_weights': contact_weights}
         return information
 
     def update_state(self, decision_period=28):
@@ -101,27 +95,60 @@ class MarkovDecisionProcess:
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
-    def _find_wave_state(self, state):
-        wave_state = np.zeros(28)
-        for i in range(self.decision_period-1):
-            loc = np.where(state.time_step + i <= self.timeline[:,0])[0][0]
-            wave_state[i] = self.timeline[loc][1]
-        return wave_state
+    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
+        max_cw = np.array(self.config.initial_contact_weights)
+        max_alphas = np.array(self.config.initial_alphas)
+        new_cw = previous_cw.copy()
+        new_alphas = previous_alphas.copy()
+        simulation_week = self.state.time_step//self.decision_period
+        if simulation_week in self.wave_weeks:
+            wave_strength = np.random.normal(1.5, 0.1)
+            if self.verbose:
+                print("\033[1mInfection wave\033[0m")
+                print(f"Wavestrength: {wave_strength}\n\n")
+                new_cw *= wave_strength
+                new_alphas *= wave_strength
 
-    def _map_infection_to_control_measures(self, previous_weighting):
-        new_infected_historic = np.sum(self.path[-3].new_infected)
-        new_infected_current = np.sum(self.state.new_infected)
-        if new_infected_current > self.decision_period/self.periods_per_day: # one case per day
-            infection_rate_slope = new_infected_current/new_infected_historic
-            maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            if infection_rate_slope > 0.15: # and new_infected_current > maximum_new_infected: # increasing trend
-                return previous_weighting * 0.5
-            elif infection_rate_slope < -0.15: # decreasing trend
-                return previous_weighting * 2
-            else: # neutral trend
-                return previous_weighting
-        else:
-            return previous_weighting
+        if len(self.path) > 2:
+            new_infected_current = np.sum(self.state.new_infected)
+            new_infected_historic = np.sum(self.path[-3].new_infected)
+            n_days = self.decision_period/self.config.periods_per_day
+            if new_infected_current >= n_days and new_infected_historic > 0:
+                infection_rate = new_infected_current/new_infected_historic
+                maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
+                infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
+                increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
+                decreasing_trend = infection_rate < 0.85
+                slope = (new_infected_current-new_infected_historic)/n_days
+                loc = 4/((1+np.exp(0.005*slope))*(1+np.exp(0.01*infected_per_100k)))
+                factor = max(np.random.normal(loc, 0.05), 1-self.government_strictness)
+
+                if self.verbose:
+                    if increasing_trend:
+                        print("\033[1mIncreasing trend\033[0m")
+                    elif decreasing_trend:
+                        print("\033[1mDecreasing trend\033[0m")
+                    else:
+                        print("\033[1mNeutral trend\033[0m")
+                    print(f"R_eff: {self.state.r_eff:.2f}")
+                    print(f"Infected per 100k: {infected_per_100k:.1f}")
+                    print(f"New infected last week: {new_infected_historic}")
+                    print(f"New infected current week: {new_infected_current}")
+                    print(f"Maximum new infected: {maximum_new_infected}")
+                    print(f"Current infections/last week infections: {infection_rate:.3f}")
+                    print(f"Change in new infected per day: {slope:.3f}")
+                    print(f"Control measure factor: {factor:.3f}")
+                    print(f"Previous weights: {previous_cw}\n\n")
+
+                if increasing_trend or decreasing_trend:
+                    new_cw = (new_cw * factor).clip(max=max_cw)
+                    new_alphas = (new_alphas * factor).clip(max=max_alphas)
+                    if np.max(new_cw) > 1:import pdb;pdb.set_trace()
+                    return new_cw, new_alphas
+                    
+        new_cw = new_cw.clip(max=max_cw)
+        new_alphas = new_alphas.clip(max=max_alphas)
+        return new_cw, new_alphas
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero
@@ -142,7 +169,7 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         n_regions, n_age_groups = pop.shape
         vaccine_allocation = np.zeros((self.decision_period, n_regions, n_age_groups))
-        demand = self.state.S.copy()
+        demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
         M = self.state.vaccines_available
         while M > 0:
             period, region, age_group = np.random.randint(self.decision_period), np.random.randint(n_regions), np.random.randint(n_age_groups)
@@ -161,9 +188,9 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
                 total_allocation = self.state.vaccines_available * pop/np.sum(pop)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2) # only vaccinate each morning and midday
+                vaccine_allocation[i] = total_allocation/(self.decision_period/2) 
         return vaccine_allocation
 
     def _susceptible_based_policy(self):
@@ -175,9 +202,9 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
                 total_allocation = self.state.vaccines_available * self.state.S/np.sum(self.state.S)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2) # only vaccinate each morning and midday
+                vaccine_allocation[i] = total_allocation/(self.decision_period/2)
         return vaccine_allocation
 
     def _infection_based_policy(self):
@@ -189,9 +216,9 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
                 total_allocation = self.state.vaccines_available * self.state.E1/np.sum(self.state.E1)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2) # only vaccinate each morning and midday
+                vaccine_allocation[i] = total_allocation/(self.decision_period/2)
         return vaccine_allocation
 
 
@@ -212,7 +239,7 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         M = self.state.vaccines_available
-        demand = self.state.S.copy()
+        demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
 
         def find_prioritized_age_group(demand):
             for a in [3,4,5,6,7,2,1,0]:
@@ -220,17 +247,26 @@ class MarkovDecisionProcess:
                     return a
                     
         age_group = find_prioritized_age_group(demand)
+        vaccines_per_period = M/(self.decision_period/2)
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
+                vaccines_left = vaccines_per_period
+                allocation = np.zeros((pop.shape[0], pop.shape[1]))
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
-                age_allocation = M * age_group_demand/total_age_group_demand
-                allocation = np.zeros((pop.shape[0], pop.shape[1]))
-                allocation[:,age_group] = age_allocation
-                vaccine_allocation[i] = allocation/(self.decision_period/2) # only vaccinate each morning and midday
-                demand -= allocation
-                if total_age_group_demand < 1:
+                if vaccines_per_period > total_age_group_demand:
+                    age_allocation = age_group_demand
+                    allocation[:,age_group] = age_allocation
+                    demand[:,age_group] -= allocation[:,age_group]
+                    vaccines_left -= total_age_group_demand
                     age_group = find_prioritized_age_group(demand)
+                    age_group_demand = demand[:,age_group]
+                    total_age_group_demand = np.sum(age_group_demand)
+                age_allocation = (age_group_demand/total_age_group_demand) * vaccines_left
+                M -= vaccines_per_period
+                allocation[:,age_group] = age_allocation
+                vaccine_allocation[i] = allocation
+                demand[:,age_group] -= allocation[:,age_group]
         return vaccine_allocation
 
     def _oldest_first_policy(self):
@@ -242,23 +278,32 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         M = self.state.vaccines_available
-        demand = self.state.S.copy()
+        demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
 
         def find_prioritized_age_group(demand):
-            for a in range(pop.shape[1]-1,0,-1):
-                if np.sum(demand[:,a]) > 0:
-                    return a
+            for age_group in range(pop.shape[1]-1,0,-1):
+                if np.round(np.sum(demand[:,age_group])) > 0:
+                    return age_group
                     
         age_group = find_prioritized_age_group(demand)
+        vaccines_per_period = M/(self.decision_period/2)
         for i in range(self.decision_period):
-            if i%1 == 0 or i%2 == 0:
+            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
+                vaccines_left = vaccines_per_period
+                allocation = np.zeros((pop.shape[0], pop.shape[1]))
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
-                age_allocation = M * age_group_demand/total_age_group_demand
-                allocation = np.zeros((pop.shape[0], pop.shape[1]))
-                allocation[:,age_group] = age_allocation
-                vaccine_allocation[i] = allocation/(self.decision_period/2) # only vaccinate each morning and midday
-                demand -= allocation
-                if total_age_group_demand < 1:
+                if vaccines_per_period > total_age_group_demand:
+                    age_allocation = age_group_demand
+                    allocation[:,age_group] = age_allocation
+                    demand[:,age_group] -= allocation[:,age_group]
+                    vaccines_left -= total_age_group_demand
                     age_group = find_prioritized_age_group(demand)
+                    age_group_demand = demand[:,age_group]
+                    total_age_group_demand = np.sum(age_group_demand)
+                age_allocation = (age_group_demand/total_age_group_demand) * vaccines_left
+                M -= vaccines_per_period
+                allocation[:,age_group] = age_allocation
+                vaccine_allocation[i] = allocation
+                demand[:,age_group] -= allocation[:,age_group]
         return vaccine_allocation

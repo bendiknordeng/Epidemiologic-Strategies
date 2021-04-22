@@ -110,6 +110,43 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
     plt.grid()
     plt.show()
 
+def plot_control_measures(path):
+    new_infected = [np.sum(s.new_infected) for s in path]
+    c_weights = [s.contact_weights[0] for s in path]
+    weeks = [s.date.isocalendar()[1] for s in path]
+    ticks = min(len(path), 20)
+    step = int(np.ceil(len(path)/ticks))
+
+    fig, ax1 = plt.subplots(figsize=(10,5))
+    fig.suptitle('Control measures given infection')
+    ax1.set_xlabel('Week')
+    ax1.set_ylabel('New infected')
+    ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
+    
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Weight')
+    ln2 = ax2.plot(c_weights, label="Contact weights")
+    
+    lines = ln1+ln2
+    labels = [ln[0].get_label() for ln in [ln1, ln2]]
+    plt.legend(lines, labels)
+    plt.xticks(np.arange(0, len(path), step), weeks[::step])
+    plt.grid()
+    plt.show()
+
+def plot_r_effective(path):
+    r_eff = [s.r_eff for s in path]
+    weeks = [s.date.isocalendar()[1] for s in path]
+    ticks = min(len(path), 20)
+    step = int(np.ceil(len(path)/ticks))
+    fig = plt.figure(figsize=(10,5))
+    fig.suptitle(r'Historic $R_{eff}$')
+    plt.plot(r_eff)
+    plt.xticks(np.arange(0, len(path), step), weeks[::step])
+    plt.ylabel(r"$R_{eff}$")
+    plt.xlabel("Week")
+    plt.grid()
+    plt.show()
 
 def plot_heatmaps(C, weights, age_labels, fpath=""):
     """ Plotes heatmaps for contact matrices
