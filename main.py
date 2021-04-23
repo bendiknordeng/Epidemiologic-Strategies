@@ -28,7 +28,7 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of weeks
+    horizon = 100 # number of weeks
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
@@ -69,12 +69,12 @@ if __name__ == '__main__':
                             horizon=horizon,
                             policy=policy,
                             historic_data=historic_data,
-                            verbose=False)
+                            verbose=True)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
-    # utils.get_r_effective(mdp.path, population, config, from_data=False)
+    utils.get_r_effective(mdp.path, population, config, from_data=False)
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:

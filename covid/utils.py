@@ -603,7 +603,7 @@ def get_r_effective(path, population, config, from_data=False):
     R_T_MAX = 12
     r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
     gamma = 1/(config.presymptomatic_period + config.postsymptomatic_period)
-
+    if from_data: gamma = gamma/config.periods_per_day
     # calculate posteriors 
     posteriors, log_likelihood = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
 
@@ -617,6 +617,5 @@ def get_r_effective(path, population, config, from_data=False):
     # print(hdi.head())
 
     # plot R_t development
-    start_date = cases.index[0].strftime("%Y-%m-%d")
-    plot.plot_rt(result, start_date)
+    plot.plot_rt(result)
 

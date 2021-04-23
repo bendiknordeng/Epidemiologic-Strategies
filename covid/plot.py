@@ -186,7 +186,7 @@ def posteriors(posteriors, title):
     ax.set_xlabel('$R_t$');
     plt.show()
 
-def plot_rt(result, start_date):
+def plot_rt(result):
     """ plot R_t development
     """
     fig, ax = plt.subplots(figsize=(600/72,400/72))
@@ -221,7 +221,7 @@ def plot_rt(result, start_date):
                       bounds_error=False,
                       fill_value='extrapolate')
     
-    extended = pd.date_range(start=pd.Timestamp(start_date),
+    extended = pd.date_range(start=index[0],
                              end=index[-1]+pd.Timedelta(days=1))
     
     ax.fill_between(extended,
@@ -235,9 +235,9 @@ def plot_rt(result, start_date):
     ax.axhline(1.0, c='k', lw=1, label='$R_t=1.0$', alpha=.25)
     
     # Formatting
-    ax.xaxis.set_major_locator(mdates.MonthLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b'))
-    ax.xaxis.set_minor_locator(mdates.DayLocator())
+    locator = mdates.AutoDateLocator()
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(locator))
     ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
     ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
     ax.yaxis.tick_right()
@@ -248,17 +248,9 @@ def plot_rt(result, start_date):
     ax.grid(which='major', axis='y', c='k', alpha=.1, zorder=-2)
     ax.margins(0)
     ax.set_ylim(0.0, 10.0)
-    ax.set_xlim(pd.Timestamp(start_date), result.index.get_level_values('date')[-1]+pd.Timedelta(days=1),)
-
-    # ticks = min(len(result), 20)
-    # step = int(np.ceil(len(ticks)/ticks))
-    # dates = result.index.get_level_values('date')
-    # ax.xticks(np.arange(0, len(result), step), dates[::step])
-
+    ax.set_xlim(result.index.get_level_values('date')[0], result.index.get_level_values('date')[-1]+pd.Timedelta(days=1),)
     fig.set_facecolor('w')
     fig.autofmt_xdate()
-    ax.xaxis.set_major_locator(mdates.WeekdayLocator())
-    ax.xaxis.set_major_formatter(mdates.DateFormatter('%b %d'))
     plt.show()
 
 def plot_heatmaps(C, weights, age_labels, fpath=""):
