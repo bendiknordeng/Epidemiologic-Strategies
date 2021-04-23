@@ -29,11 +29,11 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of weeks
+    horizon = 10 # number of weeks
     decision_period = 28
     initial_infected = 1
     initial_vaccines_available = 0
-    government_strictness = 0.3
+    government_strictness = 0.2
     policy = policies[0]
     plot_results = False
     
@@ -70,14 +70,14 @@ if __name__ == '__main__':
                             policy=policy,
                             government_strictness=government_strictness,
                             historic_data=historic_data,
-                            verbose=False)
+                            verbose=True)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
     utils.get_r_effective(mdp.path, population, config, from_data=False)
 
-    utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
+    # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)

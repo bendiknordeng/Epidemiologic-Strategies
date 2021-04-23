@@ -528,10 +528,10 @@ def smooth_data(new_cases):
         smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
 
     """
-    smoothed = new_cases.rolling(7,
+    smoothed = new_cases.rolling(3,
         win_type='gaussian',
         min_periods=1,
-        center=True).mean(std=2).round()
+        center=True).mean(std=3).round()
     return smoothed
 
 def highest_density_interval(posteriors, percentile=.9):
@@ -599,7 +599,7 @@ def get_r_effective(path, population, config, from_data=False):
     # define parameters to calculate posteriors
     R_T_MAX = 12
     r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
-    gamma = config.presymptomatic_period + config.postsymptomatic_period
+    gamma = 1/(config.presymptomatic_period + config.postsymptomatic_period)
 
     # calculate posteriors 
     posteriors, log_likelihood = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
