@@ -3,7 +3,7 @@ from covid import utils
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
-                config, paths, include_flow, write_to_csv, write_weekly):
+                config, paths, include_flow, stochastic, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -41,6 +41,7 @@ class SEAIR:
         self.postsymptomatic_period = config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
 
+        self.stochastic = stochastic
         self.include_flow = include_flow
         self.paths = paths
         self.write_to_csv = write_to_csv
@@ -115,18 +116,29 @@ class SEAIR:
                 
                 S, E1, E2, A, I = flow_compartments
 
-            draws = np.maximum(S.astype(int), 0)
-            prob_e = beta*r_e * np.matmul(C, (E2.T/N)).T
-            prob_a = beta*r_a * np.matmul(C, (A.T/N)).T
-            prob_i = beta * np.matmul(C, (I.T/N)).T
-            new_E1 = np.random.binomial(draws, prob_e + prob_a + prob_i)
-
-            new_E2 = p * sigma * E1
-            new_A = (1 - p) * sigma * E1
-            new_I = alpha * E2
-            new_R_from_A = gamma * A
-            new_R_from_I = I * (np.ones(len(delta)) - delta) * omega
-            new_D = I * delta * omega
+            if self.stochastic:
+                # Get stochastic transitions
+                prob_e = beta*r_e * np.matmul(C, (E2.T/N)).T
+                prob_a = beta*r_a * np.matmul(C, (A.T/N)).T
+                prob_i = beta * np.matmul(C, (I.T/N)).T
+                new_E1 = np.random.binomial(S.astype(int), prob_e + prob_a + prob_i)
+                new_E2 = np.random.binomial(E1.astype(int), sigma * p)
+                new_A = np.random.binomial((E1-new_E2).astype(int), sigma * (1-p))
+                new_I = np.random.binomial(E2.astype(int), alpha)
+                new_R_from_A = np.random.binomial(A.astype(int), gamma)
+                new_R_from_I = np.random.binomial(I.astype(int), (np.ones(len(delta)) - delta) * omega)
+                new_D = np.random.binomial((I-new_R_from_I).astype(int), delta * omega)
+            else:
+                transition_e = beta*r_e * np.matmul(C, (E2.T/N)).T
+                transition_a = beta*r_a * np.matmul(C, (A.T/N)).T
+                transition_i = beta * np.matmul(C, (I.T/N)).T
+                new_E1 = S * (transition_e + transition_a + transition_i)
+                new_E2 = E1 * sigma * p
+                new_A = E1 * sigma * (1-p)
+                new_I = E2 * alpha
+                new_R_from_A = A * gamma
+                new_R_from_I = I * (np.ones(len(delta)) - delta) * omega
+                new_D = I * delta * omega
 
             # Calculate values for each compartment
             S = S - new_E1
@@ -140,8 +152,11 @@ class SEAIR:
             # Save number of new infected
             total_new_infected[i] = new_E1
             
-            # TODO: Define formula for calculating r_effective
-            r_eff[i] = self.recovery_period * np.sum(new_E1)/np.sum([E2, A, I])
+            number_infectious = np.sum([E2, A, I])
+            if number_infectious > 0:
+                r_eff[i] = self.recovery_period * np.sum(new_E1)/number_infectious
+            else:
+                r_eff[i] = 0
 
             # Append simulation results
             if i%self.periods_per_day == 0: # record daily history
@@ -161,7 +176,7 @@ class SEAIR:
                                 self.paths.results_history_weekly,
                                 self.paths.results_history_daily,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
-        
+
         return S, E1, E2, A, I, R, D, V, np.mean(r_eff), total_new_infected.sum(axis=0)
 
     @staticmethod
@@ -189,15 +204,18 @@ class SEAIR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
-        age_flow_scaling = np.array(self.age_group_flow_scaling)
-        age_ODs = [OD.copy()*a for a in age_flow_scaling]
-        new_compartment = compartment.copy()
-        for age_group in range(compartment.shape[1]):
-            total = compartment[:,age_group]
-            inflow = np.matmul(total, age_ODs[age_group])
-            outflow = total * age_ODs[age_group].sum(axis=1)
-            new_compartment[:,age_group] = new_compartment[:,age_group] + inflow - outflow
-        return new_compartment
+        if np.sum(compartment) > 10: # no moving if comp size < 10
+            age_flow_scaling = np.array(self.age_group_flow_scaling)
+            age_ODs = [OD.copy()*a for a in age_flow_scaling]
+            new_compartment = compartment.copy()
+            for age_group in range(compartment.shape[1]):
+                total = compartment[:,age_group]
+                inflow = np.matmul(total, age_ODs[age_group])
+                outflow = total * age_ODs[age_group].sum(axis=1)
+                new_compartment[:,age_group] = new_compartment[:,age_group] + inflow - outflow
+            return new_compartment
+        else:
+            return compartment
 
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling

@@ -214,23 +214,26 @@ def generate_labels_from_bins(bins):
     return labels
 
 def generate_contact_matrices(bins, labels, population, country=None):
-    # Load contact data
     df = pd.read_csv('data/contact_data.csv')
+    if country: df = df[df.country == country]
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
-    df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).mean()).reset_index()
+    df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).sum()).reset_index()
+    N_survey_0 = df.contact_age_0.value_counts()[labels]
+    pop_0 = [N_survey_0[l[1].contact_age_0] for l in df_mat.iterrows()]
+    df_mat['pop_0'] = pop_0
+    for col in df_mat.columns[2:-1]:
+        df_mat[col] = df_mat[col]/(df_mat.pop_0)
 
-    # Get population data
     N_eu = pd.read_csv('data/population_europe_2008.csv')
     N_eu.age = pd.cut(N_eu['age'], bins=bins+[110], labels=labels, include_lowest=True)
     N_eu = N_eu.groupby('age').sum()['population']
     N_eu_tot = N_eu.sum()
     N_norway = population[population.columns[2:-1]].sum()
     N_norway_tot = np.sum(N_norway)
-    
-    # Create matrices
+
     matrices = []
-    for col in ['home', 'school', 'work', 'transport', 'leisure']:
+    for col in ['home', 'school', 'work', 'public']:
         matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1')
         corrected_matrix = np.zeros((matrix.shape))
         for i, a_i in enumerate(labels):

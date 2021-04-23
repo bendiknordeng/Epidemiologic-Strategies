@@ -106,45 +106,47 @@ class MarkovDecisionProcess:
             if self.verbose:
                 print("\033[1mInfection wave\033[0m")
                 print(f"Wavestrength: {wave_strength}\n\n")
-                new_cw *= wave_strength
-                new_alphas *= wave_strength
+                new_cw = new_cw * wave_strength
+                new_alphas = new_alphas * wave_strength
 
         if len(self.path) > 2:
             new_infected_current = np.sum(self.state.new_infected)
             new_infected_historic = np.sum(self.path[-3].new_infected)
             n_days = self.decision_period/self.config.periods_per_day
-            if new_infected_current >= n_days and new_infected_historic > 0:
+            if new_infected_historic > 0:
                 infection_rate = new_infected_current/new_infected_historic
-                maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-                infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
-                increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
-                decreasing_trend = infection_rate < 0.85
-                slope = (new_infected_current-new_infected_historic)/n_days
-                loc = 4/((1+np.exp(0.005*slope))*(1+np.exp(0.01*infected_per_100k)))
-                factor = max(np.random.normal(loc, 0.05), 1-self.government_strictness)
+            else:
+                infection_rate = 0
+            maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
+            infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
+            increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
+            decreasing_trend = infection_rate < 0.85
+            slope = (new_infected_current-new_infected_historic)/n_days
+            factor = max(4/((1+np.exp(0.005*slope))*(1+np.exp(0.01*infected_per_100k))), 1-self.government_strictness)
+            # factor = max(np.random.normal(loc, 0.05), )
 
-                if self.verbose:
-                    if increasing_trend:
-                        print("\033[1mIncreasing trend\033[0m")
-                    elif decreasing_trend:
-                        print("\033[1mDecreasing trend\033[0m")
-                    else:
-                        print("\033[1mNeutral trend\033[0m")
-                    print(f"R_eff: {self.state.r_eff:.2f}")
-                    print(f"Infected per 100k: {infected_per_100k:.1f}")
-                    print(f"New infected last week: {new_infected_historic}")
-                    print(f"New infected current week: {new_infected_current}")
-                    print(f"Maximum new infected: {maximum_new_infected}")
-                    print(f"Current infections/last week infections: {infection_rate:.3f}")
-                    print(f"Change in new infected per day: {slope:.3f}")
-                    print(f"Control measure factor: {factor:.3f}")
-                    print(f"Previous weights: {previous_cw}\n\n")
+            if self.verbose:
+                if increasing_trend:
+                    print("\033[1mIncreasing trend\033[0m")
+                elif decreasing_trend:
+                    print("\033[1mDecreasing trend\033[0m")
+                else:
+                    print("\033[1mNeutral trend\033[0m")
+                print(f"R_eff: {self.state.r_eff:.2f}")
+                print(f"Infected per 100k: {infected_per_100k:.1f}")
+                print(f"New infected last week: {new_infected_historic}")
+                print(f"New infected current week: {new_infected_current}")
+                print(f"Maximum new infected: {maximum_new_infected}")
+                print(f"Current infections/last week infections: {infection_rate:.3f}")
+                print(f"Change in new infected per day: {slope:.3f}")
+                print(f"Control measure factor: {factor:.3f}")
+                print(f"Previous weights: {previous_cw}\n\n")
 
-                if increasing_trend or decreasing_trend:
-                    new_cw = (new_cw * factor).clip(max=max_cw)
-                    new_alphas = (new_alphas * factor).clip(max=max_alphas)
-                    if np.max(new_cw) > 1:import pdb;pdb.set_trace()
-                    return new_cw, new_alphas
+            if increasing_trend or decreasing_trend:
+                new_cw = (new_cw * factor).clip(max=max_cw)
+                new_alphas = (new_alphas * factor).clip(max=max_alphas)
+                if np.max(new_cw) > 1:import pdb;pdb.set_trace()
+                return new_cw, new_alphas
                     
         new_cw = new_cw.clip(max=max_cw)
         new_alphas = new_alphas.clip(max=max_alphas)

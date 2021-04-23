@@ -22,20 +22,20 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
     policies = ['no_vaccines', 'population_based', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']
-
     # Set initial parameters
-    #np.random.seed(10)
+    # np.random.seed(10)
     day = 21
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 10 # number of weeks
+    horizon = 100 # number of weeks
     decision_period = 28
     initial_infected = 1
     initial_vaccines_available = 0
-    government_strictness = 0.2
-    policy = policies[0]
-    plot_results = False
+    government_strictness = 0.4
+    policy = policies[-1]
+    stochastic_seair = True
+    plot_results = True
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -45,6 +45,7 @@ if __name__ == '__main__':
                         death_rates=death_rates,
                         config=config,
                         paths=paths,
+                        stochastic=stochastic_seair,
                         write_to_csv=False, 
                         write_weekly=False,
                         include_flow=True)
@@ -70,13 +71,12 @@ if __name__ == '__main__':
                             policy=policy,
                             government_strictness=government_strictness,
                             historic_data=historic_data,
-                            verbose=True)
+                            verbose=False)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
-    utils.get_r_effective(mdp.path, population, config, from_data=False)
-
+    # utils.get_r_effective(mdp.path, population, config, from_data=False)
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
         # results = history.sum(axis=2)
         
-        # plot.plot_heatmaps(contact_matrices, [0.5, 0.5, 0.5, 0.5, 0.5], age_labels, paths.heat_maps)
+        # plot.plot_heatmaps(contact_matrices, config.initial_contact_weights, age_labels, paths.heat_maps)
 
         # accumulated SEIR development plot
         # plot.seir_plot(results)
