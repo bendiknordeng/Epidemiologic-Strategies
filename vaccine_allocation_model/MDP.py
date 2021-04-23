@@ -6,8 +6,8 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, initial_state,
-                horizon, policy, government_strictness, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, 
+                initial_state, horizon, policy, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,7 +27,6 @@ class MarkovDecisionProcess:
         self.epidemic_function = epidemic_function
         self.state = initial_state
         self.historic_data = historic_data
-        self.government_strictness = government_strictness
         self.policy_name = policy
         self.verbose = verbose
         self.policy = {
@@ -96,8 +95,8 @@ class MarkovDecisionProcess:
         self.path.append(self.state)
 
     def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
-        max_cw = np.array(self.config.initial_contact_weights)
-        max_alphas = np.array(self.config.initial_alphas)
+        min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
+        min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
         new_cw = previous_cw.copy()
         new_alphas = previous_alphas.copy()
         simulation_week = self.state.time_step//self.decision_period
@@ -122,8 +121,9 @@ class MarkovDecisionProcess:
             increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
             decreasing_trend = infection_rate < 0.85
             slope = (new_infected_current-new_infected_historic)/n_days
-            factor = max(4/((1+np.exp(0.005*slope))*(1+np.exp(0.01*infected_per_100k))), 1-self.government_strictness)
-            # factor = max(np.random.normal(loc, 0.05), )
+            factor = 4 /((1 + np.exp(0.005*slope)) * (1 + np.exp(0.01*infected_per_100k)))
+            # if factor > 2:
+            #     import pdb;pdb.set_trace()
 
             if self.verbose:
                 if increasing_trend:
@@ -143,13 +143,12 @@ class MarkovDecisionProcess:
                 print(f"Previous weights: {previous_cw}\n\n")
 
             if increasing_trend or decreasing_trend:
-                new_cw = (new_cw * factor).clip(max=max_cw)
-                new_alphas = (new_alphas * factor).clip(max=max_alphas)
-                if np.max(new_cw) > 1:import pdb;pdb.set_trace()
+                new_cw = (new_cw * factor).clip(min=min_cw, max=max_cw)
+                new_alphas = (new_alphas * factor).clip(min=min_alphas, max=max_alphas)
                 return new_cw, new_alphas
                     
-        new_cw = new_cw.clip(max=max_cw)
-        new_alphas = new_alphas.clip(max=max_alphas)
+        new_cw = new_cw.clip(min=min_cw, max=max_cw)
+        new_alphas = new_alphas.clip(min=min_alphas, max=max_alphas)
         return new_cw, new_alphas
 
     def _no_vaccines(self):

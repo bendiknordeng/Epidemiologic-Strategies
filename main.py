@@ -28,11 +28,10 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 100 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
-    initial_infected = 1
+    initial_infected = 10
     initial_vaccines_available = 0
-    government_strictness = 0.4
     policy = policies[-1]
     stochastic_seair = True
     plot_results = True
@@ -69,7 +68,6 @@ if __name__ == '__main__':
                             initial_state=initial_state,
                             horizon=horizon,
                             policy=policy,
-                            government_strictness=government_strictness,
                             historic_data=historic_data,
                             verbose=False)
         mdp.run()
