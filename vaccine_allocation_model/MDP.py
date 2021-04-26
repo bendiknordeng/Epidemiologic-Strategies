@@ -72,7 +72,7 @@ class MarkovDecisionProcess:
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
         if week_data.empty:
-            vaccine_supply = np.zeros((self.state.S.shape[0],self.state.S.shape[1]))
+            vaccine_supply = np.zeros(self.state.S.shape)
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
@@ -100,7 +100,7 @@ class MarkovDecisionProcess:
         new_alphas = previous_alphas.copy()
         simulation_week = self.state.time_step//self.decision_period
         if simulation_week in self.wave_weeks:
-            wave_strength = np.random.normal(1.5, 0.1)
+            wave_strength = np.random.normal(2, 0.1)
             if self.verbose:
                 print("\033[1mInfection wave\033[0m")
                 print(f"Wavestrength: {wave_strength}\n\n")
@@ -120,7 +120,7 @@ class MarkovDecisionProcess:
             increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
             decreasing_trend = infection_rate < 0.85
             slope = (new_infected_current-new_infected_historic)/n_days
-            factor = max(4 /((1 + np.exp(0.005*slope)) * (1 + np.exp(0.01*infected_per_100k))), 0.6)
+            factor = 4 /((1 + np.exp(0.005*slope)) * (1 + np.exp(0.01*infected_per_100k)))
 
             if self.verbose:
                 if increasing_trend:
@@ -137,7 +137,8 @@ class MarkovDecisionProcess:
                 print(f"Current infections/last week infections: {infection_rate:.3f}")
                 print(f"Change in new infected per day: {slope:.3f}")
                 print(f"Control measure factor: {factor:.3f}")
-                print(f"Previous weights: {previous_cw}\n\n")
+                print(f"Previous weights: {previous_cw}")
+                print(f"Previous alphas: {previous_alphas}\n\n")
 
             if increasing_trend or decreasing_trend:
                 new_cw = (new_cw * factor).clip(min=min_cw, max=max_cw)
@@ -155,8 +156,7 @@ class MarkovDecisionProcess:
             a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        n_regions, n_age_groups = pop.shape
-        return np.zeros(shape=(self.decision_period, n_regions, n_age_groups))
+        return np.zeros(pop.shape)
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution
@@ -166,20 +166,20 @@ class MarkovDecisionProcess:
         """
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         n_regions, n_age_groups = pop.shape
-        vaccine_allocation = np.zeros((self.decision_period, n_regions, n_age_groups))
+        vaccine_allocation = np.zeros((n_regions, n_age_groups))
         demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
         M = self.state.vaccines_available
         while M > 0:
-            period = np.random.randint(self.decision_period)
-            possible_regions = np.nonzero(demand.sum(axis=1) > 0)[0]
+            possible_regions = np.nonzero(demand > 0)[0]
             region = np.random.choice(possible_regions)
             possible_age_groups = np.nonzero(demand[region] > 0)[0]
             age_group = np.random.choice(possible_age_groups)
             allocation = np.min([M, demand[region][age_group], 1]) # consider fractional populations
             M -= allocation
-            vaccine_allocation[period][region][age_group] += allocation
+            vaccine_allocation[region][age_group] += allocation
             demand[region][age_group] -= allocation
-        return vaccine_allocation
+        decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+        return decision
 
     def _susceptible_based_policy(self):
         """ Define allocation of vaccines based on number of susceptible inhabitants in each region
@@ -188,11 +188,13 @@ class MarkovDecisionProcess:
             a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
-        for i in range(self.decision_period):
-            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
-                total_allocation = self.state.vaccines_available * self.state.S/np.sum(self.state.S)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2)
+        vaccine_allocation = np.zeros(pop.shape)
+        demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
+        M = self.state.vaccines_available
+        if M > 0:
+            vaccine_allocation = M * demand/np.sum(demand)
+            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            return decision
         return vaccine_allocation
 
     def _infection_based_policy(self):
@@ -202,21 +204,20 @@ class MarkovDecisionProcess:
             a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
-        for i in range(self.decision_period):
-            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
-                total_allocation = self.state.vaccines_available * self.state.I/np.sum(self.state.I)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2)
+        vaccine_allocation = np.zeros(pop.shape)
+        total_infection = np.sum(self.state.I)
+        M = self.state.vaccines_available
+        if M > 0:
+            if total_infection > 0:
+                demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
+                infection_density = self.state.I.sum(axis=1)/total_infection
+                regional_allocation = M * infection_density
+                vaccine_allocation = demand * regional_allocation.reshape(-1,1)/demand.sum(axis=1).reshape(-1,1)
+                decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+                return decision
+            else:
+                return self._susceptible_based_policy()
         return vaccine_allocation
-
-
-    def _population_density_policy(self):
-        """ Define allocation of vaccines based on denisty of population per m^2
-
-        Returns
-            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
-        """
-        pass
 
     def _adults_first_policy(self):
         """ Define allocation of vaccines based on age, prioritize the middle groups (epidemic drivers)
@@ -225,36 +226,34 @@ class MarkovDecisionProcess:
             a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
+        vaccine_allocation = np.zeros(pop.shape)
         M = self.state.vaccines_available
         demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
-
-        def find_prioritized_age_group(demand):
-            for a in [3,4,5,6,7,2,1,0]:
-                if np.sum(demand[:,a]) > 0:
-                    return a
-                    
-        age_group = find_prioritized_age_group(demand)
-        vaccines_per_period = M/(self.decision_period/2)
-        for i in range(self.decision_period):
-            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
-                vaccines_left = vaccines_per_period
-                allocation = np.zeros((pop.shape[0], pop.shape[1]))
+        if M > 0:
+            def find_prioritized_age_group(demand):
+                for a in [3,4,5,6,7,2,1,0]:
+                    if np.sum(demand[:,a]) > 0:
+                        return a
+                        
+            age_group = find_prioritized_age_group(demand)
+            allocation = np.zeros(pop.shape)
+            age_group_demand = demand[:,age_group]
+            total_age_group_demand = np.sum(age_group_demand)
+            if M > total_age_group_demand:
+                age_allocation = age_group_demand
+                allocation[:,age_group] = age_allocation
+                demand[:,age_group] -= allocation[:,age_group]
+                M -= total_age_group_demand
+                age_group = find_prioritized_age_group(demand)
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
-                if vaccines_per_period > total_age_group_demand:
-                    age_allocation = age_group_demand
-                    allocation[:,age_group] = age_allocation
-                    demand[:,age_group] -= allocation[:,age_group]
-                    vaccines_left -= total_age_group_demand
-                    age_group = find_prioritized_age_group(demand)
-                    age_group_demand = demand[:,age_group]
-                    total_age_group_demand = np.sum(age_group_demand)
-                age_allocation = (age_group_demand/total_age_group_demand) * vaccines_left
-                M -= vaccines_per_period
-                allocation[:,age_group] = age_allocation
-                vaccine_allocation[i] = allocation
-                demand[:,age_group] -= allocation[:,age_group]
+            age_allocation = M * age_group_demand/total_age_group_demand
+            M -= age_allocation
+            allocation[:,age_group] = age_allocation
+            vaccine_allocation = allocation
+            demand[:,age_group] -= allocation[:,age_group]
+            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            return decision
         return vaccine_allocation
 
     def _oldest_first_policy(self):
@@ -264,34 +263,32 @@ class MarkovDecisionProcess:
             a vaccine allocation of shape (#decision periods, #regions, #age_groups)
         """
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
+        vaccine_allocation = np.zeros(pop.shape)
         M = self.state.vaccines_available
         demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
+        if M > 0:
+            def find_prioritized_age_group(demand):
+                for age_group in range(pop.shape[1]-1,0,-1):
+                    if np.round(np.sum(demand[:,age_group])) > 0:
+                        return age_group
 
-        def find_prioritized_age_group(demand):
-            for age_group in range(pop.shape[1]-1,0,-1):
-                if np.round(np.sum(demand[:,age_group])) > 0:
-                    return age_group
-                    
-        age_group = find_prioritized_age_group(demand)
-        vaccines_per_period = M/(self.decision_period/2)
-        for i in range(self.decision_period):
-            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
-                vaccines_left = vaccines_per_period
-                allocation = np.zeros((pop.shape[0], pop.shape[1]))
+            age_group = find_prioritized_age_group(demand)
+            allocation = np.zeros(pop.shape)
+            age_group_demand = demand[:,age_group]
+            total_age_group_demand = np.sum(age_group_demand)
+            if M > total_age_group_demand:
+                age_allocation = age_group_demand
+                allocation[:,age_group] = age_allocation
+                demand[:,age_group] -= allocation[:,age_group]
+                M -= total_age_group_demand
+                age_group = find_prioritized_age_group(demand)
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
-                if vaccines_per_period > total_age_group_demand:
-                    age_allocation = age_group_demand
-                    allocation[:,age_group] = age_allocation
-                    demand[:,age_group] -= allocation[:,age_group]
-                    vaccines_left -= total_age_group_demand
-                    age_group = find_prioritized_age_group(demand)
-                    age_group_demand = demand[:,age_group]
-                    total_age_group_demand = np.sum(age_group_demand)
-                age_allocation = (age_group_demand/total_age_group_demand) * vaccines_left
-                M -= vaccines_per_period
-                allocation[:,age_group] = age_allocation
-                vaccine_allocation[i] = allocation
-                demand[:,age_group] -= allocation[:,age_group]
+            age_allocation = M * age_group_demand/total_age_group_demand
+            M -= total_age_group_demand
+            allocation[:,age_group] = age_allocation
+            vaccine_allocation = allocation
+            demand[:,age_group] -= allocation[:,age_group]
+            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            return decision
         return vaccine_allocation

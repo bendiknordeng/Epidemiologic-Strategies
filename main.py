@@ -24,15 +24,15 @@ if __name__ == '__main__':
     policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']
     # Set initial parameters
     # np.random.seed(10)
-    day = 1
-    month = 11
+    day = 21
+    month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 35 # number of weeks
+    horizon = 62 # number of weeks
     decision_period = 28
-    initial_infected = 10
+    initial_infected = 5
     initial_vaccines_available = 0
-    policy = policies[1]
+    policy = policies[0]
     stochastic_seair = True
     plot_results = True
     
@@ -69,12 +69,11 @@ if __name__ == '__main__':
                             horizon=horizon,
                             policy=policy,
                             historic_data=historic_data,
-                            verbose=False)
+                            verbose=True)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
-    utils.get_r_effective(mdp.path, population, config, from_data=False)
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:
@@ -91,6 +90,7 @@ if __name__ == '__main__':
         labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
         plot.seir_plot_weekly(results_compartment, start_date, labels)
 
+        utils.get_r_effective(mdp.path, population, config, from_data=False)
         # load necessary data for SEIR development plot
         # df = pd.read_csv(paths.results_history)
         # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)

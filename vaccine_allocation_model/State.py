@@ -79,8 +79,11 @@ class State:
         total_pop = np.sum(self.get_compartments_values()[:-1])
         info = ["Susceptibles", "Exposed (latent)",
                 "Exposed (presymptomatic)", "Asymptomatic infected",
-                "Infected", "Recovered", "Dead", "Vaccinated"]
+                "Infected", "Recovered", "Dead", "Vaccinated", 
+                "New infected", "Total infected"]
         values = [np.sum(compartment) for compartment in self.get_compartments_values()]
+        values.append(np.sum(self.new_infected))
+        values.append(np.sum(self.total_infected))
         percent = 100 * np.array(values)/total_pop
         status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
         status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"
@@ -116,6 +119,6 @@ class State:
             if S[region][age_group] > 0:
                 num_initial_infected -= 1
                 S[region][age_group] -= 1
-                E1[region][age_group] += 1 
+                I[region][age_group] += 1 
 
         return State(S, E1, E2, A, I, R, D, V, r_eff, contact_weights, alphas, vaccines_available, E1.copy(), E1.copy(), start_date, time_step) 

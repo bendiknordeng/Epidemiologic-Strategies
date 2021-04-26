@@ -96,8 +96,7 @@ class SEAIR:
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
             # Vaccinate before flow
-            new_V = np.minimum(S, decision[i % decision_period]) # M
-            new_V = new_V.clip(min=0)
+            new_V = decision/decision_period
             successfully_new_V = epsilon * new_V
             S = S - successfully_new_V
             R = R + successfully_new_V
