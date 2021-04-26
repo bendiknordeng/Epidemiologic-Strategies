@@ -40,6 +40,7 @@ class SEAIR:
         self.presymptomatic_period = config.presymptomatic_period*self.periods_per_day
         self.postsymptomatic_period = config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
+        self.immunity_duration = config.immunity_duration*self.periods_per_day
 
         self.stochastic = stochastic
         self.include_flow = include_flow
@@ -89,6 +90,7 @@ class SEAIR:
         gamma = 1/self.recovery_period
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
+        mu = 1/self.immunity_duration
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         
 
@@ -128,6 +130,7 @@ class SEAIR:
                 new_R_from_A = np.random.binomial(A.astype(int), gamma)
                 new_R_from_I = np.random.binomial(I.astype(int), (np.ones(len(delta)) - delta) * omega)
                 new_D = np.random.binomial((I-new_R_from_I).astype(int), delta * omega)
+                new_S_from_R = np.random.binomial(R.astype(int), mu)
             else:
                 transition_e = beta*r_e * np.matmul(C, (E2.T/N)).T
                 transition_a = beta*r_a * np.matmul(C, (A.T/N)).T
@@ -139,15 +142,16 @@ class SEAIR:
                 new_R_from_A = A * gamma
                 new_R_from_I = I * (np.ones(len(delta)) - delta) * omega
                 new_D = I * delta * omega
+                new_S_from_R = R * mu
 
             # Calculate values for each compartment
-            S = S - new_E1
+            S = S - new_E1 + new_S_from_R
             E1 = E1 + new_E1 - new_E2 - new_A
             E2 = E2 + new_E2 - new_I
             A = A + new_A - new_R_from_A
             I = I + new_I - new_R_from_I - new_D
-            R = R + new_R_from_I + new_R_from_A
             D = D + new_D
+            R = R + new_R_from_I + new_R_from_A - new_S_from_R
 
             # Save number of new infected
             total_new_infected[i] = new_E1

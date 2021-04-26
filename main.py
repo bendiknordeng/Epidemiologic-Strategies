@@ -28,9 +28,9 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 100 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
-    initial_infected = 10
+    initial_infected = 1
     initial_vaccines_available = 0
     policy = policies[-1]
     stochastic_seair = True
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                             horizon=horizon,
                             policy=policy,
                             historic_data=historic_data,
-                            verbose=True)
+                            verbose=False)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
