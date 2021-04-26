@@ -46,7 +46,7 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commute):
+def generate_ssb_od_matrix(decision_period, population, fpath_muncipalities_commute):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -72,24 +72,24 @@ def generate_ssb_od_matrix(num_time_steps, population, fpath_muncipalities_commu
         for k in range(len(to)):
             j = np.where(region_id == to[k])
             morning[i,j] = n[k]
+
     afternoon = np.copy(morning.T)
-    
     morning = np.transpose(morning.T / population.population.to_numpy())
     afternoon = np.transpose(afternoon.T / population.population.to_numpy())
-
     midday = np.zeros((len(region_id), len(region_id)))
     night = np.copy(midday)
+    
     # fill od matrices with correct matrix
-    for i in range(num_time_steps):
+    for i in range(decision_period):
         if i >= 20: # weekend: no travel
             od[i] = night
         elif (i)%4 == 0: # 0000-0600
             od[i] = night
-        elif (i-1)%4 == 0: # 0600-1200
+        elif (i+1)%4 == 0: # 0600-1200
             od[i] = morning
-        elif (i-2)%4 == 0: # 1200-1800
+        elif (i+2)%4 == 0: # 1200-1800
             od[i] = midday
-        elif (i-3)%4 == 0: # 1800-0000
+        elif (i+3)%4 == 0: # 1800-0000
             od[i] = afternoon
     
     return od

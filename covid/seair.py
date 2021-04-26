@@ -70,8 +70,7 @@ class SEAIR:
 
         # Scale movement flows with alphas (movement restrictions for each region and compartment)
         alphas = information['alphas']
-        realflows = [self.OD.copy()*a for a in alphas]
-
+    
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
@@ -95,6 +94,8 @@ class SEAIR:
         # Run simulation
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
+            timestep = (state.date.weekday() + i//4) % decision_period
+            
             # Vaccinate before flow
             new_V = decision/decision_period
             successfully_new_V = epsilon * new_V
@@ -104,14 +105,13 @@ class SEAIR:
 
             # Finds the movement flow for the given period i and scales it for each 
             if self.include_flow:
-                realODs = [r[i % decision_period] for r in realflows]
                 total_population = np.sum(N)
                 flow_compartments = [S, E1, E2, A, I]
                 for ix, compartment in enumerate(flow_compartments):
                     comp_pop = np.sum(compartment)
-                    realODs[ix] = realODs[ix] * comp_pop/total_population if comp_pop > 0 else realODs[ix]*0
-                    if i % 2 == 1:
-                        flow_compartments[ix] = self.flow_transition(compartment, realODs[ix])
+                    realOD = self.OD[timestep] * alphas[ix] * comp_pop/total_population
+                    if timestep%2 == 1 and timestep < self.periods_per_day*5:
+                        flow_compartments[ix] = self.flow_transition(compartment, realOD)
                 
                 S, E1, E2, A, I = flow_compartments
 
@@ -203,19 +203,11 @@ class SEAIR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
-        if np.sum(compartment) > 10: # no moving if comp size < 10
-            age_flow_scaling = np.array(self.age_group_flow_scaling)
-            age_ODs = [OD.copy()*a for a in age_flow_scaling]
-            new_compartment = compartment.copy()
-            for age_group in range(compartment.shape[1]):
-                total = compartment[:,age_group]
-                inflow = np.matmul(total, age_ODs[age_group])
-                outflow = total * age_ODs[age_group].sum(axis=1)
-                new_compartment[:,age_group] = new_compartment[:,age_group] + inflow - outflow
-            return new_compartment
-        else:
-            return compartment
-
+        age_flow_scaling = np.array(self.age_group_flow_scaling)
+        inflow = np.array([np.matmul(compartment[:,i], OD * age_flow_scaling[i]) for i in range(len(age_flow_scaling))]).T
+        outflow = np.array([compartment[:,i] * OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+        return compartment + inflow - outflow
+        
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
 

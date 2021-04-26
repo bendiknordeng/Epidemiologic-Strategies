@@ -34,7 +34,6 @@ class MarkovDecisionProcess:
             "random": self._random_policy,
             "susceptible_based": self._susceptible_based_policy,
             "infection_based": self._infection_based_policy,
-            "adults_first": self._adults_first_policy,
             "oldest_first": self._oldest_first_policy,
         }[policy]
         self.path = [self.state]
@@ -120,7 +119,7 @@ class MarkovDecisionProcess:
             increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
             decreasing_trend = infection_rate < 0.85
             slope = (new_infected_current-new_infected_historic)/n_days
-            factor = 4 /((1 + np.exp(0.005*slope)) * (1 + np.exp(0.01*infected_per_100k)))
+            factor = 4 /((1 + np.exp(5e-3 * slope)) * (1 + np.exp(1e-2 * infected_per_100k)))
 
             if self.verbose:
                 if increasing_trend:
@@ -217,43 +216,6 @@ class MarkovDecisionProcess:
                 return decision
             else:
                 return self._susceptible_based_policy()
-        return vaccine_allocation
-
-    def _adults_first_policy(self):
-        """ Define allocation of vaccines based on age, prioritize the middle groups (epidemic drivers)
-
-        Returns
-            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
-        """
-        pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        vaccine_allocation = np.zeros(pop.shape)
-        M = self.state.vaccines_available
-        demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
-        if M > 0:
-            def find_prioritized_age_group(demand):
-                for a in [3,4,5,6,7,2,1,0]:
-                    if np.sum(demand[:,a]) > 0:
-                        return a
-                        
-            age_group = find_prioritized_age_group(demand)
-            allocation = np.zeros(pop.shape)
-            age_group_demand = demand[:,age_group]
-            total_age_group_demand = np.sum(age_group_demand)
-            if M > total_age_group_demand:
-                age_allocation = age_group_demand
-                allocation[:,age_group] = age_allocation
-                demand[:,age_group] -= allocation[:,age_group]
-                M -= total_age_group_demand
-                age_group = find_prioritized_age_group(demand)
-                age_group_demand = demand[:,age_group]
-                total_age_group_demand = np.sum(age_group_demand)
-            age_allocation = M * age_group_demand/total_age_group_demand
-            M -= age_allocation
-            allocation[:,age_group] = age_allocation
-            vaccine_allocation = allocation
-            demand[:,age_group] -= allocation[:,age_group]
-            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
-            return decision
         return vaccine_allocation
 
     def _oldest_first_policy(self):
