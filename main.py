@@ -21,18 +21,18 @@ if __name__ == '__main__':
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
-    policies = ['no_vaccines', 'population_based', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']
+    policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'adults_first', 'oldest_first']
     # Set initial parameters
     # np.random.seed(10)
-    day = 21
-    month = 2
+    day = 1
+    month = 11
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 100 # number of weeks
+    horizon = 35 # number of weeks
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
-    policy = policies[-1]
+    policy = policies[1]
     stochastic_seair = True
     plot_results = True
     
@@ -69,7 +69,7 @@ if __name__ == '__main__':
                             horizon=horizon,
                             policy=policy,
                             historic_data=historic_data,
-                            verbose=True)
+                            verbose=False)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])

@@ -32,7 +32,6 @@ class MarkovDecisionProcess:
         self.policy = {
             "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
-            "population_based": self._population_based_policy,
             "susceptible_based": self._susceptible_based_policy,
             "infection_based": self._infection_based_policy,
             "adults_first": self._adults_first_policy,
@@ -69,11 +68,11 @@ class MarkovDecisionProcess:
             returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
         """
         today = pd.Timestamp(state.date)
-        end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//4))
+        end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//self.config.periods_per_day))
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
         week_data = self.historic_data[mask]
         if week_data.empty:
-            vaccine_supply = np.ones((356,5))*10
+            vaccine_supply = np.zeros((self.state.S.shape[0],self.state.S.shape[1]))
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
@@ -171,25 +170,15 @@ class MarkovDecisionProcess:
         demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
         M = self.state.vaccines_available
         while M > 0:
-            period, region, age_group = np.random.randint(self.decision_period), np.random.randint(n_regions), np.random.randint(n_age_groups)
-            if demand[region][age_group] > 0:
-                M -= 1
-                vaccine_allocation[period][region][age_group] += 1
-                demand[region][age_group] -= 1
-        return vaccine_allocation
-
-    def _population_based_policy(self):
-        """ Define allocation of vaccines based on number of inhabitants in each region
-
-        Returns
-            a vaccine allocation of shape (#decision periods, #regions, #age_groups)
-        """
-        pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
-        vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
-        for i in range(self.decision_period):
-            if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
-                total_allocation = self.state.vaccines_available * pop/np.sum(pop)
-                vaccine_allocation[i] = total_allocation/(self.decision_period/2) 
+            period = np.random.randint(self.decision_period)
+            possible_regions = np.nonzero(demand.sum(axis=1) > 0)[0]
+            region = np.random.choice(possible_regions)
+            possible_age_groups = np.nonzero(demand[region] > 0)[0]
+            age_group = np.random.choice(possible_age_groups)
+            allocation = np.min([M, demand[region][age_group], 1]) # consider fractional populations
+            M -= allocation
+            vaccine_allocation[period][region][age_group] += allocation
+            demand[region][age_group] -= allocation
         return vaccine_allocation
 
     def _susceptible_based_policy(self):
@@ -216,7 +205,7 @@ class MarkovDecisionProcess:
         vaccine_allocation = np.zeros((self.decision_period, pop.shape[0], pop.shape[1]))
         for i in range(self.decision_period):
             if (i-1)%4 == 0 or (i-2)%4 == 0: # only vaccinate each morning and midday
-                total_allocation = self.state.vaccines_available * self.state.E1/np.sum(self.state.E1)
+                total_allocation = self.state.vaccines_available * self.state.I/np.sum(self.state.I)
                 vaccine_allocation[i] = total_allocation/(self.decision_period/2)
         return vaccine_allocation
 
