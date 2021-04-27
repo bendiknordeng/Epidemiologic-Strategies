@@ -119,7 +119,7 @@ class MarkovDecisionProcess:
             increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
             decreasing_trend = infection_rate < 0.85
             slope = (new_infected_current-new_infected_historic)/n_days
-            factor = max(4 /((1 + np.exp(1e-3 * slope)) * (1 + np.exp(5e-3 * infected_per_100k))), 0.75)
+            factor = 4 /((1 + np.exp(1e-3 * slope)) * (1 + np.exp(1e-2 * infected_per_100k)))
 
             if self.verbose:
                 if increasing_trend:
@@ -128,7 +128,6 @@ class MarkovDecisionProcess:
                     print("\033[1mDecreasing trend\033[0m")
                 else:
                     print("\033[1mNeutral trend\033[0m")
-                print(f"R_eff: {self.state.r_eff:.2f}")
                 print(f"Infected per 100k: {infected_per_100k:.1f}")
                 print(f"New infected last week: {new_infected_historic}")
                 print(f"New infected current week: {new_infected_current}")
@@ -214,8 +213,6 @@ class MarkovDecisionProcess:
                 vaccine_allocation = demand * regional_allocation.reshape(-1,1)/demand.sum(axis=1).reshape(-1,1)
                 decision = np.minimum(demand, vaccine_allocation).clip(min=0)
                 return decision
-            else:
-                return self._susceptible_based_policy()
         return vaccine_allocation
 
     def _oldest_first_policy(self):
@@ -227,30 +224,19 @@ class MarkovDecisionProcess:
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros(pop.shape)
         M = self.state.vaccines_available
-        demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
         if M > 0:
-            def find_prioritized_age_group(demand):
-                for age_group in range(pop.shape[1]-1,0,-1):
-                    if np.round(np.sum(demand[:,age_group])) > 0:
-                        return age_group
-
-            age_group = find_prioritized_age_group(demand)
-            allocation = np.zeros(pop.shape)
-            age_group_demand = demand[:,age_group]
-            total_age_group_demand = np.sum(age_group_demand)
-            if M > total_age_group_demand:
-                age_allocation = age_group_demand
-                allocation[:,age_group] = age_allocation
-                demand[:,age_group] -= allocation[:,age_group]
-                M -= total_age_group_demand
-                age_group = find_prioritized_age_group(demand)
+            demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
+            for age_group in range(pop.shape[1]-1,0,-1):
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
-            age_allocation = M * age_group_demand/total_age_group_demand
-            M -= total_age_group_demand
-            allocation[:,age_group] = age_allocation
-            vaccine_allocation = allocation
-            demand[:,age_group] -= allocation[:,age_group]
+                if M < total_age_group_demand:
+                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+                    return decision
+                else:
+                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    M -= total_age_group_demand
+                    demand[:,age_group] -= age_group_demand
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             return decision
         return vaccine_allocation

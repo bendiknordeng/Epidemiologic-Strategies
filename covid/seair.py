@@ -74,7 +74,6 @@ class SEAIR:
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
-        r_eff = np.zeros(decision_period)
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
@@ -149,14 +148,8 @@ class SEAIR:
             D = D + new_D
 
             # Save number of new infected
-            total_new_infected[i] = new_E1
+            total_new_infected[i] = new_I
             
-            number_infectious = np.sum([E2, A, I])
-            if number_infectious > 0:
-                r_eff[i] = self.recovery_period * np.sum(new_E1)/number_infectious
-            else:
-                r_eff[i] = 0
-
             # Append simulation results
             if i%self.periods_per_day == 0: # record daily history
                 daily_new_infected = new_E1 if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
@@ -176,7 +169,7 @@ class SEAIR:
                                 self.paths.results_history_daily,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
 
-        return S, E1, E2, A, I, R, D, V, np.mean(r_eff), total_new_infected.sum(axis=0)
+        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
 
     @staticmethod
     def update_history(compartments, new_infected, history, time_step):

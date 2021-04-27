@@ -150,20 +150,6 @@ def plot_control_measures(path):
     plt.grid()
     plt.show()
 
-def plot_r_effective(path):
-    r_eff = [s.r_eff for s in path]
-    weeks = [s.date.isocalendar()[1] for s in path]
-    ticks = min(len(path), 20)
-    step = int(np.ceil(len(path)/ticks))
-    fig = plt.figure(figsize=(10,5))
-    fig.suptitle(r'Historic $R_{eff}$')
-    plt.plot(r_eff)
-    plt.xticks(np.arange(0, len(path), step), weeks[::step])
-    plt.ylabel(r"$R_{eff}$")
-    plt.xlabel("Week")
-    plt.grid()
-    plt.show()
-
 def smoothed_development(original, smoothed, title):
     original.plot(title=title,
                 c='k',

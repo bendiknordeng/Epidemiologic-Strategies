@@ -29,13 +29,14 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of weeks
+    horizon = 120 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
-    policy = policies[-1]
+    policy = policies[-2]
     stochastic_seair = True
     plot_results = True
+    verbose = False
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -53,7 +54,6 @@ if __name__ == '__main__':
     initial_state = State.initialize_state(
                         num_initial_infected=initial_infected,
                         vaccines_available=initial_vaccines_available,
-                        r_eff=config.R0,
                         contact_weights=config.initial_contact_weights,
                         alphas=config.initial_alphas,
                         population=population,
@@ -70,7 +70,7 @@ if __name__ == '__main__':
                             horizon=horizon,
                             policy=policy,
                             historic_data=historic_data,
-                            verbose=False)
+                            verbose=verbose)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
@@ -79,7 +79,6 @@ if __name__ == '__main__':
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        #plot.plot_r_effective(mdp.path)
         plot.plot_control_measures(mdp.path)
 
         results_age = history.sum(axis=2)
@@ -92,6 +91,7 @@ if __name__ == '__main__':
         plot.seir_plot_weekly(results_compartment, start_date, labels)
 
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
+
         # load necessary data for SEIR development plot
         # df = pd.read_csv(paths.results_history)
         # history = utils.transform_df_to_history(df, 'SEAIQRDVH', 356, 5)
