@@ -119,7 +119,7 @@ class MarkovDecisionProcess:
             increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
             decreasing_trend = infection_rate < 0.85
             slope = (new_infected_current-new_infected_historic)/n_days
-            factor = 4 /((1 + np.exp(5e-3 * slope)) * (1 + np.exp(1e-2 * infected_per_100k)))
+            factor = max(4 /((1 + np.exp(1e-3 * slope)) * (1 + np.exp(5e-3 * infected_per_100k))), 0.75)
 
             if self.verbose:
                 if increasing_trend:

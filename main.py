@@ -22,17 +22,18 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
     policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'oldest_first']
+    
     # Set initial parameters
     # np.random.seed(10)
     day = 21
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 10000 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
-    policy = policies[0]
+    policy = policies[-1]
     stochastic_seair = True
     plot_results = True
     
