@@ -619,3 +619,22 @@ def get_r_effective(path, population, config, from_data=False):
     # plot R_t development
     plot.plot_rt(result)
 
+
+def get_yll(age_bins, age_labels, deaths_per_age_group):
+    """Calculates the Years of Lost Lives (YLL)
+
+    Args:
+        age_bins (1D array): int describing different age groups
+        age_labels (1D array): strings with description of different age groups
+        deaths_per_age_group (1D array): Number of deaths per age groups
+
+    Returns:
+        int: yll
+    """
+    df = pd.read_csv('data/expected_years.csv')
+    df.age = pd.cut(df['age'], bins=age_bins+[110], labels=age_labels, include_lowest=True)
+    expected_years_remaining = df.groupby('age').mean()['expected_years_remaining'].to_numpy()
+    yll = np.multiply(expected_years_remaining, deaths_per_age_group) 
+    return int(np.round(np.sum(yll)))
+
+

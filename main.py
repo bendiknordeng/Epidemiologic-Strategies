@@ -29,7 +29,7 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 120 # number of weeks
+    horizon = 10 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
@@ -76,6 +76,12 @@ if __name__ == '__main__':
         final_states.append(mdp.path[-1])
 
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
+    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
+    
+    # YLL
+    yll = utils.get_yll(config.age_bins, age_labels, np.sum(final_states[0].D, axis=0))
+    print(f'Years of Life Lost: {yll}')
+    
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
