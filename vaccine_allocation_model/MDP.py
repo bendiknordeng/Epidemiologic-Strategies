@@ -6,8 +6,8 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, 
-                initial_state, horizon, policy, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, initial_state, response_measure_model,
+                use_response_measure_model, horizon, policy, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -26,6 +26,8 @@ class MarkovDecisionProcess:
         self.population = population
         self.epidemic_function = epidemic_function
         self.state = initial_state
+        self.response_measure_model = response_measure_model # scaler, MLP model
+        self.use_response_measure_model = use_response_measure_model
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
@@ -46,8 +48,8 @@ class MarkovDecisionProcess:
             A path that shows resulting traversal of states
         """
         print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
-        for week in run_range:
+        run_range = range(self.state.time_step, self.horizon)# if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        for _ in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 90%.\033[0m\n")
@@ -75,10 +77,18 @@ class MarkovDecisionProcess:
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
-        contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
-        information = {'alphas': alphas, 
-                       'vaccine_supply': vaccine_supply,
-                       'contact_weights': contact_weights}
+        wave = self._get_infection_wave()
+        if self.use_response_measure_model:
+            contact_weights, alphas = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas)
+        else:
+            contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
+        information = {
+            'vaccine_supply': vaccine_supply,
+            'wave': wave,
+            'alphas': alphas,   
+            'contact_weights': contact_weights
+            }
+
         return information
 
     def update_state(self, decision_period=28):
@@ -92,23 +102,52 @@ class MarkovDecisionProcess:
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
-    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
-        min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
-        min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
-        new_cw = previous_cw.copy()
-        new_alphas = previous_alphas.copy()
+    def _get_infection_wave(self):
         simulation_week = self.state.time_step//self.decision_period
         if simulation_week in self.wave_weeks:
             wave_strength = np.random.normal(2, 0.1)
             if self.verbose:
                 print("\033[1mInfection wave\033[0m")
                 print(f"Wavestrength: {wave_strength}\n\n")
-                new_cw = new_cw * wave_strength
-                new_alphas = new_alphas * wave_strength
+            return wave_strength
+        if self.verbose:
+            print("\033[1mNo infection wave\033[0m")
+            print(f"Wavestrength: 1\n\n")
+        return 1 # Multiply by 1 = no change
 
-        if len(self.path) > 2:
+    def _map_infection_to_response_measures(self, previous_cw, previous_alphas):
+        if len(self.path) > 1:
+            I_past_week = np.sum(self.state.new_infected)
+            I_2w_ago = np.sum(self.path[-2].new_infected)
+            n_days = self.decision_period/self.config.periods_per_day
+            I_slope_weekly = (I_past_week-I_2w_ago)/n_days
+            I_inter_week_rate = I_past_week/max(I_2w_ago, 1) # in case 0 infected 2 weeks ago
+            scaler, model = self.response_measure_model
+            input = scaler.transform(np.array([I_past_week, I_2w_ago, I_slope_weekly, I_inter_week_rate]).reshape(1,-1))
+            factor = min(model.predict(input)[0], 2)
+            min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
+            min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
+            new_cw = (previous_cw * factor).clip(min=min_cw, max=max_cw)
+            new_alphas = (previous_alphas * factor).clip(min=min_alphas, max=max_alphas)
+
+            if self.verbose:
+                print(f"New infected last week: {I_past_week}")
+                print(f"New infected two weeks ago: {I_2w_ago}")
+                print(f"I last week/I two weeks ago: {I_inter_week_rate:.3f}")
+                print(f"Weekly infected slope past two weeks: {I_slope_weekly:.3f}")
+                print(f"Response measure factor: {factor:.3f}")
+                print(f"Previous weights: {previous_cw}")
+                print(f"Previous alphas: {previous_alphas}\n\n")
+
+            return new_cw, new_alphas
+        
+        return previous_cw, previous_alphas
+
+
+    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
+        if len(self.path) > 1:
             new_infected_current = np.sum(self.state.new_infected)
-            new_infected_historic = np.sum(self.path[-3].new_infected)
+            new_infected_historic = np.sum(self.path[-2].new_infected)
             n_days = self.decision_period/self.config.periods_per_day
             if new_infected_historic > 0:
                 infection_rate = new_infected_current/new_infected_historic
@@ -139,13 +178,13 @@ class MarkovDecisionProcess:
                 print(f"Previous alphas: {previous_alphas}\n\n")
 
             if increasing_trend or decreasing_trend:
-                new_cw = (new_cw * factor).clip(min=min_cw, max=max_cw)
-                new_alphas = (new_alphas * factor).clip(min=min_alphas, max=max_alphas)
+                min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
+                min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
+                new_cw = (previous_cw * factor).clip(min=min_cw, max=max_cw)
+                new_alphas = (previous_alphas * factor).clip(min=min_alphas, max=max_alphas)
                 return new_cw, new_alphas
-                    
-        new_cw = new_cw.clip(min=min_cw, max=max_cw)
-        new_alphas = new_alphas.clip(min=min_alphas, max=max_alphas)
-        return new_cw, new_alphas
+
+        return previous_cw, previous_alphas
 
     def _no_vaccines(self):
         """ Define allocation of vaccines to zero

@@ -6,6 +6,7 @@ import pandas as pd
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seair import SEAIR
+from tqdm import tqdm
 
 if __name__ == '__main__':
     # Get filepaths 
@@ -19,6 +20,7 @@ if __name__ == '__main__':
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
+    response_measure_model = utils.get_response_measure_MLP()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
     policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'oldest_first']
@@ -29,14 +31,14 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 120 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
-    policy = policies[-2]
-    stochastic_seair = True
-    plot_results = True
+    policy = policies[-1]
+    plot_results = False
     verbose = False
+    use_response_measure_model = False
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -46,10 +48,11 @@ if __name__ == '__main__':
                         death_rates=death_rates,
                         config=config,
                         paths=paths,
-                        stochastic=stochastic_seair,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=True)
+                        include_flow=False,
+                        include_waves=True,
+                        stochastic=True)
 
     initial_state = State.initialize_state(
                         num_initial_infected=initial_infected,
@@ -60,7 +63,7 @@ if __name__ == '__main__':
                         start_date=start_date)
     
     final_states = []
-    for i in range(1):
+    for i in tqdm(range(10)):
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,
@@ -69,13 +72,15 @@ if __name__ == '__main__':
                             initial_state=initial_state,
                             horizon=horizon,
                             policy=policy,
+                            response_measure_model=response_measure_model,
+                            use_response_measure_model=use_response_measure_model,
                             historic_data=historic_data,
                             verbose=verbose)
         mdp.run()
-        utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
+        utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
-    # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
+    utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
@@ -86,9 +91,9 @@ if __name__ == '__main__':
         infection_results_age = new_infections.sum(axis=1)
         plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
-        results_compartment = history.sum(axis=3).sum(axis=2)
-        labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
-        plot.seir_plot_weekly(results_compartment, start_date, labels)
+        # results_compartment = history.sum(axis=3).sum(axis=2)
+        # labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+        # plot.seir_plot_weekly(results_compartment, start_date, labels)
 
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
 
