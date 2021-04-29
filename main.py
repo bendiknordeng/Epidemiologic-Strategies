@@ -26,7 +26,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 10
+    runs = 100
     seeds = np.arange(runs)
     day = 1
     month = 12

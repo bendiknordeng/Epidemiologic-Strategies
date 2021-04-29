@@ -291,7 +291,7 @@ class MarkovDecisionProcess:
         M = self.state.vaccines_available
         if M > 0:
             demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
-            vaccines_per_policy = M * self.dynamic_policy_weights
+            vaccines_per_policy = M * self.weighted_policy_weights
             for i, policy in enumerate(weighted_policies):
                 vaccine_allocation += self.policies[policy](M=vaccines_per_policy[i])
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
