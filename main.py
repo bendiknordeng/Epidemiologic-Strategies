@@ -23,12 +23,12 @@ if __name__ == '__main__':
     response_measure_model = utils.get_response_measure_MLP()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
-    policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'oldest_first']
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'dynamic']
     
     # Set initial parameters
-    # np.random.seed(10)
-    day = 21
-    month = 2
+    np.random.seed(10)
+    day = 1
+    month = 12
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
@@ -39,6 +39,7 @@ if __name__ == '__main__':
     plot_results = False
     verbose = False
     use_response_measure_model = False
+    dynamic_policy_weights = [0, 0, 0.5, 0.5]
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -50,7 +51,7 @@ if __name__ == '__main__':
                         paths=paths,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=False,
+                        include_flow=True,
                         include_waves=True,
                         stochastic=True)
 
@@ -63,7 +64,7 @@ if __name__ == '__main__':
                         start_date=start_date)
     
     final_states = []
-    for i in tqdm(range(10)):
+    for i in range(1):
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,
@@ -72,6 +73,7 @@ if __name__ == '__main__':
                             initial_state=initial_state,
                             horizon=horizon,
                             policy=policy,
+                            dynamic_policy_weights=dynamic_policy_weights,
                             response_measure_model=response_measure_model,
                             use_response_measure_model=use_response_measure_model,
                             historic_data=historic_data,
@@ -80,7 +82,7 @@ if __name__ == '__main__':
         utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 
-    utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
+    # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
@@ -94,7 +96,7 @@ if __name__ == '__main__':
         # results_compartment = history.sum(axis=3).sum(axis=2)
         # labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
         # plot.seir_plot_weekly(results_compartment, start_date, labels)
-
+ 
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
 
         # load necessary data for SEIR development plot
