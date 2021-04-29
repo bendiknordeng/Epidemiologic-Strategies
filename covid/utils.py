@@ -10,7 +10,7 @@ from scipy import stats as sps
 from covid import plot
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
-from imblearn.over_sampling import SMOTE
+from sklearn.linear_model import LinearRegression
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
@@ -530,16 +530,16 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
 
     return posteriors, log_likelihood
 
-def smooth_data(new_cases):
+def smooth_data(data):
     """ returns smoothed values of a pandas.core.series.Series
 
     Parameters
-        new_cases: pandas.core.series.Series, with date and daily new infected
+        data: pandas.core.series.Series, with date and daily new infected
     Returns
         smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
 
     """
-    smoothed = new_cases.rolling(3,
+    smoothed = data.rolling(3,
         win_type='gaussian',
         min_periods=1,
         center=True).mean(std=3).round()
@@ -627,21 +627,48 @@ def get_r_effective(path, population, config, from_data=False):
     # plot R_t development
     plot.plot_rt(result)
 
-def get_response_measure_MLP():
-    df_model = pd.read_csv('data/response_measure_data.csv')
+def train_mlp_model(fpath_training_data, fpath_model, fpath_scaler):
+    df = pd.read_csv(fpath_training_data)
+    df.response_measures = df.response_measures.apply(lambda x: x + 4 if x == 2 else x)
     rs = 10
-    y = df_model['response_measure'].values
-    X = df_model.drop(['response_measure'], axis=1).values
+    y = df['response_measures'].values
+    X = df.drop(['response_measures'], axis=1).values
 
-    # Synthetic Minority Over-sampling Technique
-    # smote = SMOTE()
-    # X, y = smote.fit_resample(X, y)
-
-    # fit and apply the transform
     scaler = StandardScaler()
     X = scaler.fit_transform(X, y)
-
     model = MLPRegressor(random_state=rs, max_iter=1000)
     model.fit(X, y)
 
+    pkl.dump(model, open(fpath_model, 'wb'))
+    pkl.dump(scaler, open(fpath_scaler, 'wb'))
+
+def train_reg_model(fpath_training_data, fpath_model, fpath_scaler):
+    df = pd.read_csv(fpath_training_data)
+    df.response_measures = df.response_measures.apply(lambda x: x + 3 if x == 2 else x)
+    y = df['response_measures']
+    X = df.drop(['response_measures'], axis=1)
+
+    scaler = StandardScaler()
+    X = scaler.fit_transform(X, y)
+    model = LinearRegression()
+    model.fit(X, y)
+
+    pkl.dump(model, open(fpath_model, 'wb'))
+    pkl.dump(scaler, open(fpath_scaler, 'wb'))
+
+
+def load_response_measure_model(paths, model_type):
+    if model_type == 'mlp':
+        if not os.path.exists(paths.response_measure_model_mlp):
+            print("Training response measure model (MLP)...")
+            train_mlp_model(paths.response_measure_training_data, paths.response_measure_model_mlp, paths.response_measure_scaler_mlp)
+        model = pkl.load(open(paths.response_measure_model_mlp, 'rb'))
+        scaler = pkl.load(open(paths.response_measure_scaler_mlp, 'rb'))
+    elif model_type == 'reg':
+        if not os.path.exists(paths.response_measure_model_reg):
+            print("Training response measure model (Linear regression)...")
+            train_reg_model(paths.response_measure_training_data, paths.response_measure_model_reg, paths.response_measure_scaler_reg)
+        model = pkl.load(open(paths.response_measure_model_reg, 'rb'))
+        scaler = pkl.load(open(paths.response_measure_scaler_reg, 'rb'))
+    
     return scaler, model

@@ -11,7 +11,7 @@ from tqdm import tqdm
 if __name__ == '__main__':
     # Get filepaths 
     paths = utils.create_named_tuple('filepaths.txt')
-    
+
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
@@ -20,16 +20,16 @@ if __name__ == '__main__':
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
-    response_measure_model = utils.get_response_measure_MLP()
+    response_measure_model = utils.load_response_measure_model(paths, model_type='mlp')
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 100
+    runs = 1
     seeds = np.arange(runs)
-    day = 1
-    month = 12
+    day = 21
+    month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
@@ -37,9 +37,9 @@ if __name__ == '__main__':
     initial_infected = 5
     initial_vaccines_available = 0
     policy = policies[-1]
-    plot_results = False
-    verbose = False
-    use_response_measure_model = False
+    plot_results = runs == 1
+    verbose = True
+    use_response_measure_model = True
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
     epidemic_function = SEAIR(
@@ -65,7 +65,8 @@ if __name__ == '__main__':
                         start_date=start_date)
     
     final_states = []
-    for i in range(runs):
+    run_range = tqdm(range(runs)) if runs > 1 else range(runs)
+    for i in run_range:
         np.random.seed(seeds[i])
         mdp = MarkovDecisionProcess(
                             config=config,
@@ -80,7 +81,7 @@ if __name__ == '__main__':
                             use_response_measure_model=use_response_measure_model,
                             historic_data=historic_data,
                             verbose=verbose)
-        mdp.run()
+        mdp.run(runs)
         utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
 

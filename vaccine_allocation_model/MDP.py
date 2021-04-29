@@ -44,14 +44,14 @@ class MarkovDecisionProcess:
         self.path = [self.state]
         self.wave_weeks = get_wave_weeks(self.horizon)
 
-    def run(self):
+    def run(self, runs):
         """ Updates states from current time_step to a specified horizon
 
         Returns
             A path that shows resulting traversal of states
         """
         print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        run_range = range(self.state.time_step, self.horizon) if self.verbose or runs > 1 else tqdm(range(self.state.time_step, self.horizon))
         for _ in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
@@ -120,24 +120,45 @@ class MarkovDecisionProcess:
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas):
         if len(self.path) > 1:
-            I_past_week = np.sum(self.state.new_infected)
-            I_2w_ago = np.sum(self.path[-2].new_infected)
             n_days = self.decision_period/self.config.periods_per_day
-            I_slope_weekly = (I_past_week-I_2w_ago)/n_days
-            I_inter_week_rate = I_past_week/max(I_2w_ago, 1) # in case 0 infected 2 weeks ago
+            
+            # Features for cases of infection
+            active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
+            cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()
+            cases_past_week = np.sum(self.state.new_infected) * 1e5/self.population.population.sum()
+            cases_2w_ago = np.sum(self.path[-2].new_infected) * 1e5/self.population.population.sum()
+            cases_slope = (cases_past_week-cases_2w_ago)/n_days
+
+            # Features for deaths
+            cumulative_total_deaths = np.sum(self.state.D) * 1e5/self.population.population.sum()
+            deaths_past_week = np.sum(self.state.new_deaths) * 1e5/self.population.population.sum()
+            deaths_2w_ago = np.sum(self.path[-2].new_deaths) * 1e5/self.population.population.sum()
+            deaths_slope = (deaths_past_week-deaths_2w_ago)/n_days
+
+            features = np.array([active_cases, cumulative_total_cases, cases_past_week, 
+                                cases_2w_ago, cases_slope, cumulative_total_deaths,
+                                deaths_past_week, deaths_2w_ago, deaths_slope])
+
             scaler, model = self.response_measure_model
-            input = scaler.transform(np.array([I_past_week, I_2w_ago, I_slope_weekly, I_inter_week_rate]).reshape(1,-1))
+            input = scaler.transform(features.reshape(1,-1))
             factor = model.predict(input)[0]
+
             min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
             min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
             new_cw = (previous_cw * factor).clip(min=min_cw, max=max_cw)
             new_alphas = (previous_alphas * factor).clip(min=min_alphas, max=max_alphas)
 
             if self.verbose:
-                print(f"New infected last week: {I_past_week}")
-                print(f"New infected two weeks ago: {I_2w_ago}")
-                print(f"I last week/I two weeks ago: {I_inter_week_rate:.3f}")
-                print(f"Weekly infected slope past two weeks: {I_slope_weekly:.3f}")
+                print("Per 100k:")
+                print(f"Active cases: {active_cases:.3f}")
+                print(f"Cumulative cases: {cumulative_total_cases:.3f}")
+                print(f"New infected last week: {cases_past_week:.3f}")
+                print(f"New infected two weeks ago: {cases_2w_ago:.3f}")
+                print(f"Weekly infected slope past two weeks: {cases_slope:.3f}")
+                print(f"Cumulative deaths: {cumulative_total_deaths:.3f}")
+                print(f"New deaths last week: {deaths_past_week:.3f}")
+                print(f"New deaths two weeks ago: {deaths_2w_ago:.3f}")
+                print(f"Weekly deaths slope past two weeks: {deaths_slope:.3f}")
                 print(f"Response measure factor: {factor:.3f}")
                 print(f"Previous weights: {previous_cw}")
                 print(f"Previous alphas: {previous_alphas}\n\n")

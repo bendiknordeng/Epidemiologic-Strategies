@@ -121,8 +121,9 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
     plt.show()
 
 def plot_control_measures(path):
-    new_infected = [np.sum(s.new_infected) for s in path]
+    new_infected = utils.smooth_data(pd.Series(np.array([np.sum(s.new_infected) for s in path]).T)).values
     mean_weights = np.array([s.contact_weights for s in path]).mean(axis=1)
+    
     weeks = [s.date.isocalendar()[1] for s in path]
     ticks = min(len(path), 20)
     step = int(np.ceil(len(path)/ticks))
