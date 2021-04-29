@@ -7,7 +7,7 @@ from datetime import timedelta
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state, response_measure_model,
-                use_response_measure_model, horizon, policy, dynamic_policy_weights, verbose, historic_data=None):
+                use_response_measure_model, horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -37,10 +37,10 @@ class MarkovDecisionProcess:
             "susceptible_based": self._susceptible_based_policy,
             "infection_based": self._infection_based_policy,
             "oldest_first": self._oldest_first_policy,
-            "dynamic": self._dynamic_policy
+            "weighted": self._weighted_policy
         }
         self.policy = self.policies[policy]
-        self.dynamic_policy_weights = np.array(dynamic_policy_weights)
+        self.weighted_policy_weights = np.array(weighted_policy_weights)
         self.path = [self.state]
         self.wave_weeks = get_wave_weeks(self.horizon)
 
@@ -284,7 +284,7 @@ class MarkovDecisionProcess:
         return vaccine_allocation
 
 
-    def _dynamic_policy(self):
+    def _weighted_policy(self):
         pop = self.population[self.population.columns[2:-1]].to_numpy(dtype="float64")
         vaccine_allocation = np.zeros(pop.shape)
         weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first"]
@@ -293,8 +293,7 @@ class MarkovDecisionProcess:
             demand = self.state.S.copy()-(1-self.config.efficacy)*self.state.V.copy()
             vaccines_per_policy = M * self.dynamic_policy_weights
             for i, policy in enumerate(weighted_policies):
-                allocation = self.policies[policy](M=vaccines_per_policy[i])
-                vaccine_allocation += allocation
+                vaccine_allocation += self.policies[policy](M=vaccines_per_policy[i])
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             return decision
         return vaccine_allocation
