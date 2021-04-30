@@ -21,7 +21,7 @@ if __name__ == '__main__':
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
-    policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'oldest_first']
+    policies = ['no_vaccines', 'random', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
     # np.random.seed(10)
@@ -37,6 +37,7 @@ if __name__ == '__main__':
     stochastic_seair = True
     plot_results = True
     verbose = False
+    weighted_policy_weights = [(0, 0.33, 0.33, 0.34), (0, 0, 0.5, 0.5), (0, 0, 0.25, 0.75)]
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -70,6 +71,7 @@ if __name__ == '__main__':
                             horizon=horizon,
                             policy=policy,
                             historic_data=historic_data,
+                            weighted_policy_weights=weighted_policy_weights,
                             verbose=verbose)
         mdp.run()
         utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
