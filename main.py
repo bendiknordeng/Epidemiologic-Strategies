@@ -28,14 +28,16 @@ if __name__ == '__main__':
     day = 21
     month = 2
     year = 2020
+    runs = 1
+    seeds = np.arange(runs)
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 10 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
-    policy = policies[-2]
+    policy = policies[-1]
     stochastic_seair = True
-    plot_results = True
+    plot_results = False
     verbose = False
     weighted_policy_weights = [(0, 0.33, 0.33, 0.34), (0, 0, 0.5, 0.5), (0, 0, 0.25, 0.75)]
     
@@ -61,28 +63,30 @@ if __name__ == '__main__':
                         start_date=start_date)
     
     final_states = []
-    for i in range(1):
-        mdp = MarkovDecisionProcess(
-                            config=config,
-                            decision_period=decision_period,
-                            population=population, 
-                            epidemic_function=epidemic_function,
-                            initial_state=initial_state,
-                            horizon=horizon,
-                            policy=policy,
-                            historic_data=historic_data,
-                            weighted_policy_weights=weighted_policy_weights,
-                            verbose=verbose)
-        mdp.run()
-        utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
-        final_states.append(mdp.path[-1])
+    for weights in weighted_policy_weights:
+        for i in range(runs):
+            np.random.seed(seeds[i])
+            mdp = MarkovDecisionProcess(
+                                config=config,
+                                decision_period=decision_period,
+                                population=population, 
+                                epidemic_function=epidemic_function,
+                                initial_state=initial_state,
+                                horizon=horizon,
+                                policy=policy,
+                                historic_data=historic_data,
+                                weighted_policy_weights=weights,
+                                verbose=verbose)
+            mdp.run()
+            utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
+            final_states.append(mdp.path[-1])
 
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
-    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
+    #death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     
     # YLL
-    yll = utils.get_yll(config.age_bins, age_labels, np.sum(final_states[0].D, axis=0))
-    print(f'Years of Life Lost: {yll}')
+    #yll = utils.get_yll(config.age_bins, age_labels, np.sum(final_states[0].D, axis=0))
+    #print(f'Years of Life Lost: {yll}')
     
 
     if plot_results:
