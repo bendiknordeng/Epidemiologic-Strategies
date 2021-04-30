@@ -487,20 +487,14 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     process_matrix /= process_matrix.sum(axis=0)
     
     # (4) Calculate the initial prior
-    #prior0 = sps.gamma(a=4).pdf(r_t_range)
     prior0 = np.ones_like(r_t_range)/len(r_t_range)
     prior0 /= prior0.sum()
 
-    # Create a DataFrame that will hold our posteriors for each day
-    # Insert our prior as the first posterior.
-    posteriors = pd.DataFrame(
-        index=r_t_range,
-        columns=new_infected.index,
-        data={new_infected.index[0]: prior0}
-    )
+    # Create a DataFrame that will hold our posteriors for each day. Insert our prior as the first posterior.
+    posteriors = pd.DataFrame(index=r_t_range, columns=new_infected.index, data={new_infected.index[0]: prior0})
     
     # Keep track of the sum of the log of the probability of the data for maximum likelihood calculation.
-    log_likelihood = 0.0
+    log_likelihood = 0.000001
 
     # (5) Iteratively apply Bayes' rule
     for previous_day, current_day in zip(new_infected.index[:-1], new_infected.index[1:]):
@@ -565,6 +559,17 @@ def highest_density_interval(posteriors, percentile=.9):
     return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
 
 def get_r_effective(path, population, config, from_data=False):
+    """plots R effective
+
+    Args:
+        path ([type]): [description]
+        population ([type]): [description]
+        config ([type]): [description]
+        from_data (bool, optional): Indicating if R effective should be plotted for historical Norwegian data. Defaults to False.
+    """
+    print(type(path))
+    print(type(population))
+    print(type(config))
     # Read in data
     if from_data:
         states = pd.read_csv('data/fhi_data_daily.csv',

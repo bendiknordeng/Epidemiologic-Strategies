@@ -29,7 +29,7 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 10 # number of weeks
+    horizon = 50 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
@@ -96,7 +96,7 @@ if __name__ == '__main__':
         labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
         plot.seir_plot_weekly(results_compartment, start_date, labels)
 
-        # utils.get_r_effective(mdp.path, population, config, from_data=False)
+        utils.get_r_effective(mdp.path, population, config, from_data=False)
 
         # load necessary data for SEIR development plot
         # df = pd.read_csv(paths.results_history)
