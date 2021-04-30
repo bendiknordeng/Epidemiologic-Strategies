@@ -7,6 +7,7 @@ from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seair import SEAIR
 from tqdm import tqdm
+from datetime import datetime
 
 if __name__ == '__main__':
     # Get filepaths 
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     plot_results = False
     verbose = False
     use_response_measure_model = False
-    weighted_policy_weights = [0, 0.33, 0.33, 0.34]
+    weighted_policy_weights = [(0, 0.33, 0.33, 0.34), (0, 0, 0.5, 0.5), (0, 0, 0.25, 0.75)]
     
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -63,30 +64,51 @@ if __name__ == '__main__':
                         alphas=config.initial_alphas,
                         population=population,
                         start_date=start_date)
+    """
+    def compare_solutions(weights, runs, population, age_labels, min_avg):
+        solution_states = {} 
+        for w in weights:
+            solution_states[w] = run(w, runs)
+        print("comparing solutions")
+        for k in solution_states.keys():
+            avg, std_dev = utils.get_avg_std(solution_states[k], population, age_labels)
+            if avg <= min_avg:
+                best = k
+                min_avg = avg
+
+        print("best solution is ", best)
+        import pdb; pdb.set_trace()
+        return best, solution_states[best], min_avg
+    """
+    def run(weights, runs):
+        final_states = []
+        print("running with weights ", weights, "...")
+        for i in range(runs):
+            np.random.seed(seeds[i])
+            mdp = MarkovDecisionProcess(
+                                config=config,
+                                decision_period=decision_period,
+                                population=population, 
+                                epidemic_function=epidemic_function,
+                                initial_state=initial_state,
+                                horizon=horizon,
+                                policy=policy,
+                                weighted_policy_weights=weights,
+                                response_measure_model=response_measure_model,
+                                use_response_measure_model=use_response_measure_model,
+                                historic_data=historic_data,
+                                verbose=verbose)
+            mdp.run()
+            utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
+            final_states.append(mdp.path[-1])
+        #utils.write_pickle(f"{weights}_{datetime.now()}", final_states) 
+        return final_states
     
-    final_states = []
-    for i in range(runs):
-        np.random.seed(seeds[i])
-        mdp = MarkovDecisionProcess(
-                            config=config,
-                            decision_period=decision_period,
-                            population=population, 
-                            epidemic_function=epidemic_function,
-                            initial_state=initial_state,
-                            horizon=horizon,
-                            policy=policy,
-                            weighted_policy_weights=weighted_policy_weights,
-                            response_measure_model=response_measure_model,
-                            use_response_measure_model=use_response_measure_model,
-                            historic_data=historic_data,
-                            verbose=verbose)
-        mdp.run()
-        utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
-        final_states.append(mdp.path[-1])
+    for weights in weighted_policy_weights:
+        run(weights, runs)
 
-    utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
-    if plot_results:
+    if False:#plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         plot.plot_control_measures(mdp.path)
 
