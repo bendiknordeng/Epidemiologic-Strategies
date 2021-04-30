@@ -32,6 +32,8 @@ if __name__ == '__main__':
     day = 21
     month = 2
     year = 2020
+    runs = 1
+    seeds = np.arange(runs)
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
     decision_period = 28
@@ -87,11 +89,11 @@ if __name__ == '__main__':
         final_states.append(mdp.path[-1])
 
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
-    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
+    #death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     
     # YLL
-    yll = utils.get_yll(config.age_bins, age_labels, np.sum(final_states[0].D, axis=0))
-    print(f'Years of Life Lost: {yll}')
+    #yll = utils.get_yll(config.age_bins, age_labels, np.sum(final_states[0].D, axis=0))
+    #print(f'Years of Life Lost: {yll}')
     
     if runs > 1:
         utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
