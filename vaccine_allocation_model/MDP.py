@@ -7,7 +7,7 @@ from datetime import timedelta
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, 
-                initial_state, horizon, policy, verbose, historic_data=None):
+                initial_state, horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -29,13 +29,16 @@ class MarkovDecisionProcess:
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
-        self.policy = {
+        self.policies = {
             "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
             "susceptible_based": self._susceptible_based_policy,
             "infection_based": self._infection_based_policy,
             "oldest_first": self._oldest_first_policy,
-        }[policy]
+            "weighted": self._weighted_policy
+        }
+        self.policy = self.policies[policy]
+        self.weighted_policy_weights = np.array(weighted_policy_weights)
         self.path = [self.state]
         self.wave_weeks = get_wave_weeks(self.horizon)
 
