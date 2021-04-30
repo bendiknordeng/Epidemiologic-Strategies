@@ -6,11 +6,11 @@ class SimpleDemoGA:
         self.population = Population()
         self.fittest = None
         self.second_fittest = None
+        self.least_fittest_index = 0
         self.generation_count = 0
 
     def selection(self):
-        self.fittest = self.population.get_fittest()
-        self.secondFittest = self.population.get_second_fittest()
+        self.fittest, self.second_fittest, self.least_fittest_index = self.population.get_fittest()
 
     def crossover(self):
         # Implement Two-Dimensional substring crossover
@@ -26,34 +26,12 @@ class SimpleDemoGA:
         return self.second_fittest
 
     def add_fittest_offspring(self):
-
         #Update fitness values of offspring
         self.fittest.calcFitness()
-        self.secondFittest.calcFitness()
-
-        #Get index of least fit individual
-        least_fittest_index = self.population.get_least_fittest_index()
+        self.second_fittest.calcFitness()
 
         #Replace least fittest individual from most fittest offspring
-        self.population.individuals[least_fittest_index] = self.get_fittest_offspring()
-
-class Individual:
-    def __init__(self):
-        self.fitness = 0
-        self.genes = np.zeros(5)
-        self.gene_length = 5
-        self.create_individual()
-
-    def create_individual(self):
-        #Set genes randomly for each individual
-        for i in range(self.gene_length):
-            self.genes[i] = np.abs(np.random.randint(1) % 2)
-
-    def calculate_fitness(self):
-        self.fitness = 0
-        for i in range(5):
-            if (self.genes[i] == 1):
-                self.fitness += 1
+        self.population.individuals[self.least_fittest_index] = self.get_fittest_offspring()
 
 class Population: 
     def __init__(self, population_size):
@@ -81,11 +59,29 @@ class Population:
                 min_fit_index = i
         
         self.fittest = max_fit_1
-        return self.individuals[max_fit_1_index], self.individuals[max_fit_2_index], self.individuals[min_fit_index]
+        return self.individuals[max_fit_1_index], self.individuals[max_fit_2_index], min_fit_index
 
     def calculate_fitness(self):
         for i in self.individuals:
             i.calculate_fitness()
+
+class Individual:
+    def __init__(self):
+        self.fitness = 0
+        self.genes = np.zeros(5)
+        self.gene_length = 5
+        self.create_individual()
+
+    def create_individual(self):
+        #Set genes randomly for each individual
+        for i in range(self.gene_length):
+            self.genes[i] = np.abs(np.random.randint(1) % 2)
+
+    def calculate_fitness(self):
+        self.fitness = 0
+        for i in range(5):
+            if (self.genes[i] == 1):
+                self.fitness += 1
 
 if __name__=='__main__':
     demo = SimpleDemoGA()

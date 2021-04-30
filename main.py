@@ -61,25 +61,26 @@ if __name__ == '__main__':
                         alphas=config.initial_alphas,
                         population=population,
                         start_date=start_date)
-    
-    final_states = []
-    for weights in weighted_policy_weights:
-        for i in range(runs):
-            np.random.seed(seeds[i])
-            mdp = MarkovDecisionProcess(
-                                config=config,
-                                decision_period=decision_period,
-                                population=population, 
-                                epidemic_function=epidemic_function,
-                                initial_state=initial_state,
-                                horizon=horizon,
-                                policy=policy,
-                                historic_data=historic_data,
-                                weighted_policy_weights=weights,
-                                verbose=verbose)
-            mdp.run()
-            utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
-            final_states.append(mdp.path[-1])
+    found_best = False
+    while not found_best:
+        for weights in weighted_policy_weights:
+            final_states = []
+            for i in range(runs):
+                np.random.seed(seeds[i])
+                mdp = MarkovDecisionProcess(
+                                    config=config,
+                                    decision_period=decision_period,
+                                    population=population, 
+                                    epidemic_function=epidemic_function,
+                                    initial_state=initial_state,
+                                    horizon=horizon,
+                                    policy=policy,
+                                    historic_data=historic_data,
+                                    weighted_policy_weights=weights,
+                                    verbose=verbose)
+                mdp.run()
+                utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
+                final_states.append(mdp.path[-1])
 
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
     #death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
