@@ -26,7 +26,7 @@ class MarkovDecisionProcess:
         self.population = population
         self.epidemic_function = epidemic_function
         self.state = initial_state
-        self.response_measure_model = response_measure_model # scaler, MLP model
+        self.response_measure_model = response_measure_model
         self.use_response_measure_model = use_response_measure_model
         self.historic_data = historic_data
         self.policy_name = policy
@@ -119,34 +119,51 @@ class MarkovDecisionProcess:
         return 1 # Multiply by 1 = no change
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas):
-        if len(self.path) > 1:
-            n_days = self.decision_period/self.config.periods_per_day
-            
+        if len(self.path) > 3:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
             cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()
             cases_past_week = np.sum(self.state.new_infected) * 1e5/self.population.population.sum()
             cases_2w_ago = np.sum(self.path[-2].new_infected) * 1e5/self.population.population.sum()
-            cases_slope = (cases_past_week-cases_2w_ago)/n_days
 
             # Features for deaths
             cumulative_total_deaths = np.sum(self.state.D) * 1e5/self.population.population.sum()
             deaths_past_week = np.sum(self.state.new_deaths) * 1e5/self.population.population.sum()
             deaths_2w_ago = np.sum(self.path[-2].new_deaths) * 1e5/self.population.population.sum()
-            deaths_slope = (deaths_past_week-deaths_2w_ago)/n_days
 
-            features = np.array([active_cases, cumulative_total_cases, cases_past_week, 
-                                cases_2w_ago, cases_slope, cumulative_total_deaths,
-                                deaths_past_week, deaths_2w_ago, deaths_slope])
+            features = np.array([active_cases, cumulative_total_cases, cases_past_week, cases_2w_ago, 
+                                cumulative_total_deaths, deaths_past_week, deaths_2w_ago])
 
-            scaler, model = self.response_measure_model
-            input = scaler.transform(features.reshape(1,-1))
-            factor = model.predict(input)[0]
+            models, scalers = self.response_measure_model
 
-            min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
-            min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
-            new_cw = (previous_cw * factor).clip(min=min_cw, max=max_cw)
-            new_alphas = (previous_alphas * factor).clip(min=min_alphas, max=max_alphas)
+            # Contact weights
+            initial_cw = np.array(self.config.initial_contact_weights)
+            cw_mapper = {
+                'home': lambda x: initial_cw[0] + x * 0.1,
+                'school': lambda x: initial_cw[1] - x * 0.25,
+                'work': lambda x: initial_cw[2] - x * 0.25,
+                'public': lambda x: initial_cw[3] - x * 0.2
+            }
+            new_cw = []
+            for category in ['home', 'school', 'work', 'public']:
+                input = scalers[category].transform(features.reshape(1,-1))
+                measure = models[category].predict(input)[0]
+                new_cw.append(cw_mapper[category](measure))
+
+            # Alphas
+            initial_alphas = np.array(self.config.initial_alphas)
+            alpha_mapper = {
+                0: lambda x: initial_alphas[0] - x * 0.25, # S
+                1: lambda x: initial_alphas[1] - x * 0.3, # E1
+                2: lambda x: initial_alphas[2] - x * 0.3, # E2
+                3: lambda x: initial_alphas[3] - x * 0.3, # A
+                4: lambda x: initial_alphas[4] - x * 0.03 # I
+            }
+            input = scalers['movement'].transform(features.reshape(1,-1))
+            measure = models['movement'].predict(input)[0]
+            new_alphas = []
+            for i in range(len(initial_alphas)):
+                new_alphas.append(alpha_mapper[i](measure))
 
             if self.verbose:
                 print("Per 100k:")
@@ -154,60 +171,16 @@ class MarkovDecisionProcess:
                 print(f"Cumulative cases: {cumulative_total_cases:.3f}")
                 print(f"New infected last week: {cases_past_week:.3f}")
                 print(f"New infected two weeks ago: {cases_2w_ago:.3f}")
-                print(f"Weekly infected slope past two weeks: {cases_slope:.3f}")
                 print(f"Cumulative deaths: {cumulative_total_deaths:.3f}")
                 print(f"New deaths last week: {deaths_past_week:.3f}")
                 print(f"New deaths two weeks ago: {deaths_2w_ago:.3f}")
-                print(f"Weekly deaths slope past two weeks: {deaths_slope:.3f}")
-                print(f"Response measure factor: {factor:.3f}")
                 print(f"Previous weights: {previous_cw}")
-                print(f"Previous alphas: {previous_alphas}\n\n")
+                print(f"New weights: {new_cw}")
+                print(f"Previous alphas: {previous_alphas}")
+                print(f"New alphas: {new_alphas}\n\n")
 
             return new_cw, new_alphas
         
-        return previous_cw, previous_alphas
-
-
-    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
-        if len(self.path) > 1:
-            new_infected_current = np.sum(self.state.new_infected)
-            new_infected_historic = np.sum(self.path[-2].new_infected)
-            n_days = self.decision_period/self.config.periods_per_day
-            if new_infected_historic > 0:
-                infection_rate = new_infected_current/new_infected_historic
-            else:
-                infection_rate = 0
-            maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
-            increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
-            decreasing_trend = infection_rate < 0.85
-            slope = (new_infected_current-new_infected_historic)/n_days
-            factor = 4 /((1 + np.exp(1e-3 * slope)) * (1 + np.exp(1e-2 * infected_per_100k)))
-
-            if self.verbose:
-                if increasing_trend:
-                    print("\033[1mIncreasing trend\033[0m")
-                elif decreasing_trend:
-                    print("\033[1mDecreasing trend\033[0m")
-                else:
-                    print("\033[1mNeutral trend\033[0m")
-                print(f"Infected per 100k: {infected_per_100k:.1f}")
-                print(f"New infected last week: {new_infected_historic}")
-                print(f"New infected current week: {new_infected_current}")
-                print(f"Maximum new infected: {maximum_new_infected}")
-                print(f"Current infections/last week infections: {infection_rate:.3f}")
-                print(f"Change in new infected per day: {slope:.3f}")
-                print(f"Control measure factor: {factor:.3f}")
-                print(f"Previous weights: {previous_cw}")
-                print(f"Previous alphas: {previous_alphas}\n\n")
-
-            if increasing_trend or decreasing_trend:
-                min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
-                min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
-                new_cw = (previous_cw * factor).clip(min=min_cw, max=max_cw)
-                new_alphas = (previous_alphas * factor).clip(min=min_alphas, max=max_alphas)
-                return new_cw, new_alphas
-
         return previous_cw, previous_alphas
 
     def _random_policy(self):

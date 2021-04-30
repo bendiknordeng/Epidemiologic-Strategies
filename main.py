@@ -20,13 +20,13 @@ if __name__ == '__main__':
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
-    response_measure_model = utils.load_response_measure_model(paths, model_type='mlp')
+    response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 1
+    runs = 100
     seeds = np.arange(runs)
     day = 21
     month = 2
@@ -34,11 +34,11 @@ if __name__ == '__main__':
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
     decision_period = 28
-    initial_infected = 5
+    initial_infected = 1000
     initial_vaccines_available = 0
     policy = policies[-1]
     plot_results = runs == 1
-    verbose = True
+    verbose = False
     use_response_measure_model = True
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
@@ -84,12 +84,13 @@ if __name__ == '__main__':
         mdp.run(runs)
         utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
         final_states.append(mdp.path[-1])
-
-    utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
+    
+    if runs > 1:
+        utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        plot.plot_control_measures(mdp.path)
+        plot.plot_control_measures(mdp.path, all=False)
 
         results_age = history.sum(axis=2)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)

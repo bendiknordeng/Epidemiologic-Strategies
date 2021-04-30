@@ -627,48 +627,10 @@ def get_r_effective(path, population, config, from_data=False):
     # plot R_t development
     plot.plot_rt(result)
 
-def train_mlp_model(fpath_training_data, fpath_model, fpath_scaler):
-    df = pd.read_csv(fpath_training_data)
-    df.response_measures = df.response_measures.apply(lambda x: x + 4 if x == 2 else x)
-    rs = 10
-    y = df['response_measures'].values
-    X = df.drop(['response_measures'], axis=1).values
-
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X, y)
-    model = MLPRegressor(random_state=rs, max_iter=1000)
-    model.fit(X, y)
-
-    pkl.dump(model, open(fpath_model, 'wb'))
-    pkl.dump(scaler, open(fpath_scaler, 'wb'))
-
-def train_reg_model(fpath_training_data, fpath_model, fpath_scaler):
-    df = pd.read_csv(fpath_training_data)
-    df.response_measures = df.response_measures.apply(lambda x: x + 3 if x == 2 else x)
-    y = df['response_measures']
-    X = df.drop(['response_measures'], axis=1)
-
-    scaler = StandardScaler()
-    X = scaler.fit_transform(X, y)
-    model = LinearRegression()
-    model.fit(X, y)
-
-    pkl.dump(model, open(fpath_model, 'wb'))
-    pkl.dump(scaler, open(fpath_scaler, 'wb'))
-
-
-def load_response_measure_model(paths, model_type):
-    if model_type == 'mlp':
-        if not os.path.exists(paths.response_measure_model_mlp):
-            print("Training response measure model (MLP)...")
-            train_mlp_model(paths.response_measure_training_data, paths.response_measure_model_mlp, paths.response_measure_scaler_mlp)
-        model = pkl.load(open(paths.response_measure_model_mlp, 'rb'))
-        scaler = pkl.load(open(paths.response_measure_scaler_mlp, 'rb'))
-    elif model_type == 'reg':
-        if not os.path.exists(paths.response_measure_model_reg):
-            print("Training response measure model (Linear regression)...")
-            train_reg_model(paths.response_measure_training_data, paths.response_measure_model_reg, paths.response_measure_scaler_reg)
-        model = pkl.load(open(paths.response_measure_model_reg, 'rb'))
-        scaler = pkl.load(open(paths.response_measure_scaler_reg, 'rb'))
-    
-    return scaler, model
+def load_response_measure_models():
+    models = {}
+    scalers = {}
+    for model_name in ['home', 'school', 'work', 'public', 'movement']:
+        models[model_name] = pkl.load(open(f"models/{model_name}_measure_model.sav", 'rb'))
+        scalers[model_name] = pkl.load(open(f"models/{model_name}_measure_scaler.sav", 'rb'))
+    return models, scalers

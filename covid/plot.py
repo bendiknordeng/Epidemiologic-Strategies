@@ -120,30 +120,59 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
     plt.grid()
     plt.show()
 
-def plot_control_measures(path):
+def plot_control_measures(path, all=False):
     new_infected = utils.smooth_data(pd.Series(np.array([np.sum(s.new_infected) for s in path]).T)).values
-    mean_weights = np.array([s.contact_weights for s in path]).mean(axis=1)
-    
-    weeks = [s.date.isocalendar()[1] for s in path]
-    ticks = min(len(path), 20)
-    step = int(np.ceil(len(path)/ticks))
+    if all:
+        c_weights_home = [s.contact_weights[0] for s in path]
+        c_weights_school = [s.contact_weights[1] for s in path]
+        c_weights_work = [s.contact_weights[2] for s in path]
+        c_weights_public = [s.contact_weights[3] for s in path]
+        weeks = [s.date.isocalendar()[1] for s in path]
+        ticks = min(len(path), 20)
+        step = int(np.ceil(len(path)/ticks))
 
-    fig, ax1 = plt.subplots(figsize=(10,5))
-    fig.suptitle('Control measures given infection')
-    ax1.set_xlabel('Week')
-    ax1.set_ylabel('New infected')
-    ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
-    
-    ax2 = ax1.twinx()
-    ax2.set_ylabel('Weight')
-    ln2 = ax2.plot(mean_weights, label="Mean weighting")
-    
-    lines = ln1+ln2
-    labels = [ln[0].get_label() for ln in [ln1, ln2]]
-    plt.legend(lines, labels)
-    plt.xticks(np.arange(0, len(path), step), weeks[::step])
-    plt.grid()
-    plt.show()
+        fig, ax1 = plt.subplots(figsize=(10,5))
+        fig.suptitle('Control measures given infection')
+        ax1.set_xlabel('Week')
+        ax1.set_ylabel('New infected')
+        ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
+        
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Weight')
+        ln2 = ax2.plot(c_weights_home, label="Home")
+        ln3 = ax2.plot(c_weights_school, label="School")
+        ln4 = ax2.plot(c_weights_work, label="Work")
+        ln5 = ax2.plot(c_weights_public, label="Public")
+        
+        lines = ln1+ln2+ln3+ln4+ln5
+        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3, ln4, ln5]]
+        plt.legend(lines, labels)
+        plt.xticks(np.arange(0, len(path), step), weeks[::step])
+        plt.grid()
+        plt.show()
+    else:
+        mean_weights = np.array([s.contact_weights for s in path]).mean(axis=1)
+        
+        weeks = [s.date.isocalendar()[1] for s in path]
+        ticks = min(len(path), 20)
+        step = int(np.ceil(len(path)/ticks))
+
+        fig, ax1 = plt.subplots(figsize=(10,5))
+        fig.suptitle('Control measures given infection')
+        ax1.set_xlabel('Week')
+        ax1.set_ylabel('New infected')
+        ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
+        
+        ax2 = ax1.twinx()
+        ax2.set_ylabel('Weight')
+        ln2 = ax2.plot(mean_weights, label="Mean weighting")
+        
+        lines = ln1+ln2
+        labels = [ln[0].get_label() for ln in [ln1, ln2]]
+        plt.legend(lines, labels)
+        plt.xticks(np.arange(0, len(path), step), weeks[::step])
+        plt.grid()
+        plt.show()
 
 def smoothed_development(original, smoothed, title):
     original.plot(title=title,
