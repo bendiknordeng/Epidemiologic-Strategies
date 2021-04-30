@@ -8,6 +8,9 @@ import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
 from covid import plot
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import LinearRegression
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
@@ -367,11 +370,11 @@ def transform_path_to_numpy(path):
         new_infections.append(state.new_infected)
     return np.array(history), np.array(new_infections)
 
-def print_results(path, population, age_labels, policy, save_to_file=False):
+def print_results(state, population, age_labels, policy, save_to_file=False):
     total_pop = np.sum(population.population)
-    infected = path[-1].total_infected.sum(axis=0)
-    vaccinated = path[-1].V.sum(axis=0)
-    dead = path[-1].D.sum(axis=0)
+    infected = state.total_infected.sum(axis=0)
+    vaccinated = state.V.sum(axis=0)
+    dead = state.D.sum(axis=0)
     age_total = population[age_labels].sum().to_numpy()
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
     result = f"{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
@@ -416,18 +419,23 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
 
     total_pop = np.sum(population.population)
     age_total = population[age_labels].sum().to_numpy()
+    
+    total_std_infected = np.sqrt(np.sum(np.square(std_infected) * age_total)/ total_pop)
+    total_std_vaccinated = np.sqrt(np.sum(np.square(std_vaccinated) * age_total)/ total_pop)
+    total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
+
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
-    result = f"{columns[0]:<10} {columns[1]:^34} {columns[2]:^34} {columns[3]:^34}\n"
+    result = f"{columns[0]:<10} {columns[1]:^36} {columns[2]:^36} {columns[3]:^36}\n"
     for i in range(len(age_labels)):
         age_pop = np.sum(population[age_labels[i]])
         result += f"{age_labels[i]:<10}"
         result += f"{average_infected[i]:>12,.0f} ({100 * average_infected[i]/age_pop:>5.2f}%) SD: {std_infected[i]:>9.2f}"
-        result += f"{average_vaccinated[i]:>12,.0f} ({100 * average_vaccinated[i]/age_pop:>5.2f}%) SD: {std_vaccinated[i]:>4.2f}"
-        result += f"{average_dead[i]:>12,.0f} ({100 * average_dead[i]/age_pop:>5.2f}%) SD: {std_dead[i]:>6.2f}\n"
+        result += f"{average_vaccinated[i]:>12,.0f} ({100 * average_vaccinated[i]/age_pop:>5.2f}%) SD: {std_vaccinated[i]:>9.2f}"
+        result += f"{average_dead[i]:>12,.0f} ({100 * average_dead[i]/age_pop:>5.2f}%) SD: {std_dead[i]:>9.2f}\n"
     result += f"{'All':<10}"
-    result += f"{np.sum(average_infected):>12,.0f} ({100 * np.sum(average_infected)/total_pop:>5.2f}%) SD: {np.sum(std_infected):>9.2f}"
-    result += f"{np.sum(average_vaccinated):>12,.0f} ({100 * np.sum(average_vaccinated)/total_pop:>5.2f}%) SD: {np.sum(std_vaccinated):>4.2f}"
-    result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {np.sum(std_dead):>6.2f}"
+    result += f"{np.sum(average_infected):>12,.0f} ({100 * np.sum(average_infected)/total_pop:>5.2f}%) SD: {total_std_infected:>9.2f}"
+    result += f"{np.sum(average_vaccinated):>12,.0f} ({100 * np.sum(average_vaccinated)/total_pop:>5.2f}%) SD: {total_std_vaccinated:>9.2f}"
+    result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {total_std_dead:>9.2f}"
     print(result)
     
     if save_to_file:
@@ -522,16 +530,16 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
 
     return posteriors, log_likelihood
 
-def smooth_data(new_cases):
+def smooth_data(data):
     """ returns smoothed values of a pandas.core.series.Series
 
     Parameters
-        new_cases: pandas.core.series.Series, with date and daily new infected
+        data: pandas.core.series.Series, with date and daily new infected
     Returns
         smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
 
     """
-    smoothed = new_cases.rolling(3,
+    smoothed = data.rolling(3,
         win_type='gaussian',
         min_periods=1,
         center=True).mean(std=3).round()
@@ -619,7 +627,6 @@ def get_r_effective(path, population, config, from_data=False):
     # plot R_t development
     plot.plot_rt(result)
 
-
 def get_yll(age_bins, age_labels, deaths_per_age_group):
     """Calculates the Years of Lost Lives (YLL)
 
@@ -638,3 +645,21 @@ def get_yll(age_bins, age_labels, deaths_per_age_group):
     return int(np.round(np.sum(yll)))
 
 
+def load_response_measure_models():
+    models = {}
+    scalers = {}
+    for model_name in ['home', 'school', 'work', 'public', 'movement']:
+        models[model_name] = pkl.load(open(f"models/{model_name}_measure_model.sav", 'rb'))
+        scalers[model_name] = pkl.load(open(f"models/{model_name}_measure_scaler.sav", 'rb'))
+    return models, scalers
+
+def get_avg_std(final_states, population, age_labels):
+    final_dead = []
+    for state in final_states:
+        final_dead.append(state.D.sum(axis=0))
+    average_dead = np.average(np.array(final_dead), axis=0)
+    std_dead = np.std(np.array(final_dead), axis=0)
+    total_pop = np.sum(population.population)
+    age_total = population[age_labels].sum().to_numpy()
+    total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
+    return np.sum(average_dead), total_std_dead

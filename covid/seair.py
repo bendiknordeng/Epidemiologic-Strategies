@@ -3,7 +3,7 @@ from covid import utils
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
-                config, paths, include_flow, stochastic, write_to_csv, write_weekly):
+                config, paths, include_flow, include_waves, stochastic, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -43,6 +43,7 @@ class SEAIR:
 
         self.stochastic = stochastic
         self.include_flow = include_flow
+        self.include_waves = include_waves
         self.paths = paths
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
@@ -68,16 +69,19 @@ class SEAIR:
         n_compartments = len(compartments)
         n_regions, n_age_groups = compartments[0].shape
 
-        # Scale movement flows with alphas (movement restrictions for each region and compartment)
+        # Get information data
+        wave_factor = information['wave'] if self.include_waves else 1
         alphas = information['alphas']
+        C = self.generate_weighted_contact_matrix(information['contact_weights'])
     
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
+        total_new_deaths = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
-        beta = (self.R0/self.recovery_period)
+        beta = (self.R0/self.recovery_period) * wave_factor
         sigma = 1/self.latent_period
         p = self.proportion_symptomatic_infections
         r_e = self.presymptomatic_infectiousness
@@ -87,7 +91,6 @@ class SEAIR:
         gamma = 1/self.recovery_period
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
-        C = self.generate_weighted_contact_matrix(information['contact_weights'])
         
 
         # Run simulation
@@ -149,10 +152,11 @@ class SEAIR:
 
             # Save number of new infected
             total_new_infected[i] = new_I
+            total_new_deaths[i] = new_D
             
             # Append simulation results
             if i%self.periods_per_day == 0: # record daily history
-                daily_new_infected = new_E1 if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
+                daily_new_infected = new_I if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
                 history = self.update_history([S, E1, E2, A, I, R, D, V], daily_new_infected, history, i//self.periods_per_day)
 
             # Ensure balance in population
@@ -169,7 +173,7 @@ class SEAIR:
                                 self.paths.results_history_daily,
                                 ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
 
-        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0)
+        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)
 
     @staticmethod
     def update_history(compartments, new_infected, history, time_step):
