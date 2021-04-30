@@ -2,8 +2,8 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas,
-                vaccines_available, new_infected, total_infected, date, time_step=0):
+    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available,
+                new_infected, total_infected, new_deaths, date, time_step=0):
         """ initialize a State instance
 
         Parameters
@@ -37,6 +37,7 @@ class State:
         self.vaccines_available = vaccines_available
         self.new_infected = new_infected
         self.total_infected = total_infected
+        self.new_deaths = new_deaths
         self.date = date
         self.time_step = time_step
 
@@ -51,7 +52,7 @@ class State:
             A new initialized State instance
         """
         # Update compartment values
-        S, E1, E2, A, I, R, D, V, new_infected = epidemic_function(self, decision, decision_period, information)
+        S, E1, E2, A, I, R, D, V, new_infected, new_deaths = epidemic_function(self, decision, decision_period, information)
 
         # Update vaccine available
         vaccines_left = self.vaccines_available - np.sum(decision)
@@ -67,7 +68,7 @@ class State:
         alphas = information['alphas']
 
         return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available,
-                    new_infected, self.total_infected+new_infected, date, time_step)
+                    new_infected, self.total_infected+new_infected, new_deaths, date, time_step)
     
 
     def get_compartments_values(self):
@@ -120,4 +121,4 @@ class State:
                 S[region][age_group] -= 1
                 I[region][age_group] += 1 
 
-        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available, E1.copy(), E1.copy(), start_date, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available, I.copy(), I.copy(), 0, start_date, time_step) 

@@ -12,7 +12,7 @@ from datetime import datetime
 if __name__ == '__main__':
     # Get filepaths 
     paths = utils.create_named_tuple('filepaths.txt')
-    
+
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
@@ -21,16 +21,16 @@ if __name__ == '__main__':
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
-    response_measure_model = utils.get_response_measure_MLP()
+    response_measure_model = utils.load_response_measure_model(paths, model_type='mlp')
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     population.to_csv('data/temp_pop.csv', index=False)
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 100
+    runs = 1
     seeds = np.arange(runs)
-    day = 1
-    month = 12
+    day = 21
+    month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
@@ -80,7 +80,7 @@ if __name__ == '__main__':
         import pdb; pdb.set_trace()
         return best, solution_states[best], min_avg
     """
-    def run(weights, runs):
+    for weights in weighted_policy_weights:
         final_states = []
         print("running with weights ", weights, "...")
         for i in range(runs):
@@ -102,11 +102,6 @@ if __name__ == '__main__':
             utils.print_results(mdp.path[-1], population, age_labels, policy, save_to_file=False)
             final_states.append(mdp.path[-1])
         #utils.write_pickle(f"{weights}_{datetime.now()}", final_states) 
-        return final_states
-    
-    for weights in weighted_policy_weights:
-        run(weights, runs)
-
 
     if False:#plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
