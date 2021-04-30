@@ -634,3 +634,14 @@ def load_response_measure_models():
         models[model_name] = pkl.load(open(f"models/{model_name}_measure_model.sav", 'rb'))
         scalers[model_name] = pkl.load(open(f"models/{model_name}_measure_scaler.sav", 'rb'))
     return models, scalers
+
+def get_avg_std(final_states, population, age_labels):
+    final_dead = []
+    for state in final_states:
+        final_dead.append(state.D.sum(axis=0))
+    average_dead = np.average(np.array(final_dead), axis=0)
+    std_dead = np.std(np.array(final_dead), axis=0)
+    total_pop = np.sum(population.population)
+    age_total = population[age_labels].sum().to_numpy()
+    total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
+    return np.sum(average_dead), total_std_dead

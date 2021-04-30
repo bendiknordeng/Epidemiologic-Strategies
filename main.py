@@ -7,6 +7,7 @@ from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seair import SEAIR
 from tqdm import tqdm
+from datetime import datetime
 
 if __name__ == '__main__':
     # Get filepaths 
