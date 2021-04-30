@@ -64,22 +64,7 @@ if __name__ == '__main__':
                         alphas=config.initial_alphas,
                         population=population,
                         start_date=start_date)
-    """
-    def compare_solutions(weights, runs, population, age_labels, min_avg):
-        solution_states = {} 
-        for w in weights:
-            solution_states[w] = run(w, runs)
-        print("comparing solutions")
-        for k in solution_states.keys():
-            avg, std_dev = utils.get_avg_std(solution_states[k], population, age_labels)
-            if avg <= min_avg:
-                best = k
-                min_avg = avg
-
-        print("best solution is ", best)
-        import pdb; pdb.set_trace()
-        return best, solution_states[best], min_avg
-    """
+   
     for weights in weighted_policy_weights:
         final_states = []
         print("running with weights ", weights, "...")
