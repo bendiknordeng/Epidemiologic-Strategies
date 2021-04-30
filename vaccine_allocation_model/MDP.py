@@ -54,8 +54,8 @@ class MarkovDecisionProcess:
             print(f"\033[1mRunning MDP with weighted policy: {self.weighted_policy_weights}\033[0m")
         else:
             print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
-        for week in run_range:
+        run_range = range(self.state.time_step, self.horizon) if self.verbose and runs > 1 else tqdm(range(self.state.time_step, self.horizon))
+        for _ in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 90%.\033[0m\n")
