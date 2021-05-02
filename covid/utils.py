@@ -8,6 +8,9 @@ import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
 from covid import plot
+from scipy.stats import skewnorm
+import json
+from collections import Counter
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
@@ -455,6 +458,35 @@ def get_wave_weeks(horizon):
         for j in range(duration_waves[i]):
             weeks.append(wave_weeks[i]+j)
     return weeks
+
+def get_R_effectives(horizon):
+    with open('data/wave_parameters.json') as file:
+        data = json.load(file)
+    transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
+    R_timeline = np.ones(horizon)
+    current_state = 'U'
+    wave_state_count = []
+    wave_state_timeline = []
+    i = 0
+    while True:
+        wave_state_count.append(current_state)
+        n_wave = Counter(wave_state_count)[current_state]
+        params = data['duration'][current_state][str(n_wave)]
+        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std']) // 7 # weeks
+        duration = min(max(duration, params['min']), params['max'])
+        try:
+            for week in range(i, i+int(duration)):
+                wave_state_timeline.append(current_state)
+                params = data['R'][current_state][str(n_wave)]
+                R = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
+                R = min(max(R, params['min']), params['max'])
+                R_timeline[week] = R
+            i += int(duration)
+            current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
+        except:
+            break
+    return R_timeline, wave_state_timeline
+
 
 def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     """ function to calculate posteriors
