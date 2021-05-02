@@ -6,8 +6,9 @@ import pandas as pd
 from datetime import timedelta
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, initial_state, response_measure_model,
-                use_response_measure_model, horizon, policy, weighted_policy_weights, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, initial_state, 
+                response_measure_model, R_timeline, wave_state_timeline, 
+                horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,7 +28,8 @@ class MarkovDecisionProcess:
         self.epidemic_function = epidemic_function
         self.state = initial_state
         self.response_measure_model = response_measure_model
-        self.use_response_measure_model = use_response_measure_model
+        self.R_timeline = R_timeline
+        self.wave_state_timeline = wave_state_timeline
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
@@ -42,7 +44,7 @@ class MarkovDecisionProcess:
         self.policy = self.policies[policy]
         self.weighted_policy_weights = np.array(weighted_policy_weights)
         self.path = [self.state]
-        self.wave_weeks = get_wave_weeks(self.horizon)
+        self.week = 0
 
     def run(self, runs):
         """ Updates states from current time_step to a specified horizon
@@ -55,7 +57,8 @@ class MarkovDecisionProcess:
         else:
             print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
         run_range = range(self.state.time_step, self.horizon) if self.verbose and runs > 1 else tqdm(range(self.state.time_step, self.horizon))
-        for _ in run_range:
+        for week in run_range:
+            self.week = week
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 90%.\033[0m\n")
@@ -83,16 +86,12 @@ class MarkovDecisionProcess:
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
-        wave = self._get_infection_wave()
-        if self.use_response_measure_model:
-            contact_weights, alphas = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas)
-        else:
-            contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
+        contact_weights, alphas = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas)
         information = {
             'vaccine_supply': vaccine_supply,
-            'wave': wave,
             'alphas': alphas,   
-            'contact_weights': contact_weights
+            'contact_weights': contact_weights,
+            'R': self.R_timeline[self.week]
             }
 
         return information
@@ -107,19 +106,6 @@ class MarkovDecisionProcess:
         information = self.get_exogenous_information(self.state)
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
-
-    def _get_infection_wave(self):
-        simulation_week = self.state.time_step//self.decision_period
-        if simulation_week in self.wave_weeks:
-            wave_strength = np.random.normal(2, 0.1)
-            if self.verbose:
-                print("\033[1mInfection wave\033[0m")
-                print(f"Wavestrength: {wave_strength}\n\n")
-            return wave_strength
-        if self.verbose:
-            print("\033[1mNo infection wave\033[0m")
-            print(f"Wavestrength: 1\n\n")
-        return 1 # Multiply by 1 = no change
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas):
         if len(self.path) > 3:

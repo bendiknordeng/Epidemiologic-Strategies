@@ -1,4 +1,3 @@
-from numpy.core.fromnumeric import squeeze
 import pandas as pd
 import numpy as np
 import pickle as pkl
@@ -11,6 +10,9 @@ from covid import plot
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPRegressor
 from sklearn.linear_model import LinearRegression
+from scipy.stats import skewnorm
+import json
+from collections import Counter
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
@@ -464,6 +466,35 @@ def get_wave_weeks(horizon):
             weeks.append(wave_weeks[i]+j)
     return weeks
 
+def get_R_timeline(horizon):
+    with open('data/wave_parameters.json') as file:
+        data = json.load(file)
+    transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
+    R_timeline = np.ones(horizon)
+    current_state = 'U'
+    wave_state_count = []
+    wave_state_timeline = []
+    i = 0
+    while True:
+        wave_state_count.append(current_state)
+        n_wave = Counter(wave_state_count)[current_state]
+        params = data['duration'][current_state][str(n_wave)]
+        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std']) // 7 # weeks
+        duration = min(max(duration, params['min']), params['max'])
+        try:
+            for week in range(i, i+int(duration)):
+                wave_state_timeline.append(current_state)
+                params = data['R'][current_state][str(n_wave)]
+                R = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
+                R = min(max(R, params['min']), params['max'])
+                R_timeline[week] = R
+            i += int(duration)
+            current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
+        except:
+            break
+    return R_timeline, wave_state_timeline
+
+
 def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     """ function to calculate posteriors
 
@@ -495,20 +526,14 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     process_matrix /= process_matrix.sum(axis=0)
     
     # (4) Calculate the initial prior
-    #prior0 = sps.gamma(a=4).pdf(r_t_range)
     prior0 = np.ones_like(r_t_range)/len(r_t_range)
     prior0 /= prior0.sum()
 
-    # Create a DataFrame that will hold our posteriors for each day
-    # Insert our prior as the first posterior.
-    posteriors = pd.DataFrame(
-        index=r_t_range,
-        columns=new_infected.index,
-        data={new_infected.index[0]: prior0}
-    )
+    # Create a DataFrame that will hold our posteriors for each day. Insert our prior as the first posterior.
+    posteriors = pd.DataFrame(index=r_t_range, columns=new_infected.index, data={new_infected.index[0]: prior0})
     
     # Keep track of the sum of the log of the probability of the data for maximum likelihood calculation.
-    log_likelihood = 0.0
+    log_likelihood = 0.000001
 
     # (5) Iteratively apply Bayes' rule
     for previous_day, current_day in zip(new_infected.index[:-1], new_infected.index[1:]):
@@ -573,6 +598,17 @@ def highest_density_interval(posteriors, percentile=.9):
     return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
 
 def get_r_effective(path, population, config, from_data=False):
+    """plots R effective
+
+    Args:
+        path ([type]): [description]
+        population ([type]): [description]
+        config ([type]): [description]
+        from_data (bool, optional): Indicating if R effective should be plotted for historical Norwegian data. Defaults to False.
+    """
+    print(type(path))
+    print(type(population))
+    print(type(config))
     # Read in data
     if from_data:
         states = pd.read_csv('data/fhi_data_daily.csv',

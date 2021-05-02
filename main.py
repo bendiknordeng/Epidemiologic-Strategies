@@ -40,7 +40,7 @@ if __name__ == '__main__':
     policy = policies[-1]
     plot_results = runs == 1
     verbose = False
-    use_response_measure_model = True
+    R_timeline, wave_state_timeline = utils.get_R_timeline(horizon)
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
     epidemic_function = SEAIR(
@@ -54,7 +54,6 @@ if __name__ == '__main__':
                         write_to_csv=False, 
                         write_weekly=False,
                         include_flow=True,
-                        include_waves=True,
                         stochastic=True)
 
     initial_state = State.initialize_state(
@@ -79,7 +78,8 @@ if __name__ == '__main__':
                             policy=policy,
                             weighted_policy_weights=weighted_policy_weights,
                             response_measure_model=response_measure_model,
-                            use_response_measure_model=use_response_measure_model,
+                            R_timeline=R_timeline,
+                            wave_state_timeline=wave_state_timeline,
                             historic_data=historic_data,
                             verbose=verbose)
         mdp.run(runs)

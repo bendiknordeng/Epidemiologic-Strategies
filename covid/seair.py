@@ -3,7 +3,7 @@ from covid import utils
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
-                config, paths, include_flow, include_waves, stochastic, write_to_csv, write_weekly):
+                config, paths, include_flow, stochastic, write_to_csv, write_weekly):
         """ 
         Parameters:
             OD: Origin-Destination matrix
@@ -43,7 +43,6 @@ class SEAIR:
 
         self.stochastic = stochastic
         self.include_flow = include_flow
-        self.include_waves = include_waves
         self.paths = paths
         self.write_to_csv = write_to_csv
         self.write_weekly = write_weekly
@@ -70,9 +69,9 @@ class SEAIR:
         n_regions, n_age_groups = compartments[0].shape
 
         # Get information data
-        wave_factor = information['wave'] if self.include_waves else 1
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
+        R = information['R']
     
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -81,7 +80,7 @@ class SEAIR:
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
-        beta = (self.R0/self.recovery_period) * wave_factor
+        beta = (R/self.recovery_period)
         sigma = 1/self.latent_period
         p = self.proportion_symptomatic_infections
         r_e = self.presymptomatic_infectiousness
