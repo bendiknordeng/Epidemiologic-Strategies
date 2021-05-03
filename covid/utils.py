@@ -451,16 +451,16 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
-def get_R_timeline(horizon):
+def get_wave_timeline(horizon):
     with open('data/wave_parameters.json') as file:
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
-    R_timeline = np.zeros(horizon)
+    wave_timeline = np.zeros(horizon)
     current_state = 'U'
     wave_state_count = []
     wave_state_timeline = []
     factor = {
-        "U": 2,
+        "U": 1.1,
         "D": 0.9,
         "N": 1
     }
@@ -477,12 +477,12 @@ def get_R_timeline(horizon):
                 # params = data['R'][current_state][str(n_wave)]
                 # R = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
                 # R = min(max(R, params['min']), params['max'])
-                R_timeline[week] = factor[current_state]
+                wave_timeline[week] = factor[current_state]
             i += int(duration)
             current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
         except:
             break
-    return R_timeline, wave_state_timeline
+    return wave_timeline, wave_state_timeline
 
 
 def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):

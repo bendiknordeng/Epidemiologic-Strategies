@@ -71,7 +71,7 @@ class SEAIR:
         # Get information data
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
-        R = information['R']
+        wave_factor = information['wave_factor']
     
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -80,7 +80,7 @@ class SEAIR:
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
-        beta = (self.R0/self.recovery_period) * R
+        beta = (self.R0/self.recovery_period) * wave_factor
         sigma = 1/self.latent_period
         p = self.proportion_symptomatic_infections
         r_e = self.presymptomatic_infectiousness

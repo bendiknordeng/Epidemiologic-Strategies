@@ -23,7 +23,6 @@ if __name__ == '__main__':
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    population.to_csv('data/temp_pop.csv', index=False)
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
@@ -67,8 +66,8 @@ if __name__ == '__main__':
     run_range = tqdm(range(runs)) if runs > 1 else range(runs)
     for i in run_range:
         np.random.seed(seeds[i])
-        R_timeline, wave_state_timeline = utils.get_R_timeline(horizon)
-        print(R_timeline)
+        wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
+        print(wave_timeline)
         print(wave_state_timeline)
         mdp = MarkovDecisionProcess(
                             config=config,
@@ -80,7 +79,7 @@ if __name__ == '__main__':
                             policy=policy,
                             weighted_policy_weights=weighted_policy_weights,
                             response_measure_model=response_measure_model,
-                            R_timeline=R_timeline,
+                            wave_timeline=wave_timeline,
                             wave_state_timeline=wave_state_timeline,
                             historic_data=historic_data,
                             verbose=verbose)

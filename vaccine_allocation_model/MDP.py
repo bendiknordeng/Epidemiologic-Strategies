@@ -6,7 +6,7 @@ from datetime import timedelta
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state, 
-                response_measure_model, R_timeline, wave_state_timeline, 
+                response_measure_model, wave_timeline, wave_state_timeline, 
                 horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
@@ -27,7 +27,7 @@ class MarkovDecisionProcess:
         self.epidemic_function = epidemic_function
         self.state = initial_state
         self.response_measure_model = response_measure_model
-        self.R_timeline = R_timeline
+        self.wave_timeline = wave_timeline
         self.wave_state_timeline = wave_state_timeline
         self.historic_data = historic_data
         self.policy_name = policy
@@ -90,7 +90,7 @@ class MarkovDecisionProcess:
             'vaccine_supply': vaccine_supply,
             'alphas': alphas,   
             'contact_weights': contact_weights,
-            'R': self.R_timeline[self.week]
+            'wave_factor': self.wave_timeline[self.week]
             }
 
         return information
