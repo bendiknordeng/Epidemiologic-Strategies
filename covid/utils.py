@@ -471,10 +471,11 @@ def get_R_timeline(horizon):
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
     R_timeline = np.ones(horizon)
+    R_timeline[0] = 3.1 # initial
     current_state = 'U'
     wave_state_count = []
     wave_state_timeline = []
-    i = 0
+    i = 1
     while True:
         wave_state_count.append(current_state)
         n_wave = Counter(wave_state_count)[current_state]

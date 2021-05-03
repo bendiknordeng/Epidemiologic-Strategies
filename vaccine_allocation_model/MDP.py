@@ -108,7 +108,7 @@ class MarkovDecisionProcess:
         self.path.append(self.state)
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas):
-        if len(self.path) > 3:
+        if len(self.path) > 10:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
             cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()

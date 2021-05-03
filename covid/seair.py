@@ -80,7 +80,7 @@ class SEAIR:
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
-        beta = (R/self.recovery_period)
+        beta = (self.R0/self.recovery_period) * R
         sigma = 1/self.latent_period
         p = self.proportion_symptomatic_infections
         r_e = self.presymptomatic_infectiousness

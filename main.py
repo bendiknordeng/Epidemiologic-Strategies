@@ -33,14 +33,16 @@ if __name__ == '__main__':
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 10 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
-    initial_infected = 1000
+    initial_infected = 5
     initial_vaccines_available = 0
     policy = policies[-1]
-    plot_results = runs == 1
-    verbose = False
+    plot_results = (runs == 1)
+    verbose = True
     R_timeline, wave_state_timeline = utils.get_R_timeline(horizon)
+    print(R_timeline)
+    print(wave_state_timeline)
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
     epidemic_function = SEAIR(
