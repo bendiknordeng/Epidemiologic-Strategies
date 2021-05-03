@@ -25,7 +25,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 1
+    runs = 100
     seeds = np.arange(runs)
     day = 21
     month = 2
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     initial_infected = 5
     initial_vaccines_available = 0
     policy = policies[-1]
-    plot_results = (runs > 1)
+    plot_results = False
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
@@ -67,8 +67,6 @@ if __name__ == '__main__':
     for i in run_range:
         np.random.seed(seeds[i])
         wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
-        print(wave_timeline)
-        print(wave_state_timeline)
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,
@@ -93,8 +91,6 @@ if __name__ == '__main__':
     if runs > 1:
         utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
 
-    utils.get_r_effective(mdp.path, population, config, from_data=False)
-    
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         plot.plot_control_measures(mdp.path, all=False)
@@ -104,4 +100,5 @@ if __name__ == '__main__':
         infection_results_age = new_infections.sum(axis=1)
         plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
+        #utils.get_r_effective(mdp.path, population, config, from_data=False)
 
