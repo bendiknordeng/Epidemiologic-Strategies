@@ -580,8 +580,7 @@ def highest_density_interval(posteriors, percentile=.9):
         pandas.core.frame.DataFrame
     """
     if(isinstance(posteriors, pd.DataFrame)):
-        return pd.DataFrame([highest_density_interval(posteriors[col], percentile=percentile) for col in posteriors],
-                            index=posteriors.columns)
+        return pd.DataFrame([highest_density_interval(posteriors[col], percentile=percentile) for col in posteriors], index=posteriors.columns)
     cumsum = np.cumsum(posteriors.values)
 
     # N x N matrix of total probability mass for each low, high
@@ -591,9 +590,13 @@ def highest_density_interval(posteriors, percentile=.9):
     lows, highs = (total_p > percentile).nonzero()
     
     # Find the smallest range (highest density)
-    best = (highs - lows).argmin()
-    low = posteriors.index[lows[best]]
-    high = posteriors.index[highs[best]]
+    try:
+        best = (highs - lows).argmin()
+        low = posteriors.index[lows[best]]
+        high = posteriors.index[highs[best]]
+    except:
+        low = 0
+        high = 0
     
     return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
 
@@ -606,9 +609,6 @@ def get_r_effective(path, population, config, from_data=False):
         config ([type]): [description]
         from_data (bool, optional): Indicating if R effective should be plotted for historical Norwegian data. Defaults to False.
     """
-    print(type(path))
-    print(type(population))
-    print(type(config))
     # Read in data
     if from_data:
         states = pd.read_csv('data/fhi_data_daily.csv',
@@ -658,7 +658,6 @@ def get_r_effective(path, population, config, from_data=False):
     hdis = highest_density_interval(posteriors, percentile=0.9)
     most_likely = posteriors.idxmax().rename('ML')
     result = pd.concat([most_likely, hdis], axis=1)
-    # print(hdi.head())
 
     # plot R_t development
     plot.plot_rt(result)
