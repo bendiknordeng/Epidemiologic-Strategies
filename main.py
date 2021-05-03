@@ -23,7 +23,6 @@ if __name__ == '__main__':
     OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    population.to_csv('data/temp_pop.csv', index=False)
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
@@ -40,7 +39,6 @@ if __name__ == '__main__':
     policy = policies[-1]
     plot_results = runs == 1
     verbose = False
-    use_response_measure_model = True
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
     epidemic_function = SEAIR(
@@ -55,13 +53,13 @@ if __name__ == '__main__':
                         write_weekly=False,
                         include_flow=True,
                         include_waves=True,
-                        stochastic=True)
+                        stochastic=False)
 
     initial_state = State.initialize_state(
                         num_initial_infected=initial_infected,
                         vaccines_available=initial_vaccines_available,
                         contact_weights=config.initial_contact_weights,
-                        alphas=config.initial_alphas,
+                        flow_scale=config.flow_scale,
                         population=population,
                         start_date=start_date)
     
@@ -79,7 +77,6 @@ if __name__ == '__main__':
                             policy=policy,
                             weighted_policy_weights=weighted_policy_weights,
                             response_measure_model=response_measure_model,
-                            use_response_measure_model=use_response_measure_model,
                             historic_data=historic_data,
                             verbose=verbose)
         mdp.run(runs)

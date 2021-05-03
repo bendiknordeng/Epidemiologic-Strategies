@@ -7,7 +7,7 @@ from datetime import timedelta
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state, response_measure_model,
-                use_response_measure_model, horizon, policy, weighted_policy_weights, verbose, historic_data=None):
+                horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -27,7 +27,6 @@ class MarkovDecisionProcess:
         self.epidemic_function = epidemic_function
         self.state = initial_state
         self.response_measure_model = response_measure_model
-        self.use_response_measure_model = use_response_measure_model
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
@@ -72,7 +71,7 @@ class MarkovDecisionProcess:
             t: time_step
             state: state that 
         Returns:
-            returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
+            returns a dictionary of information contain 'flow_scale', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
         """
         today = pd.Timestamp(state.date)
         end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//self.config.periods_per_day))
@@ -84,14 +83,11 @@ class MarkovDecisionProcess:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
         wave = self._get_infection_wave()
-        if self.use_response_measure_model:
-            contact_weights, alphas = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas)
-        else:
-            contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
+        contact_weights, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.flow_scale)
         information = {
             'vaccine_supply': vaccine_supply,
             'wave': wave,
-            'alphas': alphas,   
+            'flow_scale': flow_scale,   
             'contact_weights': contact_weights
             }
 
@@ -121,7 +117,7 @@ class MarkovDecisionProcess:
             print(f"Wavestrength: 1\n\n")
         return 1 # Multiply by 1 = no change
 
-    def _map_infection_to_response_measures(self, previous_cw, previous_alphas):
+    def _map_infection_to_response_measures(self, previous_cw, previous_flow_scale):
         if len(self.path) > 3:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
@@ -154,19 +150,23 @@ class MarkovDecisionProcess:
                 new_cw.append(cw_mapper[category](measure))
 
             # Alphas
-            initial_alphas = np.array(self.config.initial_alphas)
-            alpha_mapper = {
-                0: lambda x: initial_alphas[0] - x * 0.25, # S
-                1: lambda x: initial_alphas[1] - x * 0.3, # E1
-                2: lambda x: initial_alphas[2] - x * 0.3, # E2
-                3: lambda x: initial_alphas[3] - x * 0.3, # A
-                4: lambda x: initial_alphas[4] - x * 0.03 # I
-            }
+            # initial_alphas = np.array(self.config.initial_alphas)
+            # alpha_mapper = {
+            #     0: lambda x: initial_alphas[0] - x * 0.25, # S
+            #     1: lambda x: initial_alphas[1] - x * 0.3, # E1
+            #     2: lambda x: initial_alphas[2] - x * 0.3, # E2
+            #     3: lambda x: initial_alphas[3] - x * 0.3, # A
+            #     4: lambda x: initial_alphas[4] - x * 0.03 # I
+            # }
+            # input = scalers['movement'].transform(features.reshape(1,-1))
+            # measure = models['movement'].predict(input)[0]
+            # new_alphas = []
+            # for i in range(len(initial_alphas)):
+            #     new_alphas.append(alpha_mapper[i](measure))
+
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_alphas = []
-            for i in range(len(initial_alphas)):
-                new_alphas.append(alpha_mapper[i](measure))
+            new_flow_scale = self.config.flow_scale - 0.1 * measure
 
             if self.verbose:
                 print("Per 100k:")
@@ -179,12 +179,12 @@ class MarkovDecisionProcess:
                 print(f"New deaths two weeks ago: {deaths_2w_ago:.3f}")
                 print(f"Previous weights: {previous_cw}")
                 print(f"New weights: {new_cw}")
-                print(f"Previous alphas: {previous_alphas}")
-                print(f"New alphas: {new_alphas}\n\n")
+                print(f"Previous flow scale: {previous_flow_scale}")
+                print(f"New flow scale: {new_flow_scale}\n\n")
 
-            return new_cw, new_alphas
+            return new_cw, new_flow_scale
         
-        return previous_cw, previous_alphas
+        return previous_cw, previous_flow_scale
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution
