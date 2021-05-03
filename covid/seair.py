@@ -68,10 +68,11 @@ class SEAIR:
         compartments = state.get_compartments_values()
         n_compartments = len(compartments)
         n_regions, n_age_groups = compartments[0].shape
+        S, E1, E2, A, I, R, D, V = compartments
 
         # Get information data
         wave_factor = information['wave'] if self.include_waves else 1
-        alphas = information['alphas']
+        flow_scale = information['flow_scale']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
     
         # Initialize variables for saving history
@@ -94,7 +95,6 @@ class SEAIR:
         
 
         # Run simulation
-        S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
             timestep = (state.date.weekday() + i//4) % decision_period
             
@@ -104,19 +104,17 @@ class SEAIR:
             S = S - successfully_new_V
             R = R + successfully_new_V
             V = V + new_V
-
-            # Finds the movement flow for the given period i and scales it for each 
+            
+            # Finds the movement flow for the given period i and scales it for each
             if self.include_flow:
-                total_population = np.sum(N)
-                flow_compartments = [S, E1, E2, A, I]
-                for ix, compartment in enumerate(flow_compartments):
-                    comp_pop = np.sum(compartment)
-                    realOD = self.OD[timestep] * alphas[ix] * comp_pop/total_population
-                    if timestep%2 == 1 and timestep < self.periods_per_day*5:
-                        flow_compartments[ix] = self.flow_transition(compartment, realOD)
-                
-                S, E1, E2, A, I = flow_compartments
-
+                flow_pop = S + E1 + E2 + A + I
+                if timestep%2 == 1 and timestep < self.periods_per_day*5:
+                    realOD = self.OD[timestep] * flow_scale
+                    flow_pop = self.flow_transition(flow_pop, realOD)
+                    total_flow_pop = np.sum(flow_pop)
+                    comp_fractions = [np.sum(comp)/total_flow_pop for comp in [S, E1, E2, A, I]]
+                    S, E1, E2, A, I = self.distribute_flow_pop(flow_pop, comp_fractions)
+            
             if self.stochastic:
                 # Get stochastic transitions
                 prob_e = beta*r_e * np.matmul(C, (E2.T/N)).T
@@ -191,7 +189,7 @@ class SEAIR:
         history[time_step,-1,:] = new_infected
         return history
 
-    def flow_transition(self, compartment, OD):
+    def flow_transition(self, flow_pop, OD):
         """ Calculates the netflow for every region and age group
 
         Parameters
@@ -200,11 +198,21 @@ class SEAIR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
+        n_regions = flow_pop.shape[0]
         age_flow_scaling = np.array(self.age_group_flow_scaling)
-        inflow = np.array([np.matmul(compartment[:,i], OD * age_flow_scaling[i]) for i in range(len(age_flow_scaling))]).T
-        outflow = np.array([compartment[:,i] * OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-        return compartment + inflow - outflow
-        
+        age_group_flow = np.random.binomial(flow_pop[:,].astype(int), age_flow_scaling)
+        for r in range(n_regions):
+            flow = np.random.binomial(age_group_flow[r], OD[r].reshape(-1,1))
+            flow_pop = flow_pop + flow
+            outflow_r = flow.sum(axis=0)
+            flow_pop[r] -= outflow_r
+        return flow_pop
+
+    def distribute_flow_pop(self, flow_pop, comp_fractions):
+        n_regions, n_age_groups = flow_pop.shape
+        S, E1, E2, A, I = np.array([[np.random.multinomial(flow_pop[i][j], comp_fractions) for j in range(n_age_groups)] for i in range(n_regions)]).transpose(2,0,1)
+        return S, E1, E2, A, I
+
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
 
