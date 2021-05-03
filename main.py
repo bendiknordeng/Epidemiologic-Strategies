@@ -59,7 +59,8 @@ if __name__ == '__main__':
                         num_initial_infected=initial_infected,
                         vaccines_available=initial_vaccines_available,
                         contact_weights=config.initial_contact_weights,
-                        flow_scale=config.flow_scale,
+                        alphas=config.initial_alphas,
+                        flow_scale=config.initial_flow_scale,
                         population=population,
                         start_date=start_date)
     

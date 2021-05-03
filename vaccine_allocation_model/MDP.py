@@ -1,9 +1,9 @@
 from covid.utils import get_wave_weeks
-from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
+import time
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state, response_measure_model,
@@ -83,12 +83,13 @@ class MarkovDecisionProcess:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
         wave = self._get_infection_wave()
-        contact_weights, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.flow_scale)
+        contact_weights, alphas, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas, self.state.flow_scale)
         information = {
             'vaccine_supply': vaccine_supply,
             'wave': wave,
-            'flow_scale': flow_scale,   
-            'contact_weights': contact_weights
+            'contact_weights': contact_weights,
+            'alphas': alphas,
+            'flow_scale': flow_scale   
             }
 
         return information
@@ -117,7 +118,7 @@ class MarkovDecisionProcess:
             print(f"Wavestrength: 1\n\n")
         return 1 # Multiply by 1 = no change
 
-    def _map_infection_to_response_measures(self, previous_cw, previous_flow_scale):
+    def _map_infection_to_response_measures(self, previous_cw, previous_alphas, previous_flow_scale):
         if len(self.path) > 3:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
@@ -138,10 +139,10 @@ class MarkovDecisionProcess:
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] + x * 0.1,
-                'school': lambda x: initial_cw[1] - x * 0.25,
-                'work': lambda x: initial_cw[2] - x * 0.25,
-                'public': lambda x: initial_cw[3] - x * 0.2
+                'home': lambda x: initial_cw[0] + x * 0.15,
+                'school': lambda x: initial_cw[1] - x * 0.2,
+                'work': lambda x: initial_cw[2] - x * 0.2,
+                'public': lambda x: initial_cw[3] - x * 0.15
             }
             new_cw = []
             for category in ['home', 'school', 'work', 'public']:
@@ -150,23 +151,21 @@ class MarkovDecisionProcess:
                 new_cw.append(cw_mapper[category](measure))
 
             # Alphas
-            # initial_alphas = np.array(self.config.initial_alphas)
-            # alpha_mapper = {
-            #     0: lambda x: initial_alphas[0] - x * 0.25, # S
-            #     1: lambda x: initial_alphas[1] - x * 0.3, # E1
-            #     2: lambda x: initial_alphas[2] - x * 0.3, # E2
-            #     3: lambda x: initial_alphas[3] - x * 0.3, # A
-            #     4: lambda x: initial_alphas[4] - x * 0.03 # I
-            # }
-            # input = scalers['movement'].transform(features.reshape(1,-1))
-            # measure = models['movement'].predict(input)[0]
-            # new_alphas = []
-            # for i in range(len(initial_alphas)):
-            #     new_alphas.append(alpha_mapper[i](measure))
+            initial_alphas = np.array(self.config.initial_alphas)
+            alpha_mapper = {
+                'E2': lambda x: initial_alphas[0]*(1 - x * 1e-4),
+                'A': lambda x: initial_alphas[1]*(1 - x * 1e-4),
+                'I': lambda x: initial_alphas[2]*(1 - x * 3e-3)
+            }
+            input = scalers['alpha'].transform(features.reshape(1,-1))
+            measure = min(max(models['alpha'].predict(input)[0], 1), 100)
+            new_alphas = []
+            for comp in ['E2', 'A', 'I']:
+                new_alphas.append(alpha_mapper[comp](measure))
 
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_flow_scale = self.config.flow_scale - 0.1 * measure
+            new_flow_scale = self.config.initial_flow_scale - 0.1 * measure
 
             if self.verbose:
                 print("Per 100k:")
@@ -179,12 +178,15 @@ class MarkovDecisionProcess:
                 print(f"New deaths two weeks ago: {deaths_2w_ago:.3f}")
                 print(f"Previous weights: {previous_cw}")
                 print(f"New weights: {new_cw}")
+                print(f"Previous alphas: {previous_alphas}")
+                print(f"New alphas: {new_alphas}")
                 print(f"Previous flow scale: {previous_flow_scale}")
                 print(f"New flow scale: {new_flow_scale}\n\n")
+                time.sleep(0.2)
 
-            return new_cw, new_flow_scale
+            return new_cw, new_alphas, new_flow_scale
         
-        return previous_cw, previous_flow_scale
+        return previous_cw, previous_alphas, previous_flow_scale
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution

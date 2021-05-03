@@ -71,8 +71,9 @@ class SEAIR:
 
         # Get information data
         wave_factor = information['wave'] if self.include_waves else 1
-        flow_scale = information['flow_scale']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
+        alphas = information['alphas']
+        flow_scale = information['flow_scale']
     
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -110,9 +111,9 @@ class SEAIR:
                 flow_comps = [S, E1, E2, A, I]
                 S, E1, E2, A, I = self.flow_transition(flow_comps, realOD)
 
-            infection_e = beta*r_e * np.matmul(C, (E2.T/N)).T
-            infection_a = beta*r_a * np.matmul(C, (A.T/N)).T
-            infection_i = beta * np.matmul(C, (I.T/N)).T
+            infection_e = beta*r_e * np.matmul(C*alphas[0], (E2.T/N)).T
+            infection_a = beta*r_a * np.matmul(C*alphas[1], (A.T/N)).T
+            infection_i = beta * np.matmul(C*alphas[2], (I.T/N)).T
             if self.stochastic:
                 # Get stochastic transitions
                 new_E1 = np.random.binomial(S.astype(int), infection_e + infection_a + infection_i)
