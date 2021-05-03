@@ -1,4 +1,3 @@
-from covid.utils import get_wave_weeks
 from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
@@ -128,10 +127,10 @@ class MarkovDecisionProcess:
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] + x * 0.1,
-                'school': lambda x: initial_cw[1] - x * 0.25,
-                'work': lambda x: initial_cw[2] - x * 0.25,
-                'public': lambda x: initial_cw[3] - x * 0.2
+                'home': lambda x: initial_cw[0] + x * 0.25,
+                'school': lambda x: initial_cw[1] - x * 0.1,
+                'work': lambda x: initial_cw[2] - x * 0.1,
+                'public': lambda x: initial_cw[3] - x * 0.1
             }
             new_cw = []
             for category in ['home', 'school', 'work', 'public']:
@@ -142,11 +141,11 @@ class MarkovDecisionProcess:
             # Alphas
             initial_alphas = np.array(self.config.initial_alphas)
             alpha_mapper = {
-                0: lambda x: initial_alphas[0] - x * 0.25, # S
-                1: lambda x: initial_alphas[1] - x * 0.3, # E1
-                2: lambda x: initial_alphas[2] - x * 0.3, # E2
-                3: lambda x: initial_alphas[3] - x * 0.3, # A
-                4: lambda x: initial_alphas[4] - x * 0.03 # I
+                0: lambda x: initial_alphas[0] - x * 0.1, # S
+                1: lambda x: initial_alphas[1] - x * 0.1, # E1
+                2: lambda x: initial_alphas[2] - x * 0.1, # E2
+                3: lambda x: initial_alphas[3] - x * 0.1, # A
+                4: lambda x: initial_alphas[4] - x * 0.05 # I
             }
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]

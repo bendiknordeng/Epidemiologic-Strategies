@@ -450,32 +450,21 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         total["Age group"] = "All"
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
-    
-
-def get_wave_weeks(horizon):
-    nr_waves = int(horizon/20) # np.random.poisson(horizon/20) # assumption: a wave happens on average every 20 weeks
-    duration_waves = [max(1,int(np.random.exponential(2))) for _ in range(nr_waves)] # assumption: a wave lasts on average 2 weeks
-    mean = (horizon - np.sum(duration_waves))/(nr_waves) # evenly distributed time between waves
-    std = mean/3
-    time_between_waves = [int(np.random.normal(mean, std)) for _ in range(nr_waves)] # time between waves, exponentially distributed
-    wave_weeks = np.cumsum(time_between_waves)
-    wave_weeks[1:len(duration_waves)] += np.cumsum(duration_waves)[:-1]
-    weeks = []
-    for i in range(nr_waves):
-        for j in range(duration_waves[i]):
-            weeks.append(wave_weeks[i]+j)
-    return weeks
 
 def get_R_timeline(horizon):
     with open('data/wave_parameters.json') as file:
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
-    R_timeline = np.ones(horizon)
-    R_timeline[0] = 3.1 # initial
+    R_timeline = np.zeros(horizon)
     current_state = 'U'
     wave_state_count = []
     wave_state_timeline = []
-    i = 1
+    factor = {
+        "U": 2,
+        "D": 0.9,
+        "N": 1
+    }
+    i = 0
     while True:
         wave_state_count.append(current_state)
         n_wave = Counter(wave_state_count)[current_state]
@@ -485,10 +474,10 @@ def get_R_timeline(horizon):
         try:
             for week in range(i, i+int(duration)):
                 wave_state_timeline.append(current_state)
-                params = data['R'][current_state][str(n_wave)]
-                R = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
-                R = min(max(R, params['min']), params['max'])
-                R_timeline[week] = R
+                # params = data['R'][current_state][str(n_wave)]
+                # R = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
+                # R = min(max(R, params['min']), params['max'])
+                R_timeline[week] = factor[current_state]
             i += int(duration)
             current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
         except:

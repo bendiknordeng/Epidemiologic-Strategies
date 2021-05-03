@@ -38,11 +38,8 @@ if __name__ == '__main__':
     initial_infected = 5
     initial_vaccines_available = 0
     policy = policies[-1]
-    plot_results = (runs == 1)
-    verbose = True
-    R_timeline, wave_state_timeline = utils.get_R_timeline(horizon)
-    print(R_timeline)
-    print(wave_state_timeline)
+    plot_results = (runs > 1)
+    verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
     epidemic_function = SEAIR(
@@ -70,6 +67,9 @@ if __name__ == '__main__':
     run_range = tqdm(range(runs)) if runs > 1 else range(runs)
     for i in run_range:
         np.random.seed(seeds[i])
+        R_timeline, wave_state_timeline = utils.get_R_timeline(horizon)
+        print(R_timeline)
+        print(wave_state_timeline)
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,
