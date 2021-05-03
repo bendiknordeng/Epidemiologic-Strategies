@@ -673,7 +673,7 @@ def get_yll(age_bins, age_labels, deaths_per_age_group):
 def load_response_measure_models():
     models = {}
     scalers = {}
-    for model_name in ['home', 'school', 'work', 'public', 'movement']:
+    for model_name in ['home', 'school', 'work', 'public', 'alpha', 'movement']:
         models[model_name] = pkl.load(open(f"models/{model_name}_measure_model.sav", 'rb'))
         scalers[model_name] = pkl.load(open(f"models/{model_name}_measure_scaler.sav", 'rb'))
     return models, scalers

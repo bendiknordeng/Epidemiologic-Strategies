@@ -1,4 +1,3 @@
-from numpy.lib.npyio import save
 from covid import plot
 from covid import utils
 import numpy as np
@@ -59,6 +58,7 @@ if __name__ == '__main__':
                         vaccines_available=initial_vaccines_available,
                         contact_weights=config.initial_contact_weights,
                         alphas=config.initial_alphas,
+                        flow_scale=config.initial_flow_scale,
                         population=population,
                         start_date=start_date)
     

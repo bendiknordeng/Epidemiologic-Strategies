@@ -2,8 +2,8 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available,
-                new_infected, total_infected, new_deaths, date, time_step=0):
+    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, 
+                vaccines_available, new_infected, total_infected, new_deaths, date, time_step=0):
         """ initialize a State instance
 
         Parameters
@@ -16,7 +16,7 @@ class State:
             D: array with shape (356,5) indicating number of accumulated deaths in each region for each age group
             V: array with shape (356,5) indicating number of vaccinated in each region for each age group
             contact_weights: weights indicating weighting of contact matrices (Home, School, Work, Transport, Leisure)
-            alphas, scaling factors indicating flow in compartments S, E1, E2, A and I
+            flow_scale: scaling factor indicating total flow
             vaccines_available: integer indicating number of vaccines available at initialization time step
             time_step: integer indicating the time step when state is intialized in the range(0, (24/time_delta)*7 -1)
         Returns
@@ -34,6 +34,7 @@ class State:
         
         self.contact_weights = np.array(contact_weights)
         self.alphas = np.array(alphas)
+        self.flow_scale = flow_scale
         self.vaccines_available = vaccines_available
         self.new_infected = new_infected
         self.total_infected = total_infected
@@ -66,8 +67,9 @@ class State:
         # Update information
         contact_weights = information['contact_weights']
         alphas = information['alphas']
+        flow_scale = information['flow_scale']
 
-        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available,
+        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available,
                     new_infected, self.total_infected+new_infected, new_deaths, date, time_step)
     
 
@@ -92,7 +94,7 @@ class State:
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, contact_weights, alphas, population, start_date, time_step=0):
+    def initialize_state(num_initial_infected, vaccines_available, contact_weights, alphas, flow_scale, population, start_date, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -121,4 +123,4 @@ class State:
                 S[region][age_group] -= 1
                 I[region][age_group] += 1 
 
-        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available, I.copy(), I.copy(), 0, start_date, time_step) 
+        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, I.copy(), I.copy(), 0, start_date, time_step) 

@@ -69,9 +69,10 @@ class SEAIR:
         n_regions, n_age_groups = compartments[0].shape
 
         # Get information data
+        wave_factor = information['wave_factor']
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
-        wave_factor = information['wave_factor']
+        flow_scale = information['flow_scale']
     
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -91,7 +92,6 @@ class SEAIR:
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
         
-
         # Run simulation
         S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
@@ -104,24 +104,18 @@ class SEAIR:
             R = R + successfully_new_V
             V = V + new_V
 
-            # Finds the movement flow for the given period i and scales it for each 
-            if self.include_flow:
-                total_population = np.sum(N)
-                flow_compartments = [S, E1, E2, A, I]
-                for ix, compartment in enumerate(flow_compartments):
-                    comp_pop = np.sum(compartment)
-                    realOD = self.OD[timestep] * alphas[ix] * comp_pop/total_population
-                    if timestep%2 == 1 and timestep < self.periods_per_day*5:
-                        flow_compartments[ix] = self.flow_transition(compartment, realOD)
-                
-                S, E1, E2, A, I = flow_compartments
+            # Perform movement flow
+            if self.include_flow and timestep%2 == 1 and timestep < self.periods_per_day*5:
+                realOD = self.OD[timestep] * flow_scale
+                flow_comps = [S, E1, E2, A, I]
+                S, E1, E2, A, I = self.flow_transition(flow_comps, realOD)
 
+            infection_e = beta*r_e * np.matmul(C*alphas[0], (E2.T/N)).T
+            infection_a = beta*r_a * np.matmul(C*alphas[1], (A.T/N)).T
+            infection_i = beta * np.matmul(C*alphas[2], (I.T/N)).T
             if self.stochastic:
                 # Get stochastic transitions
-                prob_e = beta*r_e * np.matmul(C, (E2.T/N)).T
-                prob_a = beta*r_a * np.matmul(C, (A.T/N)).T
-                prob_i = beta * np.matmul(C, (I.T/N)).T
-                new_E1 = np.random.binomial(S.astype(int), prob_e + prob_a + prob_i)
+                new_E1 = np.random.binomial(S.astype(int), infection_e + infection_a + infection_i)
                 new_E2 = np.random.binomial(E1.astype(int), sigma * p)
                 new_A = np.random.binomial((E1-new_E2).astype(int), sigma * (1-p))
                 new_I = np.random.binomial(E2.astype(int), alpha)
@@ -129,10 +123,8 @@ class SEAIR:
                 new_R_from_I = np.random.binomial(I.astype(int), (np.ones(len(delta)) - delta) * omega)
                 new_D = np.random.binomial((I-new_R_from_I).astype(int), delta * omega)
             else:
-                transition_e = beta*r_e * np.matmul(C, (E2.T/N)).T
-                transition_a = beta*r_a * np.matmul(C, (A.T/N)).T
-                transition_i = beta * np.matmul(C, (I.T/N)).T
-                new_E1 = S * (transition_e + transition_a + transition_i)
+                # Get deterministic transitions
+                new_E1 = S * (infection_e + infection_a + infection_i)
                 new_E2 = E1 * sigma * p
                 new_A = E1 * sigma * (1-p)
                 new_I = E2 * alpha
@@ -190,7 +182,7 @@ class SEAIR:
         history[time_step,-1,:] = new_infected
         return history
 
-    def flow_transition(self, compartment, OD):
+    def flow_transition(self, flow_comps, OD):
         """ Calculates the netflow for every region and age group
 
         Parameters
@@ -199,10 +191,15 @@ class SEAIR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
+        flow_pop = sum(flow_comps.copy())
         age_flow_scaling = np.array(self.age_group_flow_scaling)
-        inflow = np.array([np.matmul(compartment[:,i], OD * age_flow_scaling[i]) for i in range(len(age_flow_scaling))]).T
-        outflow = np.array([compartment[:,i] * OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-        return compartment + inflow - outflow
+        inflow = np.array([np.matmul(flow_pop[:,i], OD * age_flow_scaling[i]) for i in range(len(age_flow_scaling))]).T
+        outflow = np.array([flow_pop[:,i] * OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+        flow_pop = flow_pop + inflow - outflow
+        total_flow_pop = np.sum(flow_pop)
+        comp_fractions = np.array([np.sum(comp)/total_flow_pop for comp in flow_comps])
+        S, E1, E2, I, A = np.array([frac*flow_pop for frac in comp_fractions])
+        return S, E1, E2, I, A 
         
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
