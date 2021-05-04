@@ -91,7 +91,7 @@ class MarkovDecisionProcess:
             contact_weights, alphas, flow_scale = self.config.initial_contact_weights, self.config.initial_alphas, self.config.initial_flow_scale
         information = {
             'vaccine_supply': vaccine_supply,
-            'wave_factor': self.wave_timeline[self.week],
+            'R': self.wave_timeline[self.week],
             'contact_weights': contact_weights,
             'alphas': alphas,
             'flow_scale': flow_scale   

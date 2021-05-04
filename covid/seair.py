@@ -69,7 +69,7 @@ class SEAIR:
         n_regions, n_age_groups = compartments[0].shape
 
         # Get information data
-        R = information['wave_factor'] * self.periods_per_day
+        R = information['R'] * self.periods_per_day
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         flow_scale = information['flow_scale']
