@@ -3,7 +3,8 @@ from datetime import timedelta
 
 class State:
     def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas,
-                vaccines_available, new_infected, total_infected, date, time_step=0):
+                vaccines_available, new_infected, total_infected, date, time_step=0,
+                wave_status = 'neutral', wave_count = {"incline":0, "neutral":0, "decline":0}):
         """ initialize a State instance
 
         Parameters
@@ -39,6 +40,8 @@ class State:
         self.total_infected = total_infected
         self.date = date
         self.time_step = time_step
+        self.wave_status = wave_status # always start with neutral trend
+        self.wave_count = wave_count
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """ 
@@ -65,11 +68,17 @@ class State:
         # Update information
         contact_weights = information['contact_weights']
         alphas = information['alphas']
-
+        if not (information['wave_status'] == self.wave_status): # update if changed status
+            wave_status = information['wave_status']
+            self.wave_count[wave_status] += 1 if self.wave_count[wave_status] < 5 else 0
+            return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available,
+                    new_infected, self.total_infected+new_infected, date, time_step,
+                    wave_status, self.wave_count)
+        
         return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, vaccines_available,
-                    new_infected, self.total_infected+new_infected, date, time_step)
+                    new_infected, self.total_infected+new_infected, date, time_step,
+                    self.wave_status, self.wave_count)
     
-
     def get_compartments_values(self):
         """ Returns compartment values """
         return [self.S, self.E1, self.E2, self.A, self.I, self.R, self.D, self.V]
@@ -86,6 +95,9 @@ class State:
         percent = 100 * np.array(values)/total_pop
         status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
         status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"
+        status += "\n"
+        status += f"Wave Status: {self.wave_status}\n"
+        status += f"Wave Count: {self.wave_count}\n"
         for i in range(len(info)):
             status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
         return status

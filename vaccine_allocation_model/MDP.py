@@ -7,7 +7,7 @@ from datetime import timedelta
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, 
-                initial_state, horizon, policy, weighted_policy_weights, verbose, historic_data=None):
+                initial_state, horizon, policy, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -25,7 +25,7 @@ class MarkovDecisionProcess:
         self.horizon = horizon
         self.population = population
         self.epidemic_function = epidemic_function
-        self.state = initial_state
+        self.initial_state = initial_state
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
@@ -38,21 +38,27 @@ class MarkovDecisionProcess:
             "weighted": self._weighted_policy
         }
         self.policy = self.policies[policy]
-        self.weighted_policy_weights = np.array(weighted_policy_weights)
-        self.path = [self.state]
+        self.weighted_policy_weights = np.array([1,0,0,0]) # default no vaccines-policy
         self.wave_weeks = get_wave_weeks(self.horizon)
+        self.reset()
+    
+    def reset(self):
+        self.initial_state.wave_count = {"incline":0, "neutral":1, "decline":0}
+        self.state = self.initial_state
+        self.path = [self.state]
 
-    def run(self):
+    def run(self, weighted_policy_weights):
         """ Updates states from current time_step to a specified horizon
 
         Returns
             A path that shows resulting traversal of states
         """
-        if self.policy == self._weighted_policy:
-            print(f"\033[1mRunning MDP with weighted policy: {self.weighted_policy_weights}\033[0m")
-        else:
+        if self.policy != self._weighted_policy:
             print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+            #print("\033[1mRunning MDP with weighted policy\033[0m")
+        #else:
+            
+        run_range = range(self.state.time_step, self.horizon) #if self.verbose else tqdm(range(self.state.time_step, self.horizon))
         for week in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
@@ -61,7 +67,7 @@ class MarkovDecisionProcess:
             if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
                 print("\033[1mReached stop-criteria. Infected population is zero.\033[0m\n")
                 break
-            self.update_state()
+            self.update_state(weighted_policy_weights)
 
     def get_exogenous_information(self, state):
         """ Recieves the exogenous information at time_step t
@@ -81,24 +87,29 @@ class MarkovDecisionProcess:
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
 
-        contact_weights, alphas = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
+        contact_weights, alphas, wave_status = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
         information = {'alphas': alphas, 
                        'vaccine_supply': vaccine_supply,
-                       'contact_weights': contact_weights}
+                       'contact_weights': contact_weights,
+                       'wave_status': wave_status}
         return information
 
-    def update_state(self, decision_period=28):
+    def update_state(self, weighted_policy_weights, decision_period=28):
         """ Updates the state of the decision process.
 
         Parameters
             decision_period: number of periods forward whein time that the decision directly affects
         """
+        i = {"incline":0, "neutral":0, "decline":2}[self.state.wave_status]
+        j = self.state.wave_count[self.state.wave_status]
+        self.weighted_policy_weights = weighted_policy_weights[i][j-1]
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
     def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
+        wave_status = "neutral"
         min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
         min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
         new_cw = previous_cw.copy()
@@ -145,13 +156,14 @@ class MarkovDecisionProcess:
                 print(f"Previous alphas: {previous_alphas}\n\n")
 
             if increasing_trend or decreasing_trend:
+                wave_status = "incline" if increasing_trend else "decline" 
                 new_cw = (new_cw * factor).clip(min=min_cw, max=max_cw)
                 new_alphas = (new_alphas * factor).clip(min=min_alphas, max=max_alphas)
-                return new_cw, new_alphas
-                    
+                return new_cw, new_alphas, wave_status
+
         new_cw = new_cw.clip(min=min_cw, max=max_cw)
         new_alphas = new_alphas.clip(min=min_alphas, max=max_alphas)
-        return new_cw, new_alphas
+        return new_cw, new_alphas, wave_status
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution

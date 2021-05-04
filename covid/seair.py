@@ -40,7 +40,6 @@ class SEAIR:
         self.presymptomatic_period = config.presymptomatic_period*self.periods_per_day
         self.postsymptomatic_period = config.postsymptomatic_period*self.periods_per_day
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
-
         self.stochastic = stochastic
         self.include_flow = include_flow
         self.paths = paths

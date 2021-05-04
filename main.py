@@ -6,6 +6,7 @@ import pandas as pd
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seair import SEAIR
+from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 
 if __name__ == '__main__':
     # Get filepaths 
@@ -27,11 +28,11 @@ if __name__ == '__main__':
     # np.random.seed(10)
     day = 21
     month = 2
-    year = 2020
-    runs = 1
+    year = 2021
+    runs = 2
     seeds = np.arange(runs)
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of weeks
+    horizon = 10 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
@@ -61,26 +62,24 @@ if __name__ == '__main__':
                         alphas=config.initial_alphas,
                         population=population,
                         start_date=start_date)
-    found_best = False
-    while not found_best:
-        for weights in weighted_policy_weights:
-            final_states = []
-            for i in range(runs):
-                np.random.seed(seeds[i])
-                mdp = MarkovDecisionProcess(
-                                    config=config,
-                                    decision_period=decision_period,
-                                    population=population, 
-                                    epidemic_function=epidemic_function,
-                                    initial_state=initial_state,
-                                    horizon=horizon,
-                                    policy=policy,
-                                    historic_data=historic_data,
-                                    weighted_policy_weights=weights,
-                                    verbose=verbose)
-                mdp.run()
-                utils.print_results(mdp.path, population, age_labels, policy, save_to_file=False)
-                final_states.append(mdp.path[-1])
+    
+    mdp = MarkovDecisionProcess(config=config,
+                                decision_period=decision_period,
+                                population=population, 
+                                epidemic_function=epidemic_function,
+                                initial_state=initial_state,
+                                horizon=horizon,
+                                policy=policy,
+                                historic_data=historic_data,
+                                verbose=verbose)
+    GA = SimpleGeneticAlgorithm(3, mdp)
+    
+    while not GA.converged:
+        GA.new_generation()
+        GA.find_fitness(runs)
+        GA.evaluate_fitness()
+            
+    print(f"Stopped at generation number {GA.generation_count}, weights are \n {GA.population.get_fittest().genes}")
 
     # utils.get_average_results(final_states, population, age_labels, policy, save_to_file=False)
     #death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
@@ -88,7 +87,6 @@ if __name__ == '__main__':
     # YLL
     #yll = utils.get_yll(config.age_bins, age_labels, np.sum(final_states[0].D, axis=0))
     #print(f'Years of Life Lost: {yll}')
-    
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
