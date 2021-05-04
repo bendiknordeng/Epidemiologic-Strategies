@@ -11,18 +11,6 @@ if __name__ == '__main__':
     # Get filepaths 
     paths = utils.create_named_tuple('filepaths.txt')
 
-    # Read data and generate parameters
-    config = utils.create_named_tuple(paths.config)
-    age_labels = utils.generate_labels_from_bins(config.age_bins)
-    population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
-    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
-    age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
-    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
-    OD_matrices = utils.generate_ssb_od_matrix(28, population, paths.municipalities_commute)
-    response_measure_model = utils.load_response_measure_models()
-    historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    
     # Set initial parameters
     runs = 1
     seeds = np.arange(runs)
@@ -34,11 +22,24 @@ if __name__ == '__main__':
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy = policies[-1]
     plot_results = True
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     use_response_measures = False
+
+    # Read data and generate parameters
+    config = utils.create_named_tuple(paths.config)
+    age_labels = utils.generate_labels_from_bins(config.age_bins)
+    population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
+    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
+    age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
+    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
+    OD_matrices = utils.generate_ssb_od_matrix(decision_period, population, paths.municipalities_commute)
+    response_measure_model = utils.load_response_measure_models()
+    historic_data = utils.get_historic_data(paths.fhi_data_daily)
+    
 
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -58,7 +59,7 @@ if __name__ == '__main__':
     for i in run_range:
         np.random.seed(seeds[i])
         wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
-        
+
         initial_state = State.initialize_state(
                             num_initial_infected=initial_infected,
                             vaccines_available=initial_vaccines_available,
