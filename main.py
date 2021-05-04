@@ -24,10 +24,10 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 20
+    runs = 1
     seeds = np.arange(runs)
-    day = 21
-    month = 2
+    day = 7
+    month = 3
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of weeks
@@ -38,7 +38,8 @@ if __name__ == '__main__':
     plot_results = True
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
-    
+    use_response_measures = False
+
     epidemic_function = SEAIR(
                         OD=OD_matrices,
                         contact_matrices=contact_matrices,
@@ -52,14 +53,12 @@ if __name__ == '__main__':
                         include_flow=True,
                         stochastic=True)
 
-    
     final_states = []
     run_range = tqdm(range(runs)) if runs > 1 else range(runs)
     for i in run_range:
         np.random.seed(seeds[i])
         wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
-        print(wave_timeline)
-        print(wave_state_timeline)
+        
         initial_state = State.initialize_state(
                             num_initial_infected=initial_infected,
                             vaccines_available=initial_vaccines_available,
@@ -79,8 +78,9 @@ if __name__ == '__main__':
                             policy=policy,
                             weighted_policy_weights=weighted_policy_weights,
                             response_measure_model=response_measure_model,
+                            use_response_measures=use_response_measures,
                             wave_timeline=wave_timeline,
-                            wave_state_timeline=wave_state_timeline,
+                            wave_state_timeline=None,
                             historic_data=historic_data,
                             verbose=verbose)
         mdp.run(runs)
@@ -95,7 +95,7 @@ if __name__ == '__main__':
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        plot.plot_control_measures(mdp.path, all=False)
+        #plot.plot_control_measures(mdp.path, all=False)
 
         results_age = history.sum(axis=2)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)

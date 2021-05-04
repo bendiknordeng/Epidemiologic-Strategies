@@ -6,7 +6,7 @@ import time
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state, 
-                response_measure_model, wave_timeline, wave_state_timeline, 
+                response_measure_model, use_response_measures, wave_timeline, wave_state_timeline, 
                 horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
@@ -27,6 +27,7 @@ class MarkovDecisionProcess:
         self.epidemic_function = epidemic_function
         self.state = initial_state
         self.response_measure_model = response_measure_model
+        self.use_response_measures = use_response_measures
         self.wave_timeline = wave_timeline
         self.wave_state_timeline = wave_state_timeline
         self.historic_data = historic_data
@@ -84,8 +85,10 @@ class MarkovDecisionProcess:
             vaccine_supply = np.zeros(self.state.S.shape)
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
-
-        contact_weights, alphas, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas, self.state.flow_scale)
+        if self.use_response_measures:
+            contact_weights, alphas, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas, self.state.flow_scale)
+        else:
+            contact_weights, alphas, flow_scale = self.config.initial_contact_weights, self.config.initial_alphas, self.config.initial_flow_scale
         information = {
             'vaccine_supply': vaccine_supply,
             'wave_factor': self.wave_timeline[self.week],
@@ -128,10 +131,10 @@ class MarkovDecisionProcess:
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] + x * 0.15,
-                'school': lambda x: initial_cw[1] - x * 0.2,
-                'work': lambda x: initial_cw[2] - x * 0.2,
-                'public': lambda x: initial_cw[3] - x * 0.15
+                'home': lambda x: initial_cw[0] + x * 0.1,
+                'school': lambda x: initial_cw[1] - x * 0.3,
+                'work': lambda x: initial_cw[2] - x * 0.3,
+                'public': lambda x: initial_cw[3] - x * 0.2
             }
             new_cw = []
             for category in ['home', 'school', 'work', 'public']:
@@ -144,7 +147,7 @@ class MarkovDecisionProcess:
             alpha_mapper = {
                 'E2': lambda x: initial_alphas[0]*(1 - x * 1e-4),
                 'A': lambda x: initial_alphas[1]*(1 - x * 1e-4),
-                'I': lambda x: initial_alphas[2]*(1 - x * 3e-3)
+                'I': lambda x: initial_alphas[2]*(1 - x * 4e-3)
             }
             input = scalers['alpha'].transform(features.reshape(1,-1))
             measure = min(max(models['alpha'].predict(input)[0], 1), 100)

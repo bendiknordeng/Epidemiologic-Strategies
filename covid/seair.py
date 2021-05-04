@@ -69,7 +69,7 @@ class SEAIR:
         n_regions, n_age_groups = compartments[0].shape
 
         # Get information data
-        wave_factor = information['wave_factor']
+        R = information['wave_factor'] * self.periods_per_day
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         flow_scale = information['flow_scale']
@@ -81,7 +81,7 @@ class SEAIR:
         
         # Define parameters in the mathematical model
         N = self.population.population.to_numpy(dtype='float64')
-        beta = (self.R0/self.recovery_period) * wave_factor
+        beta = (R/self.recovery_period)
         sigma = 1/self.latent_period
         p = self.proportion_symptomatic_infections
         r_e = self.presymptomatic_infectiousness
@@ -107,8 +107,7 @@ class SEAIR:
             # Perform movement flow
             if self.include_flow and timestep%2 == 1 and timestep < self.periods_per_day*5:
                 realOD = self.OD[timestep] * flow_scale
-                flow_comps = [S, E1, E2, A, I]
-                S, E1, E2, A, I = self.flow_transition(flow_comps, realOD)
+                S, E1, E2, A, I = self.flow_transition([S, E1, E2, A, I], realOD)
 
             infection_e = beta*r_e * np.matmul(C*alphas[0], (E2.T/N)).T
             infection_a = beta*r_a * np.matmul(C*alphas[1], (A.T/N)).T
@@ -198,8 +197,8 @@ class SEAIR:
         flow_pop = flow_pop + inflow - outflow
         total_flow_pop = np.sum(flow_pop)
         comp_fractions = np.array([np.sum(comp)/total_flow_pop for comp in flow_comps])
-        S, E1, E2, I, A = np.array([frac*flow_pop for frac in comp_fractions])
-        return S, E1, E2, I, A 
+        S, E1, E2, A, I = np.array([frac*flow_pop for frac in comp_fractions])
+        return S, E1, E2, A, I
         
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling

@@ -479,6 +479,18 @@ def get_wave_timeline(horizon):
             break
     return wave_timeline, wave_state_timeline
 
+def get_historic_wave_timeline(horizon):
+    df = pd.read_csv('data/world_r_eff.csv',
+        usecols=['country','date','R'],
+        squeeze=True
+        ).sort_index()
+    df.date = pd.to_datetime(df.date, format='%Y-%m-%d')
+    df_norway = df[df.country == 'Norway']
+    d0 = df_norway.date.iloc[0]
+    dates = [d0 + pd.Timedelta(i, "W") for i in range(horizon)]
+    df_norway_weekly = df_norway[df_norway.date.isin(dates)]
+    return df_norway_weekly.R.values
+
 
 def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     """ function to calculate posteriors
