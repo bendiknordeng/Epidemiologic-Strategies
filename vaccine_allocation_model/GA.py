@@ -56,56 +56,56 @@ class SimpleGeneticAlgorithm:
                     elif s2_mean < self.second_best_fitness_score:
                         self.population.second_fittest = copy.deepcopy(self.population.get_individual(j))
                         self.second_best_fitness_score = s2_mean
-        if not new_fitness_king: self.converged = True
+        self.converged = not new_fitness_king
 
-        def two_sided_t_test(s1,s2):
-            """
-            nr_obs = 5
-            p = 1
+    def two_sided_t_test(s1,s2):
+        """
+        nr_obs = 5
+        p = 1
+        
+        while p >= 0.01 and nr_obs < 100:
+            nr_obs += 1
+            deaths1 = np.zeros(nr_obs)
+            deaths2 = np.zeros(nr_obs)
+            for i in range(nr_obs):
+                deaths1[i] = np.sum(s1[i].D)
+                deaths2[i] = np.sum(s2[i].D)
+            one = deaths1-deaths2
+            p = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="two-sided").pvalue
+            if p < 0.01:
+                found_best = True
+        return found_best
+        """
+        pass
+
+    def one_sided_t_test(s1, s2):
+        """
+        nr_obs = 5
+        p = 1
+        while p >= 0.01 and nr_obs < 100:
+            nr_obs += 1
+            deaths1 = np.zeros(nr_obs)
+            deaths2 = np.zeros(nr_obs)
+            for i in range(nr_obs):
+                deaths1[i] = np.sum(s1[i].D)
+                deaths2[i] = np.sum(s2[i].D)
+            one = deaths1-deaths2
+            p = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="two-sided").pvalue
             
-            while p >= 0.01 and nr_obs < 100:
-                nr_obs += 1
-                deaths1 = np.zeros(nr_obs)
-                deaths2 = np.zeros(nr_obs)
-                for i in range(nr_obs):
-                    deaths1[i] = np.sum(s1[i].D)
-                    deaths2[i] = np.sum(s2[i].D)
-                one = deaths1-deaths2
-                p = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="two-sided").pvalue
-                if p < 0.01:
-                    found_best = True
-            return found_best
-            """
-            pass
-
-        def one_sided_t_test(s1, s2):
-            """
-            nr_obs = 5
-            p = 1
-            while p >= 0.01 and nr_obs < 100:
-                nr_obs += 1
-                deaths1 = np.zeros(nr_obs)
-                deaths2 = np.zeros(nr_obs)
-                for i in range(nr_obs):
-                    deaths1[i] = np.sum(s1[i].D)
-                    deaths2[i] = np.sum(s2[i].D)
-                one = deaths1-deaths2
-                p = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="two-sided").pvalue
-                
-            print(f"Found different solutions after {nr_obs} observations")
-            print(f"P value is {p}")
-            print(f"Diff 1-2: {one}")
-            less = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="less").pvalue
-            greater = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="greater").pvalue
-            if less < greater:
-                print("Solution 1 is best")
-            else:
-                print("Solution 2 is best")
-            """
-            pass
+        print(f"Found different solutions after {nr_obs} observations")
+        print(f"P value is {p}")
+        print(f"Diff 1-2: {one}")
+        less = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="less").pvalue
+        greater = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="greater").pvalue
+        if less < greater:
+            print("Solution 1 is best")
+        else:
+            print("Solution 2 is best")
+        """
+        pass
 
     def new_generation(self):
-        if self.generation_count == -1: self.generation_count +=1;return
+        if self.generation_count == -1: self.generation_count +=1; return
         self.selection()
         self.crossover()
         self.mutation()
@@ -258,7 +258,7 @@ class Individual:
 
     def create_individual(self, i):
         # Set genes randomly for each individual
-        self.genes = np.random.randint(low=0, high = 100, size=(3,5,4)) # nr wave_states, max nr of occurrences, nr of weights
+        self.genes = np.random.randint(low=0, high=100, size=(3,4,4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
         norm = np.sum(self.genes, axis=2, keepdims=True)
         self.genes = np.divide(self.genes, norm)
 """

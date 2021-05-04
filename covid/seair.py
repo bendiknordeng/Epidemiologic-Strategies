@@ -31,7 +31,6 @@ class SEAIR:
         self.population = population
         self.age_group_flow_scaling = age_group_flow_scaling
         self.fatality_rate_symptomatic = death_rates
-        self.R0 = config.R0 * self.periods_per_day
         self.efficacy = config.efficacy
         self.latent_period = config.latent_period * self.periods_per_day
         self.proportion_symptomatic_infections = config.proportion_symptomatic_infections

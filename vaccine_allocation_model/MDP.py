@@ -7,7 +7,7 @@ import time
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state, 
                 response_measure_model, use_response_measures, wave_timeline, wave_state_timeline, 
-                horizon, policy, weighted_policy_weights, verbose, historic_data=None):
+                horizon, policy, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -46,7 +46,7 @@ class MarkovDecisionProcess:
         self.reset()
     
     def reset(self):
-        self.initial_state.wave_count = {"incline":0, "neutral":0, "decline":0}
+        self.initial_state.wave_count = {"U":0, "D":0, "N":0}
         self.state = self.initial_state
         self.path = [self.state]
 
@@ -94,9 +94,10 @@ class MarkovDecisionProcess:
         information = {
             'vaccine_supply': vaccine_supply,
             'R': self.wave_timeline[self.week],
+            'wave_state': self.wave_state_timeline[self.week],
             'contact_weights': contact_weights,
             'alphas': alphas,
-            'flow_scale': flow_scale   
+            'flow_scale': flow_scale
             }
 
         return information
@@ -107,8 +108,8 @@ class MarkovDecisionProcess:
         Parameters
             decision_period: number of periods forward whein time that the decision directly affects
         """
-        i = {"incline":0, "neutral":0, "decline":2}[self.state.wave_status]
-        j = self.state.wave_count[self.state.wave_status]
+        i = {"U":0, "D":1, "N":2}[self.state.wave_state]
+        j = self.state.wave_count[self.state.wave_state]
         self.weighted_policy_weights = weighted_policy_weights[i][j-1]
         decision = self.policy()
         information = self.get_exogenous_information(self.state)

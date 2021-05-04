@@ -1,3 +1,4 @@
+from collections import defaultdict
 from covid import plot
 from covid import utils
 import numpy as np
@@ -28,6 +29,8 @@ if __name__ == '__main__':
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     use_response_measures = False
+    initial_wave_state = 'U'
+    initial_wave_count = {'U': 1, 'D': 0, 'N': 0}
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -38,8 +41,8 @@ if __name__ == '__main__':
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(decision_period, population, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
+    wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    
 
     epidemic_function = SEAIR(
                         OD=OD_matrices,
@@ -59,18 +62,27 @@ if __name__ == '__main__':
                         vaccines_available=initial_vaccines_available,
                         contact_weights=config.initial_contact_weights,
                         alphas=config.initial_alphas,
+                        flow_scale=config.initial_flow_scale,
                         population=population,
+                        wave_state=initial_wave_state,
+                        wave_count=initial_wave_count,
                         start_date=start_date)
     
-    mdp = MarkovDecisionProcess(config=config,
-                                decision_period=decision_period,
-                                population=population, 
-                                epidemic_function=epidemic_function,
-                                initial_state=initial_state,
-                                horizon=horizon,
-                                policy=policy,
-                                historic_data=historic_data,
-                                verbose=verbose)
+    mdp = MarkovDecisionProcess(
+                        config=config,
+                        decision_period=decision_period,
+                        population=population, 
+                        epidemic_function=epidemic_function,
+                        initial_state=initial_state,
+                        response_measure_model=response_measure_model, 
+                        use_response_measures=use_response_measures, 
+                        wave_timeline=wave_timeline, 
+                        wave_state_timeline=wave_state_timeline,
+                        horizon=horizon,
+                        policy=policy,
+                        historic_data=historic_data,
+                        verbose=verbose)
+
     GA = SimpleGeneticAlgorithm(3, mdp)
     
     while not GA.converged:
