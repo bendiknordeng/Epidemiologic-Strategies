@@ -6,7 +6,6 @@ from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from covid.seair import SEAIR
 from tqdm import tqdm
-from datetime import datetime
 
 if __name__ == '__main__':
     # Get filepaths 
@@ -25,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     
     # Set initial parameters
-    runs = 100
+    runs = 20
     seeds = np.arange(runs)
     day = 21
     month = 2
@@ -36,7 +35,7 @@ if __name__ == '__main__':
     initial_infected = 5
     initial_vaccines_available = 0
     policy = policies[-1]
-    plot_results = False
+    plot_results = True
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     
@@ -53,20 +52,23 @@ if __name__ == '__main__':
                         include_flow=True,
                         stochastic=True)
 
-    initial_state = State.initialize_state(
-                        num_initial_infected=initial_infected,
-                        vaccines_available=initial_vaccines_available,
-                        contact_weights=config.initial_contact_weights,
-                        alphas=config.initial_alphas,
-                        flow_scale=config.initial_flow_scale,
-                        population=population,
-                        start_date=start_date)
     
     final_states = []
     run_range = tqdm(range(runs)) if runs > 1 else range(runs)
     for i in run_range:
         np.random.seed(seeds[i])
         wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
+        print(wave_timeline)
+        print(wave_state_timeline)
+        initial_state = State.initialize_state(
+                            num_initial_infected=initial_infected,
+                            vaccines_available=initial_vaccines_available,
+                            contact_weights=config.initial_contact_weights,
+                            alphas=config.initial_alphas,
+                            flow_scale=config.initial_flow_scale,
+                            population=population,
+                            start_date=start_date)
+
         mdp = MarkovDecisionProcess(
                             config=config,
                             decision_period=decision_period,

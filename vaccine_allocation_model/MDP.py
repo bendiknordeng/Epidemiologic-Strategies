@@ -84,7 +84,7 @@ class MarkovDecisionProcess:
             vaccine_supply = np.zeros(self.state.S.shape)
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
-        
+
         contact_weights, alphas, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas, self.state.flow_scale)
         information = {
             'vaccine_supply': vaccine_supply,

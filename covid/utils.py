@@ -470,9 +470,9 @@ def get_wave_timeline(horizon):
             for week in range(i, i+int(duration)):
                 wave_state_timeline.append(current_state)
                 params = data['R'][current_state][str(n_wave)]
-                R = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
-                R = min(max(R, params['min']), params['max'])
-                wave_timeline[week] = R
+                factor = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
+                factor = min(max(factor, params['min']), params['max'])
+                wave_timeline[week] = factor
             i += int(duration)
             current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
         except:
