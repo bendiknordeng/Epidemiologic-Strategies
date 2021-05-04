@@ -1,4 +1,4 @@
-{"R0":3.1,
+{
 "periods_per_day":4,
 "time_delta":6,
 "efficacy":0.9,
@@ -10,7 +10,6 @@
 "asymptomatic_infectiousness":0.1,
 "age_bins": [0, 6, 15, 19, 40, 66],
 "initial_contact_weights": [1, 1, 1, 1],
-"min_contact_weights": [0.75, 0.15, 0.3, 0.2],
-"initial_alphas": [1, 1, 1, 1, 0.5],
-"min_alphas": [0.75, 0.5, 0.5, 0.5, 0.1]
+"initial_alphas": [1, 1, 1],
+"initial_flow_scale": 1.0
 }

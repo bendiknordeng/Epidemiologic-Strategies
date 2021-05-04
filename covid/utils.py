@@ -1,4 +1,3 @@
-from numpy.core.fromnumeric import squeeze
 import pandas as pd
 import numpy as np
 import pickle as pkl
@@ -8,6 +7,12 @@ import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
 from covid import plot
+from sklearn.preprocessing import StandardScaler
+from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import LinearRegression
+from scipy.stats import skewnorm
+import json
+from collections import Counter
 
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
@@ -367,11 +372,11 @@ def transform_path_to_numpy(path):
         new_infections.append(state.new_infected)
     return np.array(history), np.array(new_infections)
 
-def print_results(path, population, age_labels, policy, save_to_file=False):
+def print_results(state, population, age_labels, policy, save_to_file=False):
     total_pop = np.sum(population.population)
-    infected = path[-1].total_infected.sum(axis=0)
-    vaccinated = path[-1].V.sum(axis=0)
-    dead = path[-1].D.sum(axis=0)
+    infected = state.total_infected.sum(axis=0)
+    vaccinated = state.V.sum(axis=0)
+    dead = state.D.sum(axis=0)
     age_total = population[age_labels].sum().to_numpy()
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
     result = f"{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
@@ -416,18 +421,23 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
 
     total_pop = np.sum(population.population)
     age_total = population[age_labels].sum().to_numpy()
+    
+    total_std_infected = np.sqrt(np.sum(np.square(std_infected) * age_total)/ total_pop)
+    total_std_vaccinated = np.sqrt(np.sum(np.square(std_vaccinated) * age_total)/ total_pop)
+    total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
+
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
-    result = f"{columns[0]:<10} {columns[1]:^34} {columns[2]:^34} {columns[3]:^34}\n"
+    result = f"{columns[0]:<10} {columns[1]:^36} {columns[2]:^36} {columns[3]:^36}\n"
     for i in range(len(age_labels)):
         age_pop = np.sum(population[age_labels[i]])
         result += f"{age_labels[i]:<10}"
         result += f"{average_infected[i]:>12,.0f} ({100 * average_infected[i]/age_pop:>5.2f}%) SD: {std_infected[i]:>9.2f}"
-        result += f"{average_vaccinated[i]:>12,.0f} ({100 * average_vaccinated[i]/age_pop:>5.2f}%) SD: {std_vaccinated[i]:>4.2f}"
-        result += f"{average_dead[i]:>12,.0f} ({100 * average_dead[i]/age_pop:>5.2f}%) SD: {std_dead[i]:>6.2f}\n"
+        result += f"{average_vaccinated[i]:>12,.0f} ({100 * average_vaccinated[i]/age_pop:>5.2f}%) SD: {std_vaccinated[i]:>9.2f}"
+        result += f"{average_dead[i]:>12,.0f} ({100 * average_dead[i]/age_pop:>5.2f}%) SD: {std_dead[i]:>9.2f}\n"
     result += f"{'All':<10}"
-    result += f"{np.sum(average_infected):>12,.0f} ({100 * np.sum(average_infected)/total_pop:>5.2f}%) SD: {np.sum(std_infected):>9.2f}"
-    result += f"{np.sum(average_vaccinated):>12,.0f} ({100 * np.sum(average_vaccinated)/total_pop:>5.2f}%) SD: {np.sum(std_vaccinated):>4.2f}"
-    result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {np.sum(std_dead):>6.2f}"
+    result += f"{np.sum(average_infected):>12,.0f} ({100 * np.sum(average_infected)/total_pop:>5.2f}%) SD: {total_std_infected:>9.2f}"
+    result += f"{np.sum(average_vaccinated):>12,.0f} ({100 * np.sum(average_vaccinated)/total_pop:>5.2f}%) SD: {total_std_vaccinated:>9.2f}"
+    result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {total_std_dead:>9.2f}"
     print(result)
     
     if save_to_file:
@@ -440,21 +450,47 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         total["Age group"] = "All"
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
-    
 
-def get_wave_weeks(horizon):
-    nr_waves = int(1) # np.random.poisson(horizon/20) # assumption: a wave happens on average every 20 weeks
-    duration_waves = [max(1,int(np.random.exponential(2))) for _ in range(nr_waves)] # assumption: a wave lasts on average 2 weeks
-    mean = (horizon - np.sum(duration_waves))/(nr_waves) # evenly distributed time between waves
-    std = mean/3
-    time_between_waves = [int(np.random.normal(mean, std)) for _ in range(nr_waves)] # time between waves, exponentially distributed
-    wave_weeks = np.cumsum(time_between_waves)
-    wave_weeks[1:len(duration_waves)] += np.cumsum(duration_waves)[:-1]
-    weeks = []
-    for i in range(nr_waves):
-        for j in range(duration_waves[i]):
-            weeks.append(wave_weeks[i]+j)
-    return weeks
+def get_wave_timeline(horizon):
+    with open('data/wave_parameters.json') as file:
+        data = json.load(file)
+    transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
+    wave_timeline = np.zeros(horizon)
+    current_state = 'U'
+    wave_state_count = []
+    wave_state_timeline = []
+    i = 0
+    while True:
+        wave_state_count.append(current_state)
+        n_wave = Counter(wave_state_count)[current_state]
+        params = data['duration'][current_state][str(n_wave)]
+        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std']) // 7 # weeks
+        duration = min(max(duration, params['min']), params['max'])
+        try:
+            for week in range(i, i+int(duration)):
+                wave_state_timeline.append(current_state)
+                params = data['R'][current_state][str(n_wave)]
+                factor = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
+                factor = min(max(factor, params['min']), params['max'])
+                wave_timeline[week] = factor
+            i += int(duration)
+            current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
+        except:
+            break
+    return wave_timeline, wave_state_timeline
+
+def get_historic_wave_timeline(horizon):
+    df = pd.read_csv('data/world_r_eff.csv',
+        usecols=['country','date','R'],
+        squeeze=True
+        ).sort_index()
+    df.date = pd.to_datetime(df.date, format='%Y-%m-%d')
+    df_norway = df[df.country == 'Norway']
+    d0 = df_norway.date.iloc[0]
+    dates = [d0 + pd.Timedelta(i, "W") for i in range(horizon)]
+    df_norway_weekly = df_norway[df_norway.date.isin(dates)]
+    return df_norway_weekly.R.values
+
 
 def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     """ function to calculate posteriors
@@ -487,20 +523,14 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     process_matrix /= process_matrix.sum(axis=0)
     
     # (4) Calculate the initial prior
-    #prior0 = sps.gamma(a=4).pdf(r_t_range)
     prior0 = np.ones_like(r_t_range)/len(r_t_range)
     prior0 /= prior0.sum()
 
-    # Create a DataFrame that will hold our posteriors for each day
-    # Insert our prior as the first posterior.
-    posteriors = pd.DataFrame(
-        index=r_t_range,
-        columns=new_infected.index,
-        data={new_infected.index[0]: prior0}
-    )
+    # Create a DataFrame that will hold our posteriors for each day. Insert our prior as the first posterior.
+    posteriors = pd.DataFrame(index=r_t_range, columns=new_infected.index, data={new_infected.index[0]: prior0})
     
     # Keep track of the sum of the log of the probability of the data for maximum likelihood calculation.
-    log_likelihood = 0.0
+    log_likelihood = 0.000001
 
     # (5) Iteratively apply Bayes' rule
     for previous_day, current_day in zip(new_infected.index[:-1], new_infected.index[1:]):
@@ -522,16 +552,16 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
 
     return posteriors, log_likelihood
 
-def smooth_data(new_cases):
+def smooth_data(data):
     """ returns smoothed values of a pandas.core.series.Series
 
     Parameters
-        new_cases: pandas.core.series.Series, with date and daily new infected
+        data: pandas.core.series.Series, with date and daily new infected
     Returns
         smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
 
     """
-    smoothed = new_cases.rolling(3,
+    smoothed = data.rolling(3,
         win_type='gaussian',
         min_periods=1,
         center=True).mean(std=3).round()
@@ -547,8 +577,7 @@ def highest_density_interval(posteriors, percentile=.9):
         pandas.core.frame.DataFrame
     """
     if(isinstance(posteriors, pd.DataFrame)):
-        return pd.DataFrame([highest_density_interval(posteriors[col], percentile=percentile) for col in posteriors],
-                            index=posteriors.columns)
+        return pd.DataFrame([highest_density_interval(posteriors[col], percentile=percentile) for col in posteriors], index=posteriors.columns)
     cumsum = np.cumsum(posteriors.values)
 
     # N x N matrix of total probability mass for each low, high
@@ -558,13 +587,25 @@ def highest_density_interval(posteriors, percentile=.9):
     lows, highs = (total_p > percentile).nonzero()
     
     # Find the smallest range (highest density)
-    best = (highs - lows).argmin()
-    low = posteriors.index[lows[best]]
-    high = posteriors.index[highs[best]]
+    try:
+        best = (highs - lows).argmin()
+        low = posteriors.index[lows[best]]
+        high = posteriors.index[highs[best]]
+    except:
+        low = 0
+        high = 0
     
     return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
 
 def get_r_effective(path, population, config, from_data=False):
+    """plots R effective
+
+    Args:
+        path ([type]): [description]
+        population ([type]): [description]
+        config ([type]): [description]
+        from_data (bool, optional): Indicating if R effective should be plotted for historical Norwegian data. Defaults to False.
+    """
     # Read in data
     if from_data:
         states = pd.read_csv('data/fhi_data_daily.csv',
@@ -614,11 +655,9 @@ def get_r_effective(path, population, config, from_data=False):
     hdis = highest_density_interval(posteriors, percentile=0.9)
     most_likely = posteriors.idxmax().rename('ML')
     result = pd.concat([most_likely, hdis], axis=1)
-    # print(hdi.head())
 
     # plot R_t development
     plot.plot_rt(result)
-
 
 def get_yll(age_bins, age_labels, deaths_per_age_group):
     """Calculates the Years of Lost Lives (YLL)
@@ -638,3 +677,21 @@ def get_yll(age_bins, age_labels, deaths_per_age_group):
     return int(np.round(np.sum(yll)))
 
 
+def load_response_measure_models():
+    models = {}
+    scalers = {}
+    for model_name in ['home', 'school', 'work', 'public', 'alpha', 'movement']:
+        models[model_name] = pkl.load(open(f"models/{model_name}_measure_model.sav", 'rb'))
+        scalers[model_name] = pkl.load(open(f"models/{model_name}_measure_scaler.sav", 'rb'))
+    return models, scalers
+
+def get_avg_std(final_states, population, age_labels):
+    final_dead = []
+    for state in final_states:
+        final_dead.append(state.D.sum(axis=0))
+    average_dead = np.average(np.array(final_dead), axis=0)
+    std_dead = np.std(np.array(final_dead), axis=0)
+    total_pop = np.sum(population.population)
+    age_total = population[age_labels].sum().to_numpy()
+    total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
+    return np.sum(average_dead), total_std_dead

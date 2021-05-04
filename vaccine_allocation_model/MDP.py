@@ -1,13 +1,13 @@
-from covid.utils import get_wave_weeks
-from vaccine_allocation_model.State import State
 import numpy as np
 from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
+import time
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, 
-                initial_state, horizon, policy, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, initial_state, 
+                response_measure_model, use_response_measures, wave_timeline, wave_state_timeline, 
+                horizon, policy, weighted_policy_weights, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -26,12 +26,16 @@ class MarkovDecisionProcess:
         self.population = population
         self.epidemic_function = epidemic_function
         self.initial_state = initial_state
+        self.response_measure_model = response_measure_model
+        self.use_response_measures = use_response_measures
+        self.wave_timeline = wave_timeline
+        self.wave_state_timeline = wave_state_timeline
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
         self.policies = {
-            "no_vaccines": self._no_vaccines,
             "random": self._random_policy,
+            "no_vaccines": self._no_vaccines,
             "susceptible_based": self._susceptible_based_policy,
             "infection_based": self._infection_based_policy,
             "oldest_first": self._oldest_first_policy,
@@ -39,11 +43,10 @@ class MarkovDecisionProcess:
         }
         self.policy = self.policies[policy]
         self.weighted_policy_weights = np.array([1,0,0,0]) # default no vaccines-policy
-        self.wave_weeks = get_wave_weeks(self.horizon)
         self.reset()
     
     def reset(self):
-        self.initial_state.wave_count = {"incline":0, "neutral":1, "decline":0}
+        self.initial_state.wave_count = {"incline":0, "neutral":0, "decline":0}
         self.state = self.initial_state
         self.path = [self.state]
 
@@ -55,11 +58,9 @@ class MarkovDecisionProcess:
         """
         if self.policy != self._weighted_policy:
             print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-            #print("\033[1mRunning MDP with weighted policy\033[0m")
-        #else:
-            
-        run_range = range(self.state.time_step, self.horizon) #if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
         for week in run_range:
+            self.week = week
             if self.verbose: print(self.state, end="\n"*2)
             if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
                 print("\033[1mReached stop-criteria. Recovered population > 90%.\033[0m\n")
@@ -76,7 +77,7 @@ class MarkovDecisionProcess:
             t: time_step
             state: state that 
         Returns:
-            returns a dictionary of information contain 'alphas', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
+            returns a dictionary of information contain 'flow_scale', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
         """
         today = pd.Timestamp(state.date)
         end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//self.config.periods_per_day))
@@ -86,12 +87,18 @@ class MarkovDecisionProcess:
             vaccine_supply = np.zeros(self.state.S.shape)
         else:
             vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
+        if self.use_response_measures:
+            contact_weights, alphas, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas, self.state.flow_scale)
+        else:
+            contact_weights, alphas, flow_scale = self.config.initial_contact_weights, self.config.initial_alphas, self.config.initial_flow_scale
+        information = {
+            'vaccine_supply': vaccine_supply,
+            'R': self.wave_timeline[self.week],
+            'contact_weights': contact_weights,
+            'alphas': alphas,
+            'flow_scale': flow_scale   
+            }
 
-        contact_weights, alphas, wave_status = self._map_infection_to_control_measures(self.state.contact_weights, self.state.alphas)
-        information = {'alphas': alphas, 
-                       'vaccine_supply': vaccine_supply,
-                       'contact_weights': contact_weights,
-                       'wave_status': wave_status}
         return information
 
     def update_state(self, weighted_policy_weights, decision_period=28):
@@ -108,62 +115,75 @@ class MarkovDecisionProcess:
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
         self.path.append(self.state)
 
-    def _map_infection_to_control_measures(self, previous_cw, previous_alphas):
-        wave_status = "neutral"
-        min_cw, max_cw = np.array(self.config.min_contact_weights), np.array(self.config.initial_contact_weights)
-        min_alphas, max_alphas = np.array(self.config.min_alphas), np.array(self.config.initial_alphas)
-        new_cw = previous_cw.copy()
-        new_alphas = previous_alphas.copy()
-        simulation_week = self.state.time_step//self.decision_period
-        if simulation_week in self.wave_weeks:
-            wave_strength = np.random.normal(2, 0.1)
-            if self.verbose:
-                print("\033[1mInfection wave\033[0m")
-                print(f"Wavestrength: {wave_strength}\n\n")
-                new_cw = new_cw * wave_strength
-                new_alphas = new_alphas * wave_strength
+    def _map_infection_to_response_measures(self, previous_cw, previous_alphas, previous_flow_scale):
+        if len(self.path) > 3:
+            # Features for cases of infection
+            active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
+            cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()
+            cases_past_week = np.sum(self.state.new_infected) * 1e5/self.population.population.sum()
+            cases_2w_ago = np.sum(self.path[-2].new_infected) * 1e5/self.population.population.sum()
 
-        if len(self.path) > 2:
-            new_infected_current = np.sum(self.state.new_infected)
-            new_infected_historic = np.sum(self.path[-3].new_infected)
-            n_days = self.decision_period/self.config.periods_per_day
-            if new_infected_historic > 0:
-                infection_rate = new_infected_current/new_infected_historic
-            else:
-                infection_rate = 0
-            maximum_new_infected = max([np.sum(state.new_infected) for state in self.path])
-            infected_per_100k = np.sum(self.state.I)/(self.population.population.sum()/1e5)
-            increasing_trend = infection_rate > 1.15 and new_infected_current > 0.1 * maximum_new_infected
-            decreasing_trend = infection_rate < 0.85
-            slope = (new_infected_current-new_infected_historic)/n_days
-            factor = 4 /((1 + np.exp(1e-3 * slope)) * (1 + np.exp(1e-2 * infected_per_100k)))
+            # Features for deaths
+            cumulative_total_deaths = np.sum(self.state.D) * 1e5/self.population.population.sum()
+            deaths_past_week = np.sum(self.state.new_deaths) * 1e5/self.population.population.sum()
+            deaths_2w_ago = np.sum(self.path[-2].new_deaths) * 1e5/self.population.population.sum()
+
+            features = np.array([active_cases, cumulative_total_cases, cases_past_week, cases_2w_ago, 
+                                cumulative_total_deaths, deaths_past_week, deaths_2w_ago])
+
+            models, scalers = self.response_measure_model
+
+            # Contact weights
+            initial_cw = np.array(self.config.initial_contact_weights)
+            cw_mapper = {
+                'home': lambda x: initial_cw[0] + x * 0.1,
+                'school': lambda x: initial_cw[1] - x * 0.3,
+                'work': lambda x: initial_cw[2] - x * 0.3,
+                'public': lambda x: initial_cw[3] - x * 0.2
+            }
+            new_cw = []
+            for category in ['home', 'school', 'work', 'public']:
+                input = scalers[category].transform(features.reshape(1,-1))
+                measure = models[category].predict(input)[0]
+                new_cw.append(cw_mapper[category](measure))
+
+            # Alphas
+            initial_alphas = np.array(self.config.initial_alphas)
+            alpha_mapper = {
+                'E2': lambda x: initial_alphas[0]*(1 - x * 1e-4),
+                'A': lambda x: initial_alphas[1]*(1 - x * 1e-4),
+                'I': lambda x: initial_alphas[2]*(1 - x * 4e-3)
+            }
+            input = scalers['alpha'].transform(features.reshape(1,-1))
+            measure = min(max(models['alpha'].predict(input)[0], 1), 100)
+            new_alphas = []
+            for comp in ['E2', 'A', 'I']:
+                new_alphas.append(alpha_mapper[comp](measure))
+
+            input = scalers['movement'].transform(features.reshape(1,-1))
+            measure = models['movement'].predict(input)[0]
+            new_flow_scale = self.config.initial_flow_scale - 0.1 * measure
 
             if self.verbose:
-                if increasing_trend:
-                    print("\033[1mIncreasing trend\033[0m")
-                elif decreasing_trend:
-                    print("\033[1mDecreasing trend\033[0m")
-                else:
-                    print("\033[1mNeutral trend\033[0m")
-                print(f"Infected per 100k: {infected_per_100k:.1f}")
-                print(f"New infected last week: {new_infected_historic}")
-                print(f"New infected current week: {new_infected_current}")
-                print(f"Maximum new infected: {maximum_new_infected}")
-                print(f"Current infections/last week infections: {infection_rate:.3f}")
-                print(f"Change in new infected per day: {slope:.3f}")
-                print(f"Control measure factor: {factor:.3f}")
+                print("Per 100k:")
+                print(f"Active cases: {active_cases:.3f}")
+                print(f"Cumulative cases: {cumulative_total_cases:.3f}")
+                print(f"New infected last week: {cases_past_week:.3f}")
+                print(f"New infected two weeks ago: {cases_2w_ago:.3f}")
+                print(f"Cumulative deaths: {cumulative_total_deaths:.3f}")
+                print(f"New deaths last week: {deaths_past_week:.3f}")
+                print(f"New deaths two weeks ago: {deaths_2w_ago:.3f}")
                 print(f"Previous weights: {previous_cw}")
-                print(f"Previous alphas: {previous_alphas}\n\n")
+                print(f"New weights: {new_cw}")
+                print(f"Previous alphas: {previous_alphas}")
+                print(f"New alphas: {new_alphas}")
+                print(f"Previous flow scale: {previous_flow_scale}")
+                print(f"New flow scale: {new_flow_scale}\n\n")
+                time.sleep(0.2)
 
-            if increasing_trend or decreasing_trend:
-                wave_status = "incline" if increasing_trend else "decline" 
-                new_cw = (new_cw * factor).clip(min=min_cw, max=max_cw)
-                new_alphas = (new_alphas * factor).clip(min=min_alphas, max=max_alphas)
-                return new_cw, new_alphas, wave_status
-
-        new_cw = new_cw.clip(min=min_cw, max=max_cw)
-        new_alphas = new_alphas.clip(min=min_alphas, max=max_alphas)
-        return new_cw, new_alphas, wave_status
+            return new_cw, new_alphas, new_flow_scale
+        
+        return previous_cw, previous_alphas, previous_flow_scale
 
     def _random_policy(self):
         """ Define allocation of vaccines based on random distribution
