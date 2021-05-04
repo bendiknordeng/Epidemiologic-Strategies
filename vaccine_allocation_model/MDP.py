@@ -42,7 +42,7 @@ class MarkovDecisionProcess:
             "weighted": self._weighted_policy
         }
         self.policy = self.policies[policy]
-        self.weighted_policy_weights = np.array([1,0,0,0]) # default no vaccines-policy
+        self.weighted_policy_weights = None
         self.reset()
     
     def reset(self):
@@ -50,14 +50,13 @@ class MarkovDecisionProcess:
         self.state = self.initial_state
         self.path = [self.state]
 
-    def run(self, weighted_policy_weights):
+    def run(self, weighted_policy_weights=None):
         """ Updates states from current time_step to a specified horizon
 
         Returns
             A path that shows resulting traversal of states
         """
-        if self.policy != self._weighted_policy:
-            print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
+        print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
         run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
         for week in run_range:
             self.week = week
@@ -102,18 +101,19 @@ class MarkovDecisionProcess:
 
         return information
 
-    def update_state(self, weighted_policy_weights, decision_period=28):
+    def update_state(self, weighted_policy_weights):
         """ Updates the state of the decision process.
 
         Parameters
             decision_period: number of periods forward whein time that the decision directly affects
         """
-        i = {"U":0, "D":1, "N":2}[self.state.wave_state]
-        j = self.state.wave_count[self.state.wave_state]
-        self.weighted_policy_weights = weighted_policy_weights[i][j-1]
+        if weighted_policy_weights:
+            i = {"U":0, "D":1, "N":2}[self.state.wave_state]
+            j = self.state.wave_count[self.state.wave_state]
+            self.weighted_policy_weights = weighted_policy_weights[i][j-1]
         decision = self.policy()
         information = self.get_exogenous_information(self.state)
-        self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, decision_period)
+        self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, self.decision_period)
         self.path.append(self.state)
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas, previous_flow_scale):

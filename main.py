@@ -16,15 +16,15 @@ if __name__ == '__main__':
     # Set initial parameters
     day = 21
     month = 2
-    year = 2021
+    year = 2020
     runs = 2
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 10 # number of weeks
+    horizon = 60 # number of weeks
     decision_period = 28
     initial_infected = 5
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    policy = policies[-1]
+    policy = policies[-2]
     plot_results = True
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
@@ -82,6 +82,8 @@ if __name__ == '__main__':
                         policy=policy,
                         historic_data=historic_data,
                         verbose=verbose)
+    # mdp.run()
+    # utils.print_results(mdp.path[-1], population, age_labels, policy)
 
     GA = SimpleGeneticAlgorithm(3, mdp)
     
