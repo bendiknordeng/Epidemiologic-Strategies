@@ -52,8 +52,8 @@ if __name__ == '__main__':
                         paths=paths,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=False,
-                        stochastic=True)
+                        include_flow=True,
+                        stochastic=False)
 
     initial_state = State.initialize_state(
                         num_initial_infected=initial_infected,

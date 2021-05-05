@@ -114,10 +114,6 @@ class SEAIR:
             infection_e = np.matmul(beta * r_e * C * alphas[0], E2.T/N).T
             infection_a = np.matmul(beta * r_a * C * alphas[1], A.T/N).T
             infection_i = np.matmul(beta * C * alphas[2], I.T/N).T
-
-            infection_e = beta * r_e * (E2.T/N).T
-            infection_a = beta * r_a * (A.T/N).T
-            infection_i = beta * (I.T/N).T
             if self.stochastic:
                 # Get stochastic transitions
                 new_E1  = np.random.binomial(S.astype(int), infection_e + infection_a + infection_i)
