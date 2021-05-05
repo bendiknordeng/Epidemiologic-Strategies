@@ -186,7 +186,7 @@ def plot_rt(result):
     
     # Plot dots and line
     ax.plot(index, values, c='k', zorder=1, alpha=.25)
-    ax.scatter(index, values, s=40, lw=.5, c=cmap(color_mapped(values)), edgecolors='k', zorder=2)
+    ax.scatter(index, values, s=30, lw=.5, c=cmap(color_mapped(values)), zorder=2)
 
     # Aesthetically, extrapolate credible interval by 1 day either side
     lowfn = interp1d(date2num(index), result['Low_90'].values, bounds_error=False, fill_value='extrapolate')

@@ -1,12 +1,10 @@
-from collections import defaultdict
 from covid import plot
 from covid import utils
-import numpy as np
-import pandas as pd
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.seair import SEAIR
+from covid.SEAIR import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
+import numpy as np
 from tqdm import tqdm
 
 if __name__ == '__main__':
@@ -14,18 +12,19 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
+    # np.random.seed(10)
     day = 21
     month = 2
     year = 2020
-    runs = 2
+    runs = 20
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of weeks
+    horizon = 60 # number of decision_periods
     decision_period = 28
-    initial_infected = 5
+    initial_infected = 1
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy = policies[-2]
-    plot_results = True
+    plot_results = False
     verbose = False
     weighted_policy_weights = [0, 0.33, 0.33, 0.34]
     use_response_measures = False
@@ -41,7 +40,6 @@ if __name__ == '__main__':
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
     OD_matrices = utils.generate_ssb_od_matrix(decision_period, population, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
-    wave_timeline, wave_state_timeline = utils.get_wave_timeline(horizon)
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     epidemic_function = SEAIR(
@@ -54,7 +52,7 @@ if __name__ == '__main__':
                         paths=paths,
                         write_to_csv=False, 
                         write_weekly=False,
-                        include_flow=True,
+                        include_flow=False,
                         stochastic=True)
 
     initial_state = State.initialize_state(
@@ -75,22 +73,26 @@ if __name__ == '__main__':
                         epidemic_function=epidemic_function,
                         initial_state=initial_state,
                         response_measure_model=response_measure_model, 
-                        use_response_measures=use_response_measures, 
-                        wave_timeline=wave_timeline, 
-                        wave_state_timeline=wave_state_timeline,
+                        use_response_measures=use_response_measures,
                         horizon=horizon,
                         policy=policy,
                         historic_data=historic_data,
                         verbose=verbose)
-    # mdp.run()
-    # utils.print_results(mdp.path[-1], population, age_labels, policy)
 
-    GA = SimpleGeneticAlgorithm(3, mdp)
+    results = []                   
+    for i in tqdm(range(runs)):
+        mdp.run()
+        results.append(mdp.path[-1])
+        utils.print_results(mdp.path[-1], population, age_labels, policy)
+        mdp.reset()
+    utils.get_average_results(results, population, age_labels, policy)
+
+    # GA = SimpleGeneticAlgorithm(3, mdp)
     
-    while not GA.converged:
-        GA.new_generation()
-        GA.find_fitness(runs)
-        GA.evaluate_fitness()
+    # while not GA.converged:
+    #     GA.new_generation()
+    #     GA.find_fitness(runs)
+    #     GA.evaluate_fitness()
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
@@ -101,5 +103,5 @@ if __name__ == '__main__':
         infection_results_age = new_infections.sum(axis=1)
         plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
-        #utils.get_r_effective(mdp.path, population, config, from_data=False)
+        utils.get_r_effective(mdp.path, population, config, from_data=False)
 

@@ -3,11 +3,11 @@ from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
 import time
+from covid.utils import get_wave_timeline
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, initial_state, 
-                response_measure_model, use_response_measures, wave_timeline, wave_state_timeline, 
-                horizon, policy, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, initial_state,
+                response_measure_model, use_response_measures, horizon, policy, verbose, historic_data=None):
         """ Initializes an instance of the class MarkovDecisionProcess, that administrates
 
         Parameters
@@ -28,8 +28,6 @@ class MarkovDecisionProcess:
         self.initial_state = initial_state
         self.response_measure_model = response_measure_model
         self.use_response_measures = use_response_measures
-        self.wave_timeline = wave_timeline
-        self.wave_state_timeline = wave_state_timeline
         self.historic_data = historic_data
         self.policy_name = policy
         self.verbose = verbose
@@ -43,12 +41,15 @@ class MarkovDecisionProcess:
         }
         self.policy = self.policies[policy]
         self.weighted_policy_weights = None
+        self.wave_timeline = None
+        self.wave_state_timeline = None
         self.reset()
     
     def reset(self):
         self.initial_state.wave_count = {"U":0, "D":0, "N":0}
         self.state = self.initial_state
         self.path = [self.state]
+        self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.config.periods_per_day, self.decision_period)
 
     def run(self, weighted_policy_weights=None):
         """ Updates states from current time_step to a specified horizon
@@ -107,7 +108,7 @@ class MarkovDecisionProcess:
         Parameters
             decision_period: number of periods forward whein time that the decision directly affects
         """
-        if weighted_policy_weights:
+        if weighted_policy_weights is not None:
             i = {"U":0, "D":1, "N":2}[self.state.wave_state]
             j = self.state.wave_count[self.state.wave_state]
             self.weighted_policy_weights = weighted_policy_weights[i][j-1]

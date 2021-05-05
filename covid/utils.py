@@ -451,7 +451,7 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
-def get_wave_timeline(horizon):
+def get_wave_timeline(horizon, decision_period, periods_per_day):
     with open('data/wave_parameters.json') as file:
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
@@ -464,7 +464,7 @@ def get_wave_timeline(horizon):
         wave_state_count.append(current_state)
         n_wave = Counter(wave_state_count)[current_state]
         params = data['duration'][current_state][str(n_wave)]
-        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std']) // 7 # weeks
+        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std']) // (decision_period/periods_per_day)
         duration = min(max(duration, params['min']), params['max'])
         try:
             for week in range(i, i+int(duration)):
@@ -528,9 +528,6 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
 
     # Create a DataFrame that will hold our posteriors for each day. Insert our prior as the first posterior.
     posteriors = pd.DataFrame(index=r_t_range, columns=new_infected.index, data={new_infected.index[0]: prior0})
-    
-    # Keep track of the sum of the log of the probability of the data for maximum likelihood calculation.
-    log_likelihood = 0.000001
 
     # (5) Iteratively apply Bayes' rule
     for previous_day, current_day in zip(new_infected.index[:-1], new_infected.index[1:]):
@@ -546,11 +543,8 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
         
         # Execute full Bayes' Rule
         posteriors[current_day] = numerator/denominator
-        
-        # Add to the running sum of log likelihoods
-        log_likelihood += np.log(denominator)
 
-    return posteriors, log_likelihood
+    return posteriors
 
 def smooth_data(data):
     """ returns smoothed values of a pandas.core.series.Series
@@ -561,7 +555,7 @@ def smooth_data(data):
         smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
 
     """
-    smoothed = data.rolling(3,
+    smoothed = data.rolling(7,
         win_type='gaussian',
         min_periods=1,
         center=True).mean(std=3).round()
@@ -641,12 +635,12 @@ def get_r_effective(path, population, config, from_data=False):
     # plot.smoothed_development(original, smoothed, "Norway - New Cases per Day")
 
     # define parameters to calculate posteriors
-    R_T_MAX = 12
+    R_T_MAX = 10
     r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
     gamma = 1/(config.presymptomatic_period + config.postsymptomatic_period)
     if from_data: gamma = gamma/config.periods_per_day
     # calculate posteriors 
-    posteriors, log_likelihood = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
+    posteriors = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
 
     # plot daily posteriors
     # plot.posteriors(posteriors, 'Norway- Daily Posterior for $R_t$')

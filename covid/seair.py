@@ -23,21 +23,22 @@ class SEAIR:
             hidden_cases: boolean, true if we want to model hidden cases of infection
             write_to_csv: boolean, true if we want to write results to csv
             write_weekly: boolean, false if we want to write daily results, true if weekly
-         """
-        
+        """
+
         self.periods_per_day = config.periods_per_day
+        self.time_delta = config.time_delta
         self.OD = OD
         self.contact_matrices = contact_matrices
-        self.population = population
+        self.total_pop = population.population.sum()
         self.age_group_flow_scaling = age_group_flow_scaling
         self.fatality_rate_symptomatic = death_rates
         self.efficacy = config.efficacy
-        self.latent_period = config.latent_period * self.periods_per_day
+        self.latent_period = config.latent_period
         self.proportion_symptomatic_infections = config.proportion_symptomatic_infections
         self.presymptomatic_infectiousness = config.presymptomatic_infectiousness
         self.asymptomatic_infectiousness = config.asymptomatic_infectiousness
-        self.presymptomatic_period = config.presymptomatic_period*self.periods_per_day
-        self.postsymptomatic_period = config.postsymptomatic_period*self.periods_per_day
+        self.presymptomatic_period = config.presymptomatic_period
+        self.postsymptomatic_period = config.postsymptomatic_period
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
         self.stochastic = stochastic
         self.include_flow = include_flow
@@ -62,12 +63,11 @@ class SEAIR:
             history: compartment values for each region, time step, and age group shape: (#decision_period,  #compartments, #regions, #age groups)
         """
         # Meta-parameters
-        compartments = state.get_compartments_values()
-        n_compartments = len(compartments)
-        n_regions, n_age_groups = compartments[0].shape
+        S, E1, E2, A, I, R, D, V = state.get_compartments_values()
+        n_regions, n_age_groups = S.shape
 
         # Get information data
-        R = information['R'] * self.periods_per_day
+        R = information['R']
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         flow_scale = information['flow_scale']
@@ -75,26 +75,25 @@ class SEAIR:
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         total_new_deaths = np.zeros(shape=(decision_period, n_regions, n_age_groups))
-        history = np.zeros(shape=(int(decision_period/self.periods_per_day), n_compartments+1, n_regions, n_age_groups))
         
-        # Define parameters in the mathematical model
-        N = self.population.population.to_numpy(dtype='float64')
-        beta = (R/self.recovery_period)
-        sigma = 1/self.latent_period
-        p = self.proportion_symptomatic_infections
+        # Probabilities
+        beta = R/self.recovery_period
         r_e = self.presymptomatic_infectiousness
         r_a = self.asymptomatic_infectiousness
-        alpha = 1/self.presymptomatic_period
-        omega = 1/self.postsymptomatic_period
-        gamma = 1/self.recovery_period
+        p = self.proportion_symptomatic_infections
         delta = self.fatality_rate_symptomatic
         epsilon = self.efficacy
         
+        # Rates
+        sigma = 1/(self.latent_period * self.periods_per_day)
+        alpha = 1/(self.presymptomatic_period * self.periods_per_day)
+        omega = 1/(self.postsymptomatic_period * self.periods_per_day)
+        gamma = 1/(self.recovery_period * self.periods_per_day)
+
         # Run simulation
-        S, E1, E2, A, I, R, D, V = compartments
         for i in range(0, decision_period-1):
-            timestep = (state.date.weekday() + i//4) % decision_period
-            
+            timestep = (state.date.weekday()*self.periods_per_day + i//self.periods_per_day) % decision_period
+
             # Vaccinate before flow
             new_V = decision/decision_period
             successfully_new_V = epsilon * new_V
@@ -103,63 +102,53 @@ class SEAIR:
             V = V + new_V
 
             # Perform movement flow
-            if self.include_flow and timestep%2 == 1 and timestep < self.periods_per_day*5:
+            working_hours = timestep % 2 == 1 and timestep < self.periods_per_day * 5
+            if self.include_flow and working_hours:
                 realOD = self.OD[timestep] * flow_scale
-                S, E1, E2, A, I = self.flow_transition([S, E1, E2, A, I], realOD)
+                S, E1, E2, A, I, R = self.flow_transition([S, E1, E2, A, I, R], realOD)
+            
+            # Update population to account for new deaths
+            N = sum([S, E1, E2, A, I, R]).sum(axis=1)
+            
+            # Define current transmission of infection
+            infection_e = np.matmul(beta * r_e * C * alphas[0], E2.T/N).T
+            infection_a = np.matmul(beta * r_a * C * alphas[1], A.T/N).T
+            infection_i = np.matmul(beta * C * alphas[2], I.T/N).T
 
-            infection_e = beta*r_e * np.matmul(C*alphas[0], (E2.T/N)).T
-            infection_a = beta*r_a * np.matmul(C*alphas[1], (A.T/N)).T
-            infection_i = beta * np.matmul(C*alphas[2], (I.T/N)).T
+            infection_e = beta * r_e * (E2.T/N).T
+            infection_a = beta * r_a * (A.T/N).T
+            infection_i = beta * (I.T/N).T
             if self.stochastic:
                 # Get stochastic transitions
-                new_E1 = np.random.binomial(S.astype(int), infection_e + infection_a + infection_i)
-                new_E2 = np.random.binomial(E1.astype(int), sigma * p)
-                new_A = np.random.binomial((E1-new_E2).astype(int), sigma * (1-p))
-                new_I = np.random.binomial(E2.astype(int), alpha)
-                new_R_from_A = np.random.binomial(A.astype(int), gamma)
-                new_R_from_I = np.random.binomial(I.astype(int), (np.ones(len(delta)) - delta) * omega)
-                new_D = np.random.binomial((I-new_R_from_I).astype(int), delta * omega)
+                new_E1  = np.random.binomial(S.astype(int), infection_e + infection_a + infection_i)
+                new_E2  = np.random.binomial(E1.astype(int), sigma * p)
+                new_A   = np.random.binomial((E1-new_E2).astype(int), sigma * (1 - p))
+                new_I   = np.random.binomial(E2.astype(int), alpha)
+                new_R_A = np.random.binomial(A.astype(int), gamma)
+                new_R_I = np.random.binomial(I.astype(int), (np.ones(len(delta)) - delta) * omega)
+                new_D   = np.random.binomial((I-new_R_I).astype(int), delta * omega)
             else:
                 # Get deterministic transitions
-                new_E1 = S * (infection_e + infection_a + infection_i)
-                new_E2 = E1 * sigma * p
-                new_A = E1 * sigma * (1-p)
-                new_I = E2 * alpha
-                new_R_from_A = A * gamma
-                new_R_from_I = I * (np.ones(len(delta)) - delta) * omega
-                new_D = I * delta * omega
+                new_E1  = S  * (infection_e + infection_a + infection_i)
+                new_E2  = E1 * sigma * p
+                new_A   = E1 * sigma * (1 - p)
+                new_I   = E2 * alpha
+                new_R_A = A  * gamma
+                new_R_I = I  * (np.ones(len(delta)) - delta) * omega
+                new_D   = I  * delta * omega
 
             # Calculate values for each compartment
-            S = S - new_E1
+            S  = S - new_E1
             E1 = E1 + new_E1 - new_E2 - new_A
             E2 = E2 + new_E2 - new_I
-            A = A + new_A - new_R_from_A
-            I = I + new_I - new_R_from_I - new_D
-            R = R + new_R_from_I + new_R_from_A
-            D = D + new_D
+            A  = A + new_A - new_R_A
+            I  = I + new_I - new_R_I - new_D
+            R  = R + new_R_I + new_R_A
+            D  = D + new_D
 
             # Save number of new infected
             total_new_infected[i] = new_I
             total_new_deaths[i] = new_D
-            
-            # Append simulation results
-            if i%self.periods_per_day == 0: # record daily history
-                daily_new_infected = new_I if i == 0 else total_new_infected[i-self.periods_per_day:i].sum(axis=0)
-                history = self.update_history([S, E1, E2, A, I, R, D, V], daily_new_infected, history, i//self.periods_per_day)
-
-            # Ensure balance in population
-            comp_pop = np.sum(S + E1 + E2 + A + I + R + D)
-            total_pop = np.sum(N)
-            assert round(comp_pop) == total_pop, f"Population not in balance. \nCompartment population: {comp_pop}\nTotal population: {total_pop}"
-            
-        if self.write_to_csv:
-            utils.write_history(self.write_weekly,
-                                history,
-                                self.population, 
-                                state.time_step,
-                                self.paths.results_history_weekly,
-                                self.paths.results_history_daily,
-                                ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V', 'New infected'])
 
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)
 
@@ -195,8 +184,8 @@ class SEAIR:
         flow_pop = flow_pop + inflow - outflow
         total_flow_pop = np.sum(flow_pop)
         comp_fractions = np.array([np.sum(comp)/total_flow_pop for comp in flow_comps])
-        S, E1, E2, A, I = np.array([frac*flow_pop for frac in comp_fractions])
-        return S, E1, E2, A, I
+        flow_comps = np.array([frac*flow_pop for frac in comp_fractions])
+        return flow_comps
         
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
