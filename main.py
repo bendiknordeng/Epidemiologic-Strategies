@@ -2,7 +2,7 @@ from covid import plot
 from covid import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.SEAIR import SEAIR
+from covid.seair import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 import numpy as np
 from tqdm import tqdm
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     day = 21
     month = 2
     year = 2020
-    runs = 20
+    runs = 1
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of decision_periods
     decision_period = 28
