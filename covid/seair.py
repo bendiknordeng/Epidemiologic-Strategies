@@ -69,7 +69,7 @@ class SEAIR:
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         commuter_effect = self.commuter_effect * information['flow_scale']
-        
+
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         total_new_deaths = np.zeros(shape=(decision_period, n_regions, n_age_groups))
