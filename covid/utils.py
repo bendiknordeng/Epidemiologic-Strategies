@@ -67,23 +67,7 @@ def generate_ssb_od_matrix(decision_period, periods_per_day, population, fpath_m
     afternoon = morning.T.copy() 
     morning = morning / population.population.values.reshape(-1,1)
     afternoon = afternoon / population.population.values.reshape(-1,1)
-    midday = np.zeros(morning.shape)
-    night = np.copy(midday)
-    
-    od = np.zeros(shape=(decision_period, morning.shape[0], morning.shape[1]))
-    # fill od matrices with correct matrix
-    for i in range(decision_period):
-        if i >= periods_per_day*5: # weekend: no travel
-            od[i] = night
-        elif (i)%periods_per_day == 0: # 0000-0600
-            od[i] = night
-        elif (i+1)%periods_per_day == 0: # 0600-1200
-            od[i] = morning
-        elif (i+2)%periods_per_day == 0: # 1200-1800
-            od[i] = midday 
-        elif (i+3)%periods_per_day == 0: # 1800-0000
-            od[i] = afternoon
-    return od
+    return np.array([morning, afternoon])
 
 def write_pickle(filepath, arr):
     """ writes an array to file as a pickle
