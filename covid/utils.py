@@ -51,7 +51,7 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_ssb_od_matrix(decision_period, periods_per_day, population, fpath_muncipalities_commute):
+def generate_ssb_od_matrix(population, fpath_muncipalities_commute):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -61,10 +61,9 @@ def generate_ssb_od_matrix(decision_period, periods_per_day, population, fpath_m
     Returns
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
     """
-
     df = pd.read_csv(fpath_muncipalities_commute)
     morning = df.pivot(columns='to', index='from', values='n').fillna(0).values
-    afternoon = morning.T.copy() 
+    afternoon = morning.T.copy()
     morning = morning / population.population.values.reshape(-1,1)
     afternoon = afternoon / population.population.values.reshape(-1,1)
     return np.array([morning, afternoon])
