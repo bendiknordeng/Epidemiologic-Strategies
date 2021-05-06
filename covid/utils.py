@@ -51,7 +51,7 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_ssb_od_matrix(population, fpath_muncipalities_commute):
+def generate_ssb_od_matrix(population, age_flow_scaling, fpath_muncipalities_commute):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -61,9 +61,12 @@ def generate_ssb_od_matrix(population, fpath_muncipalities_commute):
     Returns
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
     """
+    region_commuter_pop = population[population.columns[np.where(age_flow_scaling > 0)[0]+2]].sum(axis=1).values.reshape(-1,1)
     df = pd.read_csv(fpath_muncipalities_commute)
     morning = df.pivot(columns='to', index='from', values='n').fillna(0).values
     afternoon = morning.T.copy()
+    morning = [morning * age_flow_scaling[i]/region_commuter_pop for i in range(len(age_flow_scaling))]
+    afternoon = [afternoon * age_flow_scaling[i]/region_commuter_pop for i in range(len(age_flow_scaling))]
     return np.array([morning, afternoon])
 
 def write_pickle(filepath, arr):

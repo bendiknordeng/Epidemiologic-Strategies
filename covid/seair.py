@@ -172,12 +172,10 @@ class SEAIR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
-        total_pop = np.sum(flow_comps)
-        age_flow_scaling = np.array(self.age_group_flow_scaling)
+        n_age_groups = OD.shape[0]
         for comp in flow_comps:
-            comp_frac = np.sum(comp)/total_pop
-            inflow = np.array([OD.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-            outflow = np.array([OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+            inflow = np.array([np.matmul(comp[:,a], OD[a]) for a in range(n_age_groups)]).T
+            outflow = np.array([comp[:,a] * OD[a].sum(axis=1) for a in range(n_age_groups)]).T
             comp += (inflow - outflow)
         return flow_comps
         

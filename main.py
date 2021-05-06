@@ -35,14 +35,14 @@ if __name__ == '__main__':
     contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
-    OD_matrices = utils.generate_ssb_od_matrix(population, paths.municipalities_commute)
+    OD_matrices = utils.generate_ssb_od_matrix(population, age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     # Simulation settings
     verbose = False
     use_response_measures = False
-    include_flow = False
+    include_flow = True
     stochastic = False
 
     plot_results = True
