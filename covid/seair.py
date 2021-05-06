@@ -101,9 +101,9 @@ class SEAIR:
             V = V + new_V
 
             # Perform movement flow
-            working_hours = timestep < (self.periods_per_day * 5) and ((i+3)%self.periods_per_day==0 or (i+1)%self.periods_per_day==0)
-            if self.include_flow and working_hours:
-                realOD = self.OD[int(timestep % 4 == 3)] * flow_scale
+            commuting_hours = timestep < (self.periods_per_day * 5) and timestep % 2 == 1
+            if self.include_flow and commuting_hours:
+                realOD = self.OD[int(timestep % self.periods_per_day == 3)] * flow_scale
                 S, E1, E2, A, I, R = self.flow_transition(np.array([S, E1, E2, A, I, R]), realOD)
             
             # Update population to account for new deaths

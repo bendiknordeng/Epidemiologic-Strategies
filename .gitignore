@@ -4,9 +4,6 @@
 #User specific pycaches
 __pycache__/
 
-#data files
-#data/
-
 #plots
 plots/
 
@@ -15,4 +12,3 @@ covid/.ipynb_checkpoints/
 
 #results
 vaccine_allocation_model/results/
-data/candidate_mvp
