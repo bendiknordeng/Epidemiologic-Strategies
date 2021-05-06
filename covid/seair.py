@@ -91,8 +91,8 @@ class SEAIR:
         gamma = 1/(self.recovery_period * self.periods_per_day)
 
         # Run simulation
-        for i in range(0, decision_period-1):
-            timestep = (state.date.weekday()*self.periods_per_day + i//self.periods_per_day) % decision_period
+        for i in range(decision_period):
+            timestep = (state.date.weekday() * self.periods_per_day + i) % decision_period
 
             # Vaccinate before flow
             new_V = decision/decision_period
@@ -102,7 +102,7 @@ class SEAIR:
             V = V + new_V
 
             # Perform movement flow
-            working_hours = timestep % 2 == 1 and timestep < self.periods_per_day * 5
+            working_hours = timestep < (self.periods_per_day * 5) and ((i+3)%self.periods_per_day==0 or (i+1)%self.periods_per_day==0)
             if self.include_flow and working_hours:
                 realOD = self.OD[timestep] * flow_scale
                 S, E1, E2, A, I, R = self.flow_transition([S, E1, E2, A, I, R], realOD)

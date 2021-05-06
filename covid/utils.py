@@ -51,7 +51,7 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_ssb_od_matrix(decision_period, population, fpath_muncipalities_commute):
+def generate_ssb_od_matrix(decision_period, periods_per_day, population, fpath_muncipalities_commute):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -62,41 +62,27 @@ def generate_ssb_od_matrix(decision_period, population, fpath_muncipalities_comm
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
     """
 
-    df = pd.read_csv(fpath_muncipalities_commute, usecols=[1,2,3])
-    df['from'] = df['from'].str.lstrip("municip municip0").astype(int)
-    df['to'] = df['to'].str.lstrip("municip municip0").astype(int)
-    decision_period = 28
-    region_id = population.region_id.to_numpy()
-    od = np.zeros((decision_period, len(region_id), len(region_id)))
-    morning = np.zeros((len(region_id), len(region_id)))
-    
-    for id in region_id:
-        i = np.where(region_id == id)
-        filtered = df.where(df["from"] == id).dropna()
-        to, n = filtered['to'].to_numpy(int), filtered['n'].to_numpy()
-        for k in range(len(to)):
-            j = np.where(region_id == to[k])
-            morning[i,j] = n[k]
-
-    afternoon = np.copy(morning.T)
-    morning = np.transpose(morning.T / population.population.to_numpy())
-    afternoon = np.transpose(afternoon.T / population.population.to_numpy())
-    midday = np.zeros((len(region_id), len(region_id)))
+    df = pd.read_csv(fpath_muncipalities_commute)
+    morning = df.pivot(columns='to', index='from', values='n').fillna(0).values
+    afternoon = morning.T.copy() 
+    morning = morning / population.population.values.reshape(-1,1)
+    afternoon = afternoon / population.population.values.reshape(-1,1)
+    midday = np.zeros(morning.shape)
     night = np.copy(midday)
     
+    od = np.zeros(shape=(decision_period, morning.shape[0], morning.shape[1]))
     # fill od matrices with correct matrix
     for i in range(decision_period):
-        if i >= 20: # weekend: no travel
+        if i >= periods_per_day*5: # weekend: no travel
             od[i] = night
-        elif (i)%4 == 0: # 0000-0600
+        elif (i)%periods_per_day == 0: # 0000-0600
             od[i] = night
-        elif (i+1)%4 == 0: # 0600-1200
+        elif (i+1)%periods_per_day == 0: # 0600-1200
             od[i] = morning
-        elif (i+2)%4 == 0: # 1200-1800
-            od[i] = midday
-        elif (i+3)%4 == 0: # 1800-0000
+        elif (i+2)%periods_per_day == 0: # 1200-1800
+            od[i] = midday 
+        elif (i+3)%periods_per_day == 0: # 1800-0000
             od[i] = afternoon
-    
     return od
 
 def write_pickle(filepath, arr):
@@ -149,7 +135,7 @@ def transform_df_to_history(df, column_names, n_regions, n_age_groups):
     
     Parameters
         df:  dataframe 
-        coloumn_names: string indicating the column names of the data that will be transformed e.g 'SEIRHQ'. 
+        column_names: string indicating the column names of the data that will be transformed e.g 'SEIRHQ'. 
     Returns
          3D array with shape (number of time steps, number of compartments, number of regions)
     """
@@ -452,6 +438,18 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
 def get_wave_timeline(horizon, decision_period, periods_per_day):
+    """generates a wave timeline and a wave state timeline over the simulation horizon
+
+    Args:
+        horizon (int): simulation horizon (weeks)
+        decision_period (int): number of periods within a week e.g 28
+        periods_per_day (int): number of periods per day e.g 4 
+
+    Returns:
+        wave_timeline (list(float)): r effective values for each week over the simulation horizon
+        wave_state_timeline (list(str)): characters indicating the wave state for each week of the simulation horizon
+
+    """
     with open('data/wave_parameters.json') as file:
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
@@ -630,10 +628,6 @@ def get_r_effective(path, population, config, from_data=False):
     idx_start = np.searchsorted(smoothed, 1)
     smoothed = smoothed.iloc[idx_start:]
 
-    # plots the original and smoothed data
-    # original = cases.loc[smoothed.index]
-    # plot.smoothed_development(original, smoothed, "Norway - New Cases per Day")
-
     # define parameters to calculate posteriors
     R_T_MAX = 10
     r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
@@ -642,16 +636,16 @@ def get_r_effective(path, population, config, from_data=False):
     # calculate posteriors 
     posteriors = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
 
-    # plot daily posteriors
-    # plot.posteriors(posteriors, 'Norway- Daily Posterior for $R_t$')
-
     # finds the posterior intervals
     hdis = highest_density_interval(posteriors, percentile=0.9)
     most_likely = posteriors.idxmax().rename('ML')
     result = pd.concat([most_likely, hdis], axis=1)
 
     # plot R_t development
-    plot.plot_rt(result)
+    if len(result > 5):
+        plot.plot_rt(result[4:])
+    else:
+        plot.plot_rt(result)
 
 def get_yll(age_bins, age_labels, deaths_per_age_group):
     """Calculates the Years of Lost Lives (YLL)
