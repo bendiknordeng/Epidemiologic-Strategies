@@ -1,11 +1,11 @@
 import numpy as np
 
 class SEAIR:
-    def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
+    def __init__(self, commuter_effect, contact_matrices, population, age_group_flow_scaling, death_rates,
                 config, paths, include_flow, stochastic, write_to_csv, write_weekly):
         """ 
         Parameters:
-            OD: Origin-Destination matrix
+            commuter_effect: Matrix of the percentage population growth or decline during working hours 
             contact_matrices: Contact matrices between age groups
             population: pd.DataFrame with columns region_id, region_name, population (quantity)
             config: named tuple with following parameters
@@ -23,12 +23,11 @@ class SEAIR:
             write_to_csv: boolean, true if we want to write results to csv
             write_weekly: boolean, false if we want to write daily results, true if weekly
         """
-
         self.periods_per_day = config.periods_per_day
         self.time_delta = config.time_delta
-        self.OD = OD
+        self.commuter_effect = commuter_effect
         self.contact_matrices = contact_matrices
-        self.total_pop = population.population.sum()
+        self.population = population
         self.age_group_flow_scaling = age_group_flow_scaling
         self.fatality_rate_symptomatic = death_rates
         self.efficacy = config.efficacy
@@ -69,8 +68,8 @@ class SEAIR:
         R_eff = information['R']
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
-        flow_scale = information['flow_scale']
-    
+        commuter_effect = self.commuter_effect * information['flow_scale']
+        
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         total_new_deaths = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -100,22 +99,25 @@ class SEAIR:
             R = R + successfully_new_V
             V = V + new_V
 
-            # Perform movement flow
-            working_hours = timestep < (self.periods_per_day * 5) and ((i+3)%self.periods_per_day==0 or (i+1)%self.periods_per_day==0)
-            if self.include_flow and working_hours:
-                realOD = self.OD[int(timestep % 4 == 3)] * flow_scale
-                S, E1, E2, A, I, R = self.flow_transition(np.array([S, E1, E2, A, I, R]), realOD)
-            
             # Update population to account for new deaths
             N = sum([S, E1, E2, A, I, R]).sum(axis=1)
             
-            # Define current transmission of infection
-            infection_e = np.matmul(beta * r_e * C * alphas[0], E2.T/N).T
-            infection_a = np.matmul(beta * r_a * C * alphas[1], A.T/N).T
-            infection_i = np.matmul(beta * C * alphas[2], I.T/N).T
+            # Activate movement
+            working_hours = timestep < (self.periods_per_day * 5) and 0 < timestep % self.periods_per_day < 3
+            if self.include_flow and working_hours:
+                # Define current transmission of infection with commuters
+                infection_e = np.matmul(beta * r_e * C * alphas[0], (commuter_effect * E2).T/N).T
+                infection_a = np.matmul(beta * r_a * C * alphas[1], (commuter_effect * A).T/N).T
+                infection_i = np.matmul(beta * C * alphas[2], (commuter_effect * I).T/N).T
+            else:
+                # Define current transmission of infection without commuters
+                infection_e = np.matmul(beta * r_e * C * alphas[0], E2.T/N).T
+                infection_a = np.matmul(beta * r_a * C * alphas[1], A.T/N).T
+                infection_i = np.matmul(beta * C * alphas[2], I.T/N).T
+
             if self.stochastic:
                 # Get stochastic transitions
-                new_E1  = np.random.binomial(S.astype(int), infection_e + infection_a + infection_i)
+                new_E1  = np.random.binomial(S.astype(int), np.clip(infection_e + infection_a + infection_i, a_min=0, a_max=1))
                 new_E2  = np.random.binomial(E1.astype(int), sigma * p)
                 new_A   = np.random.binomial((E1-new_E2).astype(int), sigma * (1 - p))
                 new_I   = np.random.binomial(E2.astype(int), alpha)
@@ -147,40 +149,6 @@ class SEAIR:
 
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)
 
-    @staticmethod
-    def update_history(compartments, new_infected, history, time_step):
-        """ Updates history results with new compartments values
-        Parameters
-            compartments: list of each compartments for a given time step
-            history: compartment values for each region, time step, and age group shape: (#decision_period,  #compartments, #regions, #age groups)
-            time_step: int indicating current time step in simulation
-        Returns
-            updated history array
-            
-        """
-        for c in range(len(compartments)):
-            history[time_step, c,:] = compartments[c]
-        history[time_step,-1,:] = new_infected
-        return history
-
-    def flow_transition(self, flow_comps, OD):
-        """ Calculates the netflow for every region and age group
-
-        Parameters
-            compartment: array of size (#regions, #age_groups) giving population for relevant compartment
-            OD: scaled ODs for relevant compartment that use movement flow
-        Returns
-            an array of shape (#regions, #age groups) of net flows within each region and age group
-        """
-        total_pop = np.sum(flow_comps)
-        age_flow_scaling = np.array(self.age_group_flow_scaling)
-        for comp in flow_comps:
-            comp_frac = np.sum(comp)/total_pop
-            inflow = np.array([OD.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-            outflow = np.array([OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-            comp += (inflow - outflow)
-        return flow_comps
-        
     def generate_weighted_contact_matrix(self, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
 
