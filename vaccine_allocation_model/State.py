@@ -102,7 +102,7 @@ class State:
 
     @staticmethod
     def initialize_state(num_initial_infected, vaccines_available, contact_weights, alphas, 
-                        flow_scale, population, wave_state, wave_count, start_date, stochastic, time_step=0):
+                        flow_scale, population, wave_state, wave_count, start_date, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -123,22 +123,13 @@ class State:
         D = np.zeros(pop.shape)
         V = np.zeros(pop.shape)
 
-        if stochastic:
-            while num_initial_infected > 0:
-                region = np.random.randint(0, pop.shape[0])
-                age_group = np.random.randint(0, pop.shape[1])
-                if S[region][age_group] > 0:
-                    num_initial_infected -= 1
-                    S[region][age_group] -= 1
-                    I[region][age_group] += 1 
-        else:
-            # Initialize with all initial infected in among age groups in Oslo 
-            num_age_groups = pop.shape[1]
-            num_inf = int(num_initial_infected/num_age_groups)
-            region = 0 
-            for age_group in range(pop.shape[1]):
-                S[region][age_group] -= num_inf
-                I[region][age_group] += num_inf
+        while num_initial_infected > 0:
+            region = np.random.randint(0, pop.shape[0])
+            age_group = np.random.randint(0, pop.shape[1])
+            if S[region][age_group] > 0:
+                num_initial_infected -= 1
+                S[region][age_group] -= 1
+                I[region][age_group] += 1 
         
         return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, 
                     I.copy(), I.copy(), 0, wave_state, wave_count, start_date, time_step) 

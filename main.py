@@ -2,7 +2,7 @@ from covid import plot
 from covid import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.seair import SEAIR
+from covid.SEAIR import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 import numpy as np
 from tqdm import tqdm
@@ -13,14 +13,14 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    day = 21
+    day = 24
     month = 2
     year = 2020
     runs = 1
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of decision_periods
     decision_period = 28
-    initial_infected = 150
+    initial_infected = 1000
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy = policies[-2]
@@ -39,13 +39,13 @@ if __name__ == '__main__':
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
-    # Simulation tuning
+    # Simulation settings
     verbose = False
     use_response_measures = False
-    include_flow = True
-    stochastic = True
+    include_flow = False
+    stochastic = False
 
-    plot_results = False
+    plot_results = True
     write_weekly = False
     write_to_csv = False 
 
@@ -71,8 +71,7 @@ if __name__ == '__main__':
                         population=population,
                         wave_state=initial_wave_state,
                         wave_count=initial_wave_count,
-                        start_date=start_date, 
-                        stochastic=stochastic)
+                        start_date=start_date)
     
     mdp = MarkovDecisionProcess(
                         config=config,

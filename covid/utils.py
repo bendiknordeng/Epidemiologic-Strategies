@@ -64,8 +64,6 @@ def generate_ssb_od_matrix(population, fpath_muncipalities_commute):
     df = pd.read_csv(fpath_muncipalities_commute)
     morning = df.pivot(columns='to', index='from', values='n').fillna(0).values
     afternoon = morning.T.copy()
-    morning = morning / population.population.values.reshape(-1,1)
-    afternoon = afternoon / population.population.values.reshape(-1,1)
     return np.array([morning, afternoon])
 
 def write_pickle(filepath, arr):

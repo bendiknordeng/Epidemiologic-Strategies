@@ -1,5 +1,4 @@
 import numpy as np
-from covid import utils
 
 class SEAIR:
     def __init__(self, OD, contact_matrices, population, age_group_flow_scaling, death_rates,
@@ -67,7 +66,7 @@ class SEAIR:
         n_regions, n_age_groups = S.shape
 
         # Get information data
-        R = information['R']
+        R_eff = information['R']
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         flow_scale = information['flow_scale']
@@ -77,7 +76,7 @@ class SEAIR:
         total_new_deaths = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         
         # Probabilities
-        beta = R/self.recovery_period
+        beta = R_eff/self.recovery_period
         r_e = self.presymptomatic_infectiousness
         r_a = self.asymptomatic_infectiousness
         p = self.proportion_symptomatic_infections
@@ -105,7 +104,7 @@ class SEAIR:
             working_hours = timestep < (self.periods_per_day * 5) and ((i+3)%self.periods_per_day==0 or (i+1)%self.periods_per_day==0)
             if self.include_flow and working_hours:
                 realOD = self.OD[int(timestep % 4 == 3)] * flow_scale
-                S, E1, E2, A, I, R = self.flow_transition([S, E1, E2, A, I, R], realOD)
+                S, E1, E2, A, I, R = self.flow_transition(np.array([S, E1, E2, A, I, R]), realOD)
             
             # Update population to account for new deaths
             N = sum([S, E1, E2, A, I, R]).sum(axis=1)
@@ -173,14 +172,13 @@ class SEAIR:
         Returns
             an array of shape (#regions, #age groups) of net flows within each region and age group
         """
-        flow_pop = sum(flow_comps.copy())
+        total_pop = np.sum(flow_comps)
         age_flow_scaling = np.array(self.age_group_flow_scaling)
-        inflow = np.array([np.matmul(flow_pop[:,i], OD * age_flow_scaling[i]) for i in range(len(age_flow_scaling))]).T
-        outflow = np.array([flow_pop[:,i] * OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-        flow_pop = flow_pop + inflow - outflow
-        total_flow_pop = np.sum(flow_pop)
-        comp_fractions = np.array([np.sum(comp)/total_flow_pop for comp in flow_comps])
-        flow_comps = np.array([frac*flow_pop for frac in comp_fractions])
+        for comp in flow_comps:
+            comp_frac = np.sum(comp)/total_pop
+            inflow = np.array([OD.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+            outflow = np.array([OD.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+            comp += (inflow - outflow)
         return flow_comps
         
     def generate_weighted_contact_matrix(self, contact_weights):
