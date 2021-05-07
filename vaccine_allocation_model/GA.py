@@ -47,7 +47,7 @@ class SimpleGeneticAlgorithm:
             print(f"\033[1mRunning offsprings of generation {self.generation_count} \033[0m")
         for i in population:
             self.final_deaths[i.ID] = [] if from_start else self.final_deaths[i.ID]
-            print(f"Finding score for individual {i.ID}")
+            print(f"Finding score for individual {i.ID}...")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(self.seeds[j])
                 self.process.init()
@@ -55,7 +55,7 @@ class SimpleGeneticAlgorithm:
                 deaths = np.sum(self.process.path[-1].D)
                 self.final_deaths[i.ID].append(deaths)
             mean_score = np.mean(self.final_deaths[i.ID])
-            print(f"Mean score: {mean_score:.0f}")
+            print(f"Mean score: {mean_score:.0f}\n")
             i.mean_score = mean_score
 
     def one_sided_t_test(self, s1, s2):
