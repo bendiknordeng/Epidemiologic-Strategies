@@ -12,19 +12,18 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    # np.random.seed(10)
-    runs = 1
+    np.random.seed(10)
+    runs = 10
     day = 24
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of decision_periods
     decision_period = 28
-    initial_infected = 1
+    initial_infected = 20
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    policy = policies[-2]
-    weighted_policy_weights = [0, 0.33, 0.33, 0.34]
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first']
+    policy = policies[4]
     initial_wave_state = 'U'
     initial_wave_count = {'U': 1, 'D': 0, 'N': 0}
 
@@ -43,8 +42,9 @@ if __name__ == '__main__':
     verbose = False
     use_response_measures = False
     include_flow = True
+    use_waves = True
     stochastic = False
-    plot_results = True
+    plot_results = False
 
     epidemic_function = SEAIR(
                         commuters=commuters,
@@ -55,7 +55,8 @@ if __name__ == '__main__':
                         config=config,
                         paths=paths,
                         include_flow=include_flow,
-                        stochastic=stochastic)
+                        stochastic=stochastic,
+                        use_waves=use_waves)
 
     initial_state = State.initialize_state(
                         num_initial_infected=initial_infected,
@@ -83,7 +84,7 @@ if __name__ == '__main__':
 
     results = []                   
     for i in tqdm(range(runs)):
-        # np.random.seed(i*10)
+        np.random.seed(i*10)
         mdp.init()
         mdp.run()
         results.append(mdp.path[-1])

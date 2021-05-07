@@ -2,7 +2,7 @@ import numpy as np
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
-                death_rates, config, paths, include_flow, stochastic):
+                death_rates, config, paths, include_flow, stochastic, use_waves):
         """ 
         Parameters:
             commuter_effect: Matrix of the percentage population growth or decline during working hours 
@@ -23,6 +23,7 @@ class SEAIR:
             write_to_csv: boolean, true if we want to write results to csv
             write_weekly: boolean, false if we want to write daily results, true if weekly
         """
+        self.R0 = config.R0
         self.periods_per_day = config.periods_per_day
         self.time_delta = config.time_delta
         self.commuters = commuters
@@ -40,6 +41,7 @@ class SEAIR:
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
         self.stochastic = stochastic
         self.include_flow = include_flow
+        self.use_waves = use_waves
         self.paths = paths
 
     def simulate(self, state, decision, decision_period, information):
@@ -64,10 +66,13 @@ class SEAIR:
         age_flow_scaling = np.array(self.age_group_flow_scaling)
 
         # Get information data
-        R_eff = information['R']
+        if self.use_waves:
+            R_eff = information['R']
+        else:
+            R_eff = self.R0
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
-        visitors = self.commuters[0] * information['flow_scale']
+        visitors = self.commuters[0]
         OD = self.commuters[1] * information['flow_scale']
 
         # Initialize variables for saving history
@@ -114,7 +119,7 @@ class SEAIR:
 
             # Define current transmission of infection without commuters
             lam_i = np.clip(beta * (alphas[0] * r_e * E2 + alphas[1] * r_a * A + alphas[2] * I), 0, 1)
-            contact_cases = S/N * np.clip(np.matmul(lam_i, C), 0, 1)
+            contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
 

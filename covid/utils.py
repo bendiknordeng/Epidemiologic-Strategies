@@ -448,7 +448,6 @@ def get_wave_timeline(horizon, decision_period, periods_per_day):
         params = data['duration'][current_state][str(1 + (n_wave%4))]
         duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
         duration = min(max(duration, params['min']), params['max'])
-        print(duration, current_state)
         try:
             for week in range(i, i+int(duration)):
                 params = data['R'][current_state][str(1 + (n_wave%4))]
@@ -462,7 +461,6 @@ def get_wave_timeline(horizon, decision_period, periods_per_day):
             break
     wave_timeline = moving_average(wave_timeline,decision_period_days)[::decision_period_days]
     wave_state_timeline = wave_state_timeline[::decision_period_days]
-    print(wave_state_timeline)
     return wave_timeline, wave_state_timeline
 
 def get_historic_wave_timeline(horizon):
