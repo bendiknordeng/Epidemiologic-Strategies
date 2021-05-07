@@ -56,8 +56,9 @@ class MarkovDecisionProcess:
         Returns
             A path that shows resulting traversal of states
         """
-        print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
-        run_range = range(self.state.time_step, self.horizon) if self.verbose else tqdm(range(self.state.time_step, self.horizon))
+        if weighted_policy_weights is None:
+            print(f"\033[1mRunning MDP with policy: {self.policy_name}\033[0m")
+        run_range = range(self.state.time_step, self.horizon) if self.verbose or weighted_policy_weights is not None else tqdm(range(self.state.time_step, self.horizon))
         for week in run_range:
             self.week = week
             if self.verbose: print(self.state, end="\n"*2)

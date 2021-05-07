@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    runs = 1
+    runs = 10
     day = 30
     month = 4
     year = 2020
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     initial_infected = 20
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    policy = policies[-2]
+    policy = policies[-1]
     initial_wave_state = 'U'
     initial_wave_count = {'U': 1, 'D': 0, 'N': 0}
 
@@ -82,20 +82,20 @@ if __name__ == '__main__':
                         historic_data=historic_data,
                         verbose=verbose)
 
-    results = []                   
-    for i in tqdm(range(runs)):
-        np.random.seed(i*10)
-        mdp.init()
-        mdp.run()
-        results.append(mdp.path[-1])
-        utils.print_results(mdp.path[-1], population, age_labels, policy)
+    #results = []                   
+    #for i in tqdm(range(runs)):
+    #    np.random.seed(i*10)
+    #    mdp.init()
+    #    mdp.run()
+    #    results.append(mdp.path[-1])
+    #    utils.print_results(mdp.path[-1], population, age_labels, policy)
 
     #utils.get_average_results(results, population, age_labels, policy)
 
-    #GA = SimpleGeneticAlgorithm(runs, 10, mdp)
+    GA = SimpleGeneticAlgorithm(runs, 10, mdp)
     
-    #while not GA.converged:
-    #    GA.new_generation()
+    while not GA.converged:
+        GA.new_generation()
 
 
     if plot_results:
