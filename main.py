@@ -43,7 +43,7 @@ if __name__ == '__main__':
     use_response_measures = False
     include_flow = True
     use_waves = True
-    stochastic = False
+    stochastic = True
     plot_results = False
 
     epidemic_function = SEAIR(

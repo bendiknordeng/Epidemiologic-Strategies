@@ -98,7 +98,7 @@ class SEAIR:
             timestep = (state.date.weekday() * self.periods_per_day + i) % decision_period
 
             # Vaccinate before flow
-            new_V = decision/decision_period
+            new_V = np.minimum(S, decision/decision_period) # in case new infected during decision period
             successfully_new_V = epsilon * new_V
             S = S - successfully_new_V
             R = R + successfully_new_V

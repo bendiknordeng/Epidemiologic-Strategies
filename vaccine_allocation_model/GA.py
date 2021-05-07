@@ -23,6 +23,7 @@ class SimpleGeneticAlgorithm:
         self.process = process
         self.runs = runs
         self.generations_since_new_best = 0
+        self.seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
         start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
         run_folder = f"GA_{start_of_run}"
         folder_path = os.getcwd()+"/"+run_folder
@@ -39,7 +40,7 @@ class SimpleGeneticAlgorithm:
         population = self.population.individuals if not offsprings else self.population.offsprings
         self.final_deaths = {} if from_start else self.final_deaths
         runs = self.runs if from_start else int(self.runs/2)
-        seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
+        
         if not offsprings:
             print(f"\033[1mRunning generation {self.generation_count} \033[0m")
         else:
@@ -48,7 +49,7 @@ class SimpleGeneticAlgorithm:
             self.final_deaths[i.ID] = [] if from_start else self.final_deaths[i.ID]
             print(f"Finding score for individual {i.ID}")
             for j in tqdm(range(runs), ascii=True):
-                np.random.seed(seeds[j])
+                np.random.seed(self.seeds[j])
                 self.process.init()
                 self.process.run(weighted_policy_weights=i.genes)
                 deaths = np.sum(self.process.path[-1].D)
@@ -88,7 +89,7 @@ class SimpleGeneticAlgorithm:
         return best, second_best
 
     def new_generation(self):
-        if self.generation_count == -1: self.generation_count +=1; return
+        if self.generation_count == -1: self.generation_count += 1; return
         self.find_fitness(from_start=True)
         significant = self.selection()
         count = 1

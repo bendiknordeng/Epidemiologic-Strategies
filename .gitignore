@@ -12,3 +12,7 @@ covid/.ipynb_checkpoints/
 
 #results
 vaccine_allocation_model/results/
+
+# written data
+*.pkl
+GA*/
