@@ -3,14 +3,6 @@ sys.path.append(os.getcwd() + "/covid") # when main is one level above this file
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-# import geopandas as gpd
-# import contextily as ctx 
-# from pyproj import CRS
-from matplotlib.colors import LinearSegmentedColormap
-from tqdm import tqdm
-import re
-from os import listdir
-import imageio
 from . import utils
 import seaborn as sns
 from datetime import timedelta
@@ -58,26 +50,34 @@ def seir_plot_weekly(res, start_date, labels):
     plt.grid()
     plt.show()
 
-def age_group_infected_plot_weekly(res, start_date, labels):
+def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=False):
     """ plots infection for different age groups per week
     
     Parameters
-        res: numpy array with shape (decision_period*horizon, #compartments)
+        res: numpy array with shape (horizon, compartments, regions, age_groups)
         start_date: datetime object giving start date
         labels: labels for plotted age_groups 
     """
-    fig = plt.figure(figsize=(10,5))
+    fig, ax1 = plt.subplots(figsize=(10,5))
     fig.suptitle('Weekly infected in each age group')
+    lines = []
     for i, label in enumerate(labels):
-        plt.plot(res[:, 1, i], label=label) 
-    plt.plot(res.sum(axis=2)[:,1], color='r', linestyle='dashed', label="All")
+        lines.append(ax1.plot(res[:, 1, i], label=label)[0])
+    lines.append(ax1.plot(res.sum(axis=2)[:,1], color='r', linestyle='dashed', label="All")[0])
+    ax1.set_xlabel('Week')
+    ax1.set_ylabel('Infected')
+    if include_R:
+        # R_eff = utils.moving_average(R_eff, 3)
+        ax2 = ax1.twinx()
+        lines.append(ax2.plot(R_eff[:len(res)], color='k', linestyle='dashdot', label="R_eff")[0])
+        ax2.set_ylabel('R effective')
+
     ticks = min(len(res), 20)
     step = int(np.ceil(len(res)/ticks))
     weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
     plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
-    plt.ylabel("Infected")
-    plt.xlabel("Week")
-    plt.legend()
+    labels = [ln.get_label() for ln in lines]
+    plt.legend(lines, labels)
     plt.grid()
     plt.show()
 

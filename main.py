@@ -12,15 +12,15 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    np.random.seed(10)
-    runs = 10
+    # np.random.seed(10)
+    runs = 1
     day = 24
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of decision_periods
     decision_period = 28
-    initial_infected = 5
+    initial_infected = 1
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy = policies[-2]
@@ -43,8 +43,8 @@ if __name__ == '__main__':
     verbose = False
     use_response_measures = False
     include_flow = True
-    stochastic = True
-    plot_results = False
+    stochastic = False
+    plot_results = True
 
     epidemic_function = SEAIR(
                         commuters=commuters,
@@ -83,7 +83,7 @@ if __name__ == '__main__':
 
     results = []                   
     for i in tqdm(range(runs)):
-        np.random.seed(i*10)
+        # np.random.seed(i*10)
         mdp.init()
         mdp.run()
         results.append(mdp.path[-1])
@@ -98,35 +98,16 @@ if __name__ == '__main__':
     #     GA.find_fitness(runs)
     #     GA.evaluate_fitness()
 
-    
-    history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        
-    
-    # history shape == (61, 8, 356, 6)
-    # hist_accumulated_by_age.shape == (61, 8, 356)
-    # history, new_infections = utils.transform_path_to_numpy(mdp.path)
-    # hist_accumulated_by_age = np.sum(history, axis=3)
-    # hist_infected_accumulated_by_age = hist_accumulated_by_age[:, 1, :]
-
-    # import pdb; pdb.set_trace()
-    
-    # regions_with_inf = []
-
-    
-    # regions_with_infections = []
-    # for w in range(len(hist_accumulated_by_age.shape(axis=0))):
-    #     region_hist_infected_t
-    #     np.argwhere(x > 0.01)
-
 
     if plot_results:
-        history, new_infections = utils.transform_path_to_numpy(mdp.path)
         #plot.plot_control_measures(mdp.path, all=False)
 
+        history, new_infections = utils.transform_path_to_numpy(mdp.path)
+        R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
-        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels)
-        infection_results_age = new_infections.sum(axis=1)
-        plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        # infection_results_age = new_infections.sum(axis=1)
+        # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
-        utils.get_r_effective(mdp.path, population, config, from_data=False)
+        # utils.get_r_effective(mdp.path, population, config, from_data=False)
 

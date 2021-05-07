@@ -435,28 +435,34 @@ def get_wave_timeline(horizon, decision_period, periods_per_day):
     with open('data/wave_parameters.json') as file:
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
-    wave_timeline = np.zeros(horizon)
+    decision_period_days = int(decision_period/periods_per_day)
+    days = horizon * decision_period_days
+    wave_timeline = np.zeros(int(days))
     current_state = 'U'
     wave_state_count = []
     wave_state_timeline = []
     i = 0
     while True:
         wave_state_count.append(current_state)
-        n_wave = Counter(wave_state_count)[current_state]
-        params = data['duration'][current_state][str(n_wave)]
-        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std']) // (decision_period/periods_per_day)
+        n_wave = Counter(wave_state_count)[current_state]-1
+        params = data['duration'][current_state][str(1 + (n_wave%4))]
+        duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
         duration = min(max(duration, params['min']), params['max'])
+        print(duration, current_state)
         try:
             for week in range(i, i+int(duration)):
-                wave_state_timeline.append(current_state)
-                params = data['R'][current_state][str(n_wave)]
+                params = data['R'][current_state][str(1 + (n_wave%4))]
                 factor = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
                 factor = min(max(factor, params['min']), params['max'])
                 wave_timeline[week] = factor
+                wave_state_timeline.append(current_state)
             i += int(duration)
             current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
         except:
             break
+    wave_timeline = moving_average(wave_timeline,decision_period_days)[::decision_period_days]
+    wave_state_timeline = wave_state_timeline[::decision_period_days]
+    print(wave_state_timeline)
     return wave_timeline, wave_state_timeline
 
 def get_historic_wave_timeline(horizon):
@@ -526,7 +532,7 @@ def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
 
     return posteriors
 
-def smooth_data(data):
+def smooth_data(data, window_size=7):
     """ returns smoothed values of a pandas.core.series.Series
 
     Parameters
@@ -535,11 +541,14 @@ def smooth_data(data):
         smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
 
     """
-    smoothed = data.rolling(7,
+    smoothed = data.rolling(window_size,
         win_type='gaussian',
         min_periods=1,
         center=True).mean(std=3).round()
     return smoothed
+
+def moving_average(x, w):
+    return np.convolve(x, np.ones(w), 'valid') / w
 
 def highest_density_interval(posteriors, percentile=.9):
     """ finds intervall for the posteriors
