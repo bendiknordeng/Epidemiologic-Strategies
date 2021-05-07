@@ -1,164 +1,174 @@
 import numpy as np
 import copy
+import scipy
+from covid import utils
+import pandas as pd
+import os
+from datetime import datetime
+from tqdm import tqdm
+import time
+
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, population_size, process):
+    def __init__(self, runs, population_size, process):
         self.population_size = population_size
         self.population = Population(population_size)
         self.best_fitness_score = np.infty
         self.second_best_fitness_score = np.infty
         self.generation_count = -1
         self.final_deaths = {}
+        self.best_individual = Individual()
+        self.best_deaths = [0]
         self.converged = False # If search for best individual has not converged
         self.process = process
+        self.runs = runs
+        self.generations_since_new_best = 0
+        start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
+        run_folder = f"GA_{start_of_run}"
+        folder_path = os.getcwd()+"/"+run_folder
+        individuals_path = folder_path + "/individuals"
+        final_scores_path = folder_path + "/final_scores"
+        os.mkdir(folder_path)
+        os.mkdir(individuals_path)
+        os.mkdir(final_scores_path)
+        self.overview_path = folder_path + f"/generation_overview.csv"
+        self.individuals_path = folder_path + f"/individuals/individuals_"
+        self.final_score_path = folder_path + f"/final_scores/final_score_"
 
-    def find_fitness(self, runs, offsprings=None):
-        population = self.population.individuals if not offsprings else offsprings
-        self.final_deaths = {}
+    def find_fitness(self, offsprings=False, from_start=True):
+        population = self.population.individuals if not offsprings else self.population.offsprings
+        self.final_deaths = {} if from_start else self.final_deaths
+        runs = self.runs if from_start else int(self.runs/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
-        print(f"\033[1mRunning generation {self.generation_count} \033[0m")
-        for i in range(len(population)):
-            self.final_deaths[i] = []
-            for j in range(runs):
-                np.random.seed(seeds[j])
-                self.process.reset()
-                self.process.run(weighted_policy_weights=population[i].genes)
-                deaths = np.sum(self.process.path[-1].D)
-                self.final_deaths[i].append(deaths)
-            print(f"Agent {i} achieved {np.mean(self.final_deaths[i])} deaths...")
-
-    def evaluate_fitness(self):
-        new_fitness_king = False
-        for i in range(self.population_size-1):
-            for j in range((i+1), self.population_size):
-                s1, s2 = self.final_deaths[i], self.final_deaths[j]
-                s1_mean, s2_mean = np.mean(s1), np.mean(s2)
-                if s1_mean <= s2_mean: # s1 better than s2
-                    if s1_mean < self.best_fitness_score:
-                        self.population.fittest = copy.deepcopy(self.population.get_individual(i))
-                        self.best_fitness_score = s1_mean
-                        new_fitness_king = True
-                        if s2_mean < self.second_best_fitness_score:
-                            self.population.second_fittest = copy.deepcopy(self.population.get_individual(j))
-                            self.second_best_fitness_score = s2_mean
-                    elif s1_mean < self.second_best_fitness_score:
-                        if not s1_mean == self.best_fitness_score: # so that the best score is not added as second best
-                            self.population.second_fittest = copy.deepcopy(self.population.get_individual(i))
-                            self.second_best_fitness_score = s1_mean
-                else: # s2 better than s1
-                    if s2_mean < self.best_fitness_score:
-                        self.population.fittest = copy.deepcopy(self.population.get_individual(j))
-                        self.best_fitness_score = s2_mean
-                        new_fitness_king = True
-                        if s1_mean < self.second_best_fitness_score:
-                            self.population.second_fittest = copy.deepcopy(self.population.get_individual(i))
-                            self.second_best_fitness_score = s1_mean
-                    elif s2_mean < self.second_best_fitness_score:
-                        self.population.second_fittest = copy.deepcopy(self.population.get_individual(j))
-                        self.second_best_fitness_score = s2_mean
-        self.converged = not new_fitness_king
-
-    def two_sided_t_test(s1,s2):
-        """
-        nr_obs = 5
-        p = 1
-        
-        while p >= 0.01 and nr_obs < 100:
-            nr_obs += 1
-            deaths1 = np.zeros(nr_obs)
-            deaths2 = np.zeros(nr_obs)
-            for i in range(nr_obs):
-                deaths1[i] = np.sum(s1[i].D)
-                deaths2[i] = np.sum(s2[i].D)
-            one = deaths1-deaths2
-            p = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="two-sided").pvalue
-            if p < 0.01:
-                found_best = True
-        return found_best
-        """
-        pass
-
-    def one_sided_t_test(s1, s2):
-        """
-        nr_obs = 5
-        p = 1
-        while p >= 0.01 and nr_obs < 100:
-            nr_obs += 1
-            deaths1 = np.zeros(nr_obs)
-            deaths2 = np.zeros(nr_obs)
-            for i in range(nr_obs):
-                deaths1[i] = np.sum(s1[i].D)
-                deaths2[i] = np.sum(s2[i].D)
-            one = deaths1-deaths2
-            p = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="two-sided").pvalue
-            
-        print(f"Found different solutions after {nr_obs} observations")
-        print(f"P value is {p}")
-        print(f"Diff 1-2: {one}")
-        less = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="less").pvalue
-        greater = scipy.stats.ttest_ind(one, np.zeros(nr_obs), axis=0, alternative="greater").pvalue
-        if less < greater:
-            print("Solution 1 is best")
+        if not offsprings:
+            print(f"\033[1mRunning generation {self.generation_count} \033[0m")
         else:
-            print("Solution 2 is best")
-        """
-        pass
+            print(f"\033[1mRunning offsprings of generation {self.generation_count} \033[0m")
+        for i in population:
+            self.final_deaths[i.ID] = [] if from_start else self.final_deaths[i.ID]
+            print(self.generation_count, i.ID)
+            for j in tqdm(range(runs), ascii=True):
+                np.random.seed(seeds[j])
+                self.process.init()
+                self.process.run(weighted_policy_weights=i.genes)
+                deaths = np.sum(self.process.path[-1].D)
+                self.final_deaths[i.ID].append(deaths)
+            mean_score = np.mean(self.final_deaths[i.ID])
+            i.mean_score = mean_score
+
+    def one_sided_t_test(self, s1, s2):
+        significant_best = False
+        s1 = np.array(s1) 
+        s2 = np.array(s2)
+        if not (s1==s2).all():
+            z = s1 - s2
+            less = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
+            if less < 0.5:
+                significant_best=True
+        return significant_best
+
+    def find_best_individual(self, offsprings=False):
+        best, second_best = True, True
+        range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, 2)
+        for i in range(range1): # test two best
+            first = self.population.individuals[i] if not offsprings else self.population.offsprings[i]
+            for j in range(1, range2):
+                if j==i: continue
+                second = self.population.individuals[j] if not offsprings else self.population.offsprings[j]
+                s1, s2 = self.final_deaths[first.ID], self.final_deaths[second.ID]
+                significant_best = self.one_sided_t_test(s1, s2)
+                if not significant_best:
+                    if i==0:
+                        best, second_best = False, False
+                        return best, second_best
+                    elif i==1:
+                        best, second_best = True, False
+                        return best, second_best
+        return best, second_best
 
     def new_generation(self):
         if self.generation_count == -1: self.generation_count +=1; return
-        self.selection()
+        self.find_fitness(from_start=True)
+        significant = self.selection()
+        count = 1
+        while not significant and count <= 2: # returns False if no one is significant best.
+            self.find_fitness(offsprings=False, from_start=False)
+            significant = self.selection()
+            count += 1
+        utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
+        utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_deaths)
+        self.to_pandas()
+        if np.mean(self.final_deaths[self.population.individuals[0].ID]) < np.mean(self.best_deaths):
+            self.best_individual = self.population.individuals[0]
+            self.best_deaths = self.final_deaths[self.population.individuals[0].ID]
+            self.generations_since_new_best = 0
+        else:
+            self.generations_since_new_best += 1
+            if self.generations_since_new_best > 2:
+                self.converged = True
+                return
         self.crossover()
         self.mutation()
         self.repair_offsprings()
-        offsprings = [self.population.o1, self.population.o2]
-        self.find_fitness(10, offsprings=offsprings)
-        self.get_fittest_offspring()
-        self.population.new_generation()
+        self.find_fitness(offsprings=True)
+        significant = self.selection(offsprings=True)
+        count = 1
+        while not significant and count <= 2: # returns False if no one is significant best.
+            self.find_fitness(offsprings=True, from_start=False)
+            significant = self.selection(offsprings = True)
+            count += 1
+        remove = False if self.generation_count < 10 else True
+        self.population.new_generation(remove=remove)
         self.generation_count += 1
 
-    def selection(self):
-        self
-        pass
+    def selection(self, offsprings=False):
+        if not offsprings:
+            self.population.sort_by_mean()
+            best, second_best = self.find_best_individual()
+            return best and second_best
+        else:
+            self.population.sort_by_mean(offsprings=True)
+            best, second_best = self.find_best_individual(offsprings=True)
+            return best and second_best 
 
     def crossover(self):
-        p1 = self.population.fittest.genes
-        p2 = self.population.second_fittest.genes
+        p1 = self.population.individuals[0].genes
+        p2 = self.population.individuals[1].genes
         shape = p1.shape
-        o1 = np.zeros(shape)
-        o2 = np.zeros(shape)
+        o1_genes = np.zeros(shape)
+        o2_genes = np.zeros(shape)
         c_row = np.random.randint(0, high=shape[1])
         c_col = np.random.randint(0, high=shape[2])
         vertical_cross = np.random.random() <= 0.5
         if vertical_cross:
-            o1[:, :, :c_col] = p1[:, :, :c_col]
-            o1[:, :c_row, c_col] = p1[:, :c_row, c_col]
-            o1[:, c_row:, c_col] = p2[:, c_row:, c_col]
-            o1[:, :, c_col+1:] = p2[:, :, c_col+1:]
-
-            o2[:, :, :c_col] = p2[:, :, :c_col]
-            o2[:, :c_row, c_col] = p2[:, :c_row, c_col]
-            o2[:, c_row:, c_col] = p1[:, c_row:, c_col]
-            o2[:, :, c_col+1:] = p1[:, :, c_col+1:]
+            o1_genes[:, :, :c_col] = p1[:, :, :c_col]
+            o1_genes[:, :c_row, c_col] = p1[:, :c_row, c_col]
+            o1_genes[:, c_row:, c_col] = p2[:, c_row:, c_col]
+            o1_genes[:, :, c_col+1:] = p2[:, :, c_col+1:]
+            o2_genes[:, :, :c_col] = p2[:, :, :c_col]
+            o2_genes[:, :c_row, c_col] = p2[:, :c_row, c_col]
+            o2_genes[:, c_row:, c_col] = p1[:, c_row:, c_col]
+            o2_genes[:, :, c_col+1:] = p1[:, :, c_col+1:]
         else:
-            o1[:, :c_row, :] = p1[:, :c_row, :]
-            o1[:, c_row, :c_col] = p1[:, c_row, :c_col]
-            o1[:, c_row, c_col:] = p2[:, c_row, c_col:]
-            o1[:, c_row+1:, :] = p2[:, c_row+1:, :]
-
-            o2[:, :c_row, :] = p2[:, :c_row, :]
-            o2[:, c_row, :c_col] = p2[:, c_row, :c_col]
-            o2[:, c_row, c_col:] = p1[:, c_row, c_col:]
-            o2[:, c_row+1:, :] = p1[:, c_row+1:, :]
-        self.population.o1 = Individual()
-        self.population.o1.genes = o1
-        self.population.o2 = Individual()
-        self.population.o2.genes = o2 
+            o1_genes[:, :c_row, :] = p1[:, :c_row, :]
+            o1_genes[:, c_row, :c_col] = p1[:, c_row, :c_col]
+            o1_genes[:, c_row, c_col:] = p2[:, c_row, c_col:]
+            o1_genes[:, c_row+1:, :] = p2[:, c_row+1:, :]
+            o2_genes[:, :c_row, :] = p2[:, :c_row, :]
+            o2_genes[:, c_row, :c_col] = p2[:, c_row, :c_col]
+            o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
+            o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
+        o1 = Individual()
+        o1.genes = o1_genes
+        o2 = Individual()
+        o2.genes = o2_genes
+        o3 = Individual()
+        o3.genes = np.divide(p1+p2, 2)
+        self.population.offsprings = [o1,o2, o3]
 
     def mutation(self):
-        o1 = self.population.o1
-        o2 = self.population.o2
-        shape = o1.genes.shape
-        for offspring in [o1, o2]:
+        for offspring in self.population.offsprings:
+            shape = offspring.genes.shape
             draw = np.random.random() 
             while draw > 0.1:
                 i1 = np.random.randint(0, high=shape[0])
@@ -174,101 +184,78 @@ class SimpleGeneticAlgorithm:
                 offspring.genes[i1, j1, k1] = offspring.genes[i2, j2, k2]
                 offspring.genes[i2, j2, k2] = value
                 draw = np.random.random()
-        self.population.o1 = o1 
-        self.population.o2 = o2
     
     def repair_offsprings(self):
-        o1 = self.population.o1
-        o2 = self.population.o2
-        for offspring in [o1, o2]:
+        for offspring in self.population.offsprings:
+            norm = np.sum(offspring.genes, axis=2, keepdims=True)
+            for loc in np.argwhere(norm==0):
+                i=loc[0]
+                j=loc[1]
+                offspring.genes[i,j,:] = np.array([1,0,0,0])
             norm = np.sum(offspring.genes, axis=2, keepdims=True)
             offspring.genes = np.divide(offspring.genes, norm)
+
+    def to_pandas(self):
+        generation = [self.generation_count for _ in range(len(self.population.individuals))]
+        ids = [i.ID for i in self.population.individuals]
+        mean_score = [i.mean_score for i in self.population.individuals]
+        gen_df = pd.DataFrame({"generation": generation, "individual": ids, "mean_score": mean_score})
+        if self.generation_count == 0 :
+            gen_df.to_csv(self.overview_path, header=True, index=False)
+        else:
+            gen_df.to_csv(self.overview_path, mode='a', header=False, index=False)
         
-    def get_fittest_offspring(self):
-        s1, s2 = self.final_deaths[0], self.final_deaths[1]
-        s1_mean, s2_mean = np.mean(s1), np.mean(s2)
-        if s1_mean <= s2_mean: # s1 better than s2
-            return
-        else: # s2 better than s1
-            self.population.o1 = copy.deepcopy(self.population.o2)
-            self.population.o2 = copy.deepcopy(self.population.o1)
-
-    def add_fittest_offspring(self):
-        # update fitness values of offspring
-        self.fittest.calcFitness()
-        self.second_fittest.calcFitness()
-
-        # replace least fittest individual from most fittest offspring
-        self.population.individuals[self.least_fittest_index] = self.get_fittest_offspring()
 
 class Population: 
     def __init__(self, population_size):
         self.individuals = [Individual(i) for i in range(population_size)]
-        self.fittest = None
-        self.second_fittest = None
         self.least_fittest_index = 0
-        self.o1 = None
-        self.o2 = None
+        self.offsprings = [None,None]
 
     def get_individual(self, i):
         return self.individuals[i]
     
-    def get_fittest(self):
-        return self.fittest
+    def new_generation(self, remove = False):
+        if remove:
+            self.individuals = self.individuals[:-1]
+        self.individuals.append(self.offsprings[0])
     
-    def get_second_fittest(self):
-        return self.second_fittest
-    
-    def new_generation(self):
-        self.individuals = [self.fittest, self.second_fittest, self.o1]
+    def sort_by_mean(self, offsprings=False):
+        if not offsprings:
+            self.individuals = sorted(self.individuals, key=lambda x: x.mean_score)
+        else:
+            self.offsprings = sorted(self.offsprings, key=lambda x: x.mean_score)    
 
-"""
-    def rank_individuals(self):
-        max_fit_1 = -1
-        max_fit_2 = -1
-        max_fit_1_index = 0
-        max_fit_2_index = 0
-        min_fit = np.infty
-        min_fit_index = 0
-        for i in range(len(self.individuals)):
-            if max_fit_1 < self.individuals[i].fitness:
-                max_fit_1 = self.individuals[i].fitness
-                max_fit_1_index = i
-            elif max_fit_2 < self.individuals[i].fitness:
-                max_fit_2 = self.individuals[i].fitness
-                max_fit_2_index = i
-            elif self.individuals[i].fitness < min_fit:
-                min_fit = self.individuals[i].fitness
-                min_fit_index = i
-        
-        self.fittest = max_fit_1
-        return self.individuals[max_fit_1_index], self.individuals[max_fit_2_index], min_fit_index
-"""
-"""
-    #def calculate_fitness(self):
-        for i in self.individuals:
-            i.calculate_fitness()
-"""
 class Individual:
-    def __init__(self, i=0):
-        self.fitness = 0
-        self.genes = np.zeros(4)
-        self.gene_length = 4
-        self.create_individual(i)
-
-    def create_individual(self, i):
-        # Set genes randomly for each individual
-        self.genes = np.random.randint(low=0, high=100, size=(3,4,4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
-        norm = np.sum(self.genes, axis=2, keepdims=True)
-        self.genes = np.divide(self.genes, norm)
-"""
-    def calculate_fitness(self):
-        self.fitness = 0
-        for i in range(5):
-            if (self.genes[i] == 1):
-                self.fitness += 1
-"""
-"""    
-    def mutate(self):
-        np.random.shuffle(self.genes)
-"""
+    def __init__(self, i=-1):
+        self.ID = id(self)
+        self.mean_score = 0
+        self.rank = -1
+        self.genes = self.create_genes(i)
+    
+    def create_genes(self, i):
+        genes = np.zeros((3,4,4))
+        if 0 <= i <= 3:
+            genes[:,:,i] = 1
+        elif 4 <= i <= 6:
+            j = (i+1)%4
+            k = (i+3)%4 if i==6 else (i+2)%4
+            genes[:, :, j] = 0.5
+            genes[:, :, k] = 0.5
+        elif i==7:
+            genes[:, :, 1] = 0.33
+            genes[:, :, 2] = 0.33
+            genes[:, :, 3] = 0.34
+        elif i==8:
+            for j in range(4):
+                genes[:, :, j] = 0.25
+        elif 9 <= i < 10: # Set one weight vector randomly, make for each timestep
+            high = 100 if i > 0 else 50
+            weights = np.random.randint(low=0, high=high, size=(4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            norm = np.sum(weights)
+            genes[:, :] = np.divide(weights, norm)
+        else:
+            genes = np.random.randint(low=0, high=100, size=(3,4,4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            norm = np.sum(genes, axis=2, keepdims=True)
+            genes = np.divide(genes, norm)
+        return genes

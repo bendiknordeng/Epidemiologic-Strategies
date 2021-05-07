@@ -2,7 +2,7 @@ from covid import plot
 from covid import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.SEAIR import SEAIR
+from covid.seair import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 import numpy as np
 from tqdm import tqdm
@@ -13,17 +13,17 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    runs = 10
-    day = 24
-    month = 2
+    runs = 1
+    day = 30
+    month = 4
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of decision_periods
+    horizon = 70 # number of decision_periods
     decision_period = 28
     initial_infected = 20
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first']
-    policy = policies[4]
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
+    policy = policies[-2]
     initial_wave_state = 'U'
     initial_wave_count = {'U': 1, 'D': 0, 'N': 0}
 
@@ -90,14 +90,12 @@ if __name__ == '__main__':
         results.append(mdp.path[-1])
         utils.print_results(mdp.path[-1], population, age_labels, policy)
 
-    utils.get_average_results(results, population, age_labels, policy)
+    #utils.get_average_results(results, population, age_labels, policy)
 
-    # GA = SimpleGeneticAlgorithm(3, mdp)
+    #GA = SimpleGeneticAlgorithm(runs, 10, mdp)
     
-    # while not GA.converged:
-    #     GA.new_generation()
-    #     GA.find_fitness(runs)
-    #     GA.evaluate_fitness()
+    #while not GA.converged:
+    #    GA.new_generation()
 
 
     if plot_results:
