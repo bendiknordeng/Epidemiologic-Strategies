@@ -12,14 +12,15 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
+    np.random.seed(10)
+    runs = 10
     day = 24
     month = 2
     year = 2020
-    runs = 100
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 60 # number of decision_periods
     decision_period = 28
-    initial_infected = 1000
+    initial_infected = 5
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy = policies[-2]
@@ -34,7 +35,7 @@ if __name__ == '__main__':
     contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
-    commuter_effect = utils.generate_ssb_od_matrix(age_group_flow_scaling, paths.municipalities_commute)
+    commuters = utils.generate_ssb_od_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
@@ -42,11 +43,11 @@ if __name__ == '__main__':
     verbose = False
     use_response_measures = False
     include_flow = True
-    stochastic = False
+    stochastic = True
     plot_results = False
 
     epidemic_function = SEAIR(
-                        commuter_effect=commuter_effect,
+                        commuters=commuters,
                         contact_matrices=contact_matrices,
                         population=population,
                         age_group_flow_scaling=age_group_flow_scaling,
@@ -83,10 +84,11 @@ if __name__ == '__main__':
     results = []                   
     for i in tqdm(range(runs)):
         np.random.seed(i*10)
+        mdp.init()
         mdp.run()
         results.append(mdp.path[-1])
         utils.print_results(mdp.path[-1], population, age_labels, policy)
-        if i != (runs-1): mdp.reset()
+
     utils.get_average_results(results, population, age_labels, policy)
 
     # GA = SimpleGeneticAlgorithm(3, mdp)

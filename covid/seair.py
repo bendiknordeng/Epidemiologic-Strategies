@@ -1,7 +1,7 @@
 import numpy as np
 
 class SEAIR:
-    def __init__(self, commuter_effect, contact_matrices, population, age_group_flow_scaling, 
+    def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
                 death_rates, config, paths, include_flow, stochastic):
         """ 
         Parameters:
@@ -25,7 +25,7 @@ class SEAIR:
         """
         self.periods_per_day = config.periods_per_day
         self.time_delta = config.time_delta
-        self.commuter_effect = commuter_effect
+        self.commuters = commuters
         self.contact_matrices = contact_matrices
         self.population = population
         self.age_group_flow_scaling = age_group_flow_scaling
@@ -61,12 +61,14 @@ class SEAIR:
         # Meta-parameters
         S, E1, E2, A, I, R, D, V = state.get_compartments_values()
         n_regions, n_age_groups = S.shape
+        age_flow_scaling = np.array(self.age_group_flow_scaling)
 
         # Get information data
         R_eff = information['R']
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
-        commuter_effect = self.commuter_effect * information['flow_scale']
+        visitors = self.commuters[0] * information['flow_scale']
+        OD = self.commuters[1] * information['flow_scale']
 
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -83,7 +85,7 @@ class SEAIR:
         # Rates
         sigma = 1/(self.latent_period * self.periods_per_day)
         alpha = 1/(self.presymptomatic_period * self.periods_per_day)
-        omega = 1/((self.postsymptomatic_period+3) * self.periods_per_day)
+        omega = 1/(self.postsymptomatic_period * self.periods_per_day)
         gamma = 1/(self.recovery_period * self.periods_per_day)
 
         # Run simulation
@@ -98,43 +100,31 @@ class SEAIR:
             V = V + new_V
 
             # Update population to account for new deaths
-            N = sum([S, E1, E2, A, I, R]).sum(axis=1)
+            N = sum([S, E1, E2, A, I, R])
             
-            # Activate movement
-            working_hours = timestep < (self.periods_per_day * 5) and 0 < timestep % self.periods_per_day < 3
+            # Calculate new infected from commuting
+            commuter_cases = 0
+            working_hours = timestep < (self.periods_per_day * 5) and timestep % self.periods_per_day == 2
             if self.include_flow and working_hours:
                 # Define current transmission of infection with commuters
-                total_pop = np.sum(N)
-                commuter_effect_E2 = commuter_effect * np.sum(E2)/total_pop
-                infection_e = np.matmul(beta * r_e * C * alphas[0], (commuter_effect_E2 + E2).T/N).T
-                commuter_effect_A = commuter_effect * np.sum(A)/total_pop
-                infection_a = np.matmul(beta * r_a * C * alphas[1], (commuter_effect_A + A).T/N).T
-                commuter_effect_I = commuter_effect * np.sum(I)/total_pop
-                infection_i = np.matmul(beta * C * alphas[2], (commuter_effect_I + I).T/N).T
-            else:
-                # Define current transmission of infection without commuters
-                infection_e = np.matmul(beta * r_e * C * alphas[0], E2.T/N).T
-                infection_a = np.matmul(beta * r_a * C * alphas[1], A.T/N).T
-                infection_i = np.matmul(beta * C * alphas[2], I.T/N).T
+                lam_j = np.clip(beta * (r_e * E2 + r_a * A + I)/visitors, 0, 1)
+                commuter_cases = S/N * np.array([np.matmul(OD * age_flow_scaling[a], lam_j[:,a]) for a in range(len(age_flow_scaling))]).T
+                if self.stochastic:
+                    commuter_cases = np.random.poisson(commuter_cases)
 
+            # Define current transmission of infection without commuters
+            lam_i = np.clip(beta * (alphas[0] * r_e * E2 + alphas[1] * r_a * A + alphas[2] * I), 0, 1)
+            contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
-                # Get stochastic transitions
-                new_E1  = np.random.binomial(S.astype(int), np.clip(infection_e + infection_a + infection_i, a_min=0, a_max=1))
-                new_E2  = np.random.binomial(E1.astype(int), sigma * p)
-                new_A   = np.random.binomial((E1-new_E2).astype(int), sigma * (1 - p))
-                new_I   = np.random.binomial(E2.astype(int), alpha)
-                new_R_A = np.random.binomial(A.astype(int), gamma)
-                new_R_I = np.random.binomial(I.astype(int), (np.ones(len(delta)) - delta) * omega)
-                new_D   = np.random.binomial((I-new_R_I).astype(int), delta * omega)
-            else:
-                # Get deterministic transitions
-                new_E1  = S  * (infection_e + infection_a + infection_i)
-                new_E2  = E1 * sigma * p
-                new_A   = E1 * sigma * (1 - p)
-                new_I   = E2 * alpha
-                new_R_A = A  * gamma
-                new_R_I = I  * (np.ones(len(delta)) - delta) * omega
-                new_D   = I  * delta * omega
+                contact_cases = np.random.poisson(contact_cases)
+
+            new_E1  = np.clip(contact_cases + commuter_cases, None, S)
+            new_E2  = E1 * sigma * p
+            new_A   = E1 * sigma * (1 - p)
+            new_I   = E2 * alpha
+            new_R_A = A  * gamma
+            new_R_I = I  * (np.ones(len(delta)) - delta) * omega
+            new_D   = I  * delta * omega
 
             # Calculate values for each compartment
             S  = S - new_E1

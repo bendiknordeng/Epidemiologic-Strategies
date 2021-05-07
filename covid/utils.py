@@ -62,11 +62,10 @@ def generate_ssb_od_matrix(age_flow_scaling, fpath_muncipalities_commute):
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
     """
     df = pd.read_csv(fpath_muncipalities_commute)
-    commuters = df.pivot(columns='to', index='from', values='n').fillna(0).values
-    inflow = np.array([commuters.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-    outflow = np.array([commuters.sum(axis=1) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-    commuter_effect = inflow - outflow
-    return commuter_effect
+    OD = df.pivot(columns='to', index='from', values='n').fillna(0).values
+    visitors = np.array([OD.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+    visitors[np.where(visitors == 0)] = 1
+    return visitors, OD
 
 def write_pickle(filepath, arr):
     """ writes an array to file as a pickle
