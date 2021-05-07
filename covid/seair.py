@@ -1,8 +1,8 @@
 import numpy as np
 
 class SEAIR:
-    def __init__(self, commuter_effect, contact_matrices, population, age_group_flow_scaling, death_rates,
-                config, paths, include_flow, stochastic, write_to_csv, write_weekly):
+    def __init__(self, commuter_effect, contact_matrices, population, age_group_flow_scaling, 
+                death_rates, config, paths, include_flow, stochastic):
         """ 
         Parameters:
             commuter_effect: Matrix of the percentage population growth or decline during working hours 
@@ -41,8 +41,6 @@ class SEAIR:
         self.stochastic = stochastic
         self.include_flow = include_flow
         self.paths = paths
-        self.write_to_csv = write_to_csv
-        self.write_weekly = write_weekly
 
     def simulate(self, state, decision, decision_period, information):
         """  simulates the development of an epidemic as modelled by current parameters
@@ -85,7 +83,7 @@ class SEAIR:
         # Rates
         sigma = 1/(self.latent_period * self.periods_per_day)
         alpha = 1/(self.presymptomatic_period * self.periods_per_day)
-        omega = 1/(self.postsymptomatic_period * self.periods_per_day)
+        omega = 1/((self.postsymptomatic_period+3) * self.periods_per_day)
         gamma = 1/(self.recovery_period * self.periods_per_day)
 
         # Run simulation
@@ -106,9 +104,13 @@ class SEAIR:
             working_hours = timestep < (self.periods_per_day * 5) and 0 < timestep % self.periods_per_day < 3
             if self.include_flow and working_hours:
                 # Define current transmission of infection with commuters
-                infection_e = np.matmul(beta * r_e * C * alphas[0], (commuter_effect * E2).T/N).T
-                infection_a = np.matmul(beta * r_a * C * alphas[1], (commuter_effect * A).T/N).T
-                infection_i = np.matmul(beta * C * alphas[2], (commuter_effect * I).T/N).T
+                total_pop = np.sum(N)
+                commuter_effect_E2 = commuter_effect * np.sum(E2)/total_pop
+                infection_e = np.matmul(beta * r_e * C * alphas[0], (commuter_effect_E2 + E2).T/N).T
+                commuter_effect_A = commuter_effect * np.sum(A)/total_pop
+                infection_a = np.matmul(beta * r_a * C * alphas[1], (commuter_effect_A + A).T/N).T
+                commuter_effect_I = commuter_effect * np.sum(I)/total_pop
+                infection_i = np.matmul(beta * C * alphas[2], (commuter_effect_I + I).T/N).T
             else:
                 # Define current transmission of infection without commuters
                 infection_e = np.matmul(beta * r_e * C * alphas[0], E2.T/N).T

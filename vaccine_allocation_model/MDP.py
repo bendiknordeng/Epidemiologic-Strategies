@@ -50,8 +50,8 @@ class MarkovDecisionProcess:
         self.state = self.initial_state
         self.path = [self.state]
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
-        print(self.wave_state_timeline)
-        print(self.wave_timeline)
+        # print(self.wave_state_timeline)
+        # print(self.wave_timeline)
 
     def run(self, weighted_policy_weights=None):
         """ Updates states from current time_step to a specified horizon
