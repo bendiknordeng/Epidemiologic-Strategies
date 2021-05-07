@@ -114,7 +114,7 @@ class SEAIR:
 
             # Define current transmission of infection without commuters
             lam_i = np.clip(beta * (alphas[0] * r_e * E2 + alphas[1] * r_a * A + alphas[2] * I), 0, 1)
-            contact_cases = S/N * np.matmul(lam_i, C)
+            contact_cases = S/N * np.clip(np.matmul(lam_i, C), 0, 1)
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
 
