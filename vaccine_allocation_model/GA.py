@@ -25,7 +25,7 @@ class SimpleGeneticAlgorithm:
         self.generations_since_new_best = 0
         start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
         run_folder = f"results/GA_{start_of_run}"
-        folder_path = os.getcwd()+"/"+run_folder
+        folder_path = os.getcwd()+run_folder
         individuals_path = folder_path + "/individuals"
         final_scores_path = folder_path + "/final_scores"
         os.mkdir(folder_path)
