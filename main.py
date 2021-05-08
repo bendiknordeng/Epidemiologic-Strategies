@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    runs = 50
+    runs = 2
     day = 30
     month = 4
     year = 2020
@@ -92,10 +92,10 @@ if __name__ == '__main__':
 
     #utils.get_average_results(results, population, age_labels, policy)
 
-    GA = SimpleGeneticAlgorithm(runs, 30, mdp)
+    GA = SimpleGeneticAlgorithm(runs, 2, mdp)
     
     while not GA.converged:
-        GA.new_generation()
+        GA.evaluate_generation()
 
 
     if plot_results:

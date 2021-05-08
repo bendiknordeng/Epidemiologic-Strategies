@@ -98,7 +98,11 @@ class SEAIR:
             timestep = (state.date.weekday() * self.periods_per_day + i) % decision_period
 
             # Vaccinate before flow
-            new_V = np.minimum(S, decision/decision_period) # in case new infected during decision period
+            new_V = np.nan_to_num(np.minimum(S, decision/decision_period)) # in case new infected during decision period
+            unused_V = np.sum(new_V - decision/decision_period)
+            if unused_V > 0: import pdb;pdb.set_trace()
+            state.vaccines_available += unused_V
+
             successfully_new_V = epsilon * new_V
             S = S - successfully_new_V
             R = R + successfully_new_V
@@ -121,7 +125,10 @@ class SEAIR:
             lam_i = np.clip(beta * (alphas[0] * r_e * E2 + alphas[1] * r_a * A + alphas[2] * I), 0, 1)
             contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
-                contact_cases = np.random.poisson(contact_cases)
+                try:
+                    contact_cases = np.random.poisson(contact_cases)
+                except:
+                    import pdb;pdb.set_trace()
 
             new_E1  = np.clip(contact_cases + commuter_cases, None, S)
             new_E2  = E1 * sigma * p
