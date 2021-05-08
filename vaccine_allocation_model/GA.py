@@ -36,15 +36,15 @@ class SimpleGeneticAlgorithm:
         self.number_of_runs = []
         self.GA_path = folder_path + f"/GA_object.pkl"
 
-    def find_fitness(self, offsprings=False, from_start=True):
+    def find_fitness(self, offsprings=False, from_start=True, verbose=True):
         population = self.population.individuals if not offsprings else self.population.offsprings
         self.final_deaths = defaultdict(list) if from_start else self.final_deaths
         runs = self.runs if from_start else int(self.runs/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
-        print(f"\033[1mRunning{' offsprings of ' if offsprings else ' '}generation {self.generation_count}\033[0m")
+        if verbose: print(f"\033[1mRunning{' offsprings of ' if offsprings else ' '}generation {self.generation_count}\033[0m")
         for individual in population:
             individual.strategy_count.clear()
-            print(f"Finding score for individual {individual.ID}...")
+            if verbose: print(f"Finding score for individual {individual.ID}...")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
                 self.process.init()
@@ -56,7 +56,7 @@ class SimpleGeneticAlgorithm:
                 deaths = np.sum(self.process.path[-1].D)
                 self.final_deaths[individual.ID].append(deaths)
             mean_score = np.mean(self.final_deaths[individual.ID])
-            print(f"Mean score: {mean_score:.0f}\n")
+            if verbose: print(f"Mean score: {mean_score:.0f}\n")
             individual.mean_score = mean_score
 
     def one_sided_t_test(self, s1, s2, significance=0.1):
@@ -89,25 +89,25 @@ class SimpleGeneticAlgorithm:
         utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
         utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_deaths)
         self.to_pandas()
-        if np.mean(self.final_deaths[self.population.individuals[0].ID]) < np.mean(self.best_deaths):
-            self.population.offsprings = [self.population.individuals[0], self.best_individual]
-            self.find_fitness(offsprings=True)
-            new_best = self.selection(offsprings=True)
-            count = 0
-            while not new_best and count <= 2: # returns False if no one is significant best.
-                self.find_fitness(offsprings=True, from_start=False)
-                count += 1
-            if new_best:
-                self.best_individual = self.population.individuals[0]
-                self.best_deaths = self.final_deaths[self.best_individual.ID]
-                self.generations_since_new_best = 0
-            else:
-                self.generations_since_new_best += 1
-                if self.generations_since_new_best > 2:
-                    self.converged = True
-                    utils.write_pickle(self.GA_path, self)
-                    print(f"Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}")
-                    return
+        self.population.offsprings = [self.population.individuals[0], self.best_individual]
+        self.find_fitness(offsprings=True, verbose=False)
+        new_best = self.selection(offsprings=True)
+        count = 0
+        print(f"\033[1mTesting best of generation {self.generation_count} against all-time high\033[0m")
+        while not new_best and count <= 2: # returns False if no one is significant best.
+            self.find_fitness(offsprings=True, from_start=False, verbose=False)
+            count += 1
+        if new_best:
+            self.best_individual = self.population.individuals[0]
+            self.best_deaths = self.final_deaths[self.best_individual.ID]
+            self.generations_since_new_best = 0
+        else:
+            self.generations_since_new_best += 1
+            if self.generations_since_new_best > 2:
+                self.converged = True
+                utils.write_pickle(self.GA_path, self)
+                print(f"Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}")
+                return
         self.crossover()
         self.mutation()
         self.repair_offsprings()
