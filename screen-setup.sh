@@ -1,9 +1,9 @@
 #!/bin/sh
 # This is a comment!
 
-echo change directory to Epidemiologic-Vaccine-Strategies/ ...
+echo change directory to Vaccine-Allocation/ ...
 
-cd Epidemiologic-Vaccine-Strategies/
+cd Vaccine-Allocation/
 
 echo Choosing python module ...   
 
