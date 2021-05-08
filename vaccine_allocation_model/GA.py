@@ -43,6 +43,7 @@ class SimpleGeneticAlgorithm:
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
         print(f"\033[1mRunning{' offsprings of ' if offsprings else ' '}generation {self.generation_count}\033[0m")
         for individual in population:
+            individual.strategy_count.clear()
             print(f"Finding score for individual {individual.ID}...")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
