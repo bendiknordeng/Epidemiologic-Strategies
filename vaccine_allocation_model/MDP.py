@@ -99,7 +99,6 @@ class MarkovDecisionProcess:
             'alphas': alphas,
             'flow_scale': flow_scale
             }
-
         return information
 
     def update_state(self, weighted_policy_weights):

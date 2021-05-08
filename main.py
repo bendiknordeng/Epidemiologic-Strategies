@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    runs = 2
+    runs = 10
     day = 30
     month = 4
     year = 2020
