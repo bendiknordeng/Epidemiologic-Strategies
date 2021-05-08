@@ -2,8 +2,8 @@ import numpy as np
 from datetime import timedelta
 
 class State:
-    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, 
-                new_infected, total_infected, new_deaths, wave_state, wave_count, date, time_step=0):
+    def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, new_infected, 
+                total_infected, new_deaths, wave_state, wave_count, strategy_count, date, time_step=0):
         """ initialize a State instance
 
         Parameters
@@ -41,6 +41,7 @@ class State:
         self.new_deaths = new_deaths
         self.wave_state = wave_state
         self.wave_count = wave_count
+        self.strategy_count = strategy_count
         self.date = date
         self.time_step = time_step
 
@@ -62,6 +63,8 @@ class State:
             self.wave_state = information['wave_state']
             if self.wave_count[self.wave_state] < 4:
                 self.wave_count[self.wave_state] += 1
+            if self.vaccines_available > 0:
+                self.strategy_count[self.wave_state] += 1
 
         # Update compartment values
         S, E1, E2, A, I, R, D, V, new_infected, new_deaths = epidemic_function(self, decision, decision_period, information)
@@ -75,8 +78,8 @@ class State:
         time_step = self.time_step + decision_period
         date = self.date + timedelta(decision_period//4)
 
-        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available,
-                    new_infected, self.total_infected+new_infected, new_deaths, self.wave_state, self.wave_count, date, time_step)
+        return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, new_infected, 
+                    self.total_infected+new_infected, new_deaths, self.wave_state, self.wave_count, self.strategy_count, date, time_step)
     
     def get_compartments_values(self):
         """ Returns compartment values """
@@ -95,15 +98,16 @@ class State:
         status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
         status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"
         status += "\n"
-        status += f"Wave Status: {self.wave_state}\n"
+        status += f"Wave State: {self.wave_state}\n"
         status += f"Wave Count: {self.wave_count}\n"
+        status += f"Strategy Count: {self.strategy_count}\n"
         for i in range(len(info)):
             status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, contact_weights, alphas, 
-                        flow_scale, population, wave_state, wave_count, start_date, time_step=0):
+    def initialize_state(num_initial_infected, vaccines_available, contact_weights, 
+                        alphas, flow_scale, population, start_date, time_step=0):
         """ Initializes a state, default from the moment a disease breaks out
 
         Parameters
@@ -132,5 +136,9 @@ class State:
                 S[region][age_group] -= 1
                 I[region][age_group] += 1 
         
+        wave_state = 'U'
+        wave_count = {'U': 1, 'D': 0, 'N': 0}
+        strategy_count = {'U': 0, 'D': 0, 'N': 0}
+
         return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, 
-                    I.copy(), I.copy(), 0, wave_state, wave_count, start_date, time_step) 
+                    I.copy(), I.copy(), 0, wave_state, wave_count, strategy_count, start_date, time_step) 

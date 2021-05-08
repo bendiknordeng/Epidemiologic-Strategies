@@ -45,7 +45,9 @@ class MarkovDecisionProcess:
         self.wave_state_timeline = None
     
     def init(self):
-        self.initial_state.wave_count = {"U":1, "D":0, "N":0}
+        self.initial_state.wave_state = 'U'
+        self.initial_state.wave_count = {"U": 1, "D": 0, "N": 0}
+        self.initial_state.strategy_count = {"U": 0, "D": 0, "N": 0}
         self.state = self.initial_state
         self.path = [self.state]
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
