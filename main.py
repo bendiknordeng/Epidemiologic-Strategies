@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    runs = 5
+    runs = 20
     day = 30
     month = 4
     year = 2020
@@ -42,7 +42,7 @@ if __name__ == '__main__':
     use_response_measures = False
     include_flow = True
     use_waves = True
-    stochastic = False
+    stochastic = True
     plot_results = False
 
     epidemic_function = SEAIR(
@@ -80,7 +80,7 @@ if __name__ == '__main__':
                         verbose=verbose)
 
     if run_GA:
-        GA = SimpleGeneticAlgorithm(runs, 2, mdp, verbose=True)
+        GA = SimpleGeneticAlgorithm(runs, 20, mdp, verbose=True)
         GA.run()
     else:
         results = []                   

@@ -41,6 +41,7 @@ class SimpleGeneticAlgorithm:
             self.generation_count += 1
 
     def run_population(self, offsprings=False):
+        # TODO: When running find_best_individuals(), finding significant best does not matter.
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
         self.find_fitness(offsprings)
         count = 0
