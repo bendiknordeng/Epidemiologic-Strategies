@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 from tqdm import tqdm
 import time
-
+from collections import defaultdict
 
 class SimpleGeneticAlgorithm:
     def __init__(self, runs, population_size, process):
@@ -15,17 +15,16 @@ class SimpleGeneticAlgorithm:
         self.population = Population(population_size)
         self.best_fitness_score = np.infty
         self.second_best_fitness_score = np.infty
-        self.generation_count = -1
-        self.final_deaths = {}
+        self.generation_count = 0
+        self.final_deaths = defaultdict(list)
         self.best_individual = Individual()
-        self.best_deaths = [0]
+        self.best_deaths = np.inf
         self.converged = False # If search for best individual has not converged
         self.process = process
         self.runs = runs
         self.generations_since_new_best = 0
-        self.seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
         start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
-        run_folder = f"GA_{start_of_run}"
+        run_folder = f"results/GA_{start_of_run}"
         folder_path = os.getcwd()+"/"+run_folder
         individuals_path = folder_path + "/individuals"
         final_scores_path = folder_path + "/final_scores"
@@ -38,100 +37,76 @@ class SimpleGeneticAlgorithm:
 
     def find_fitness(self, offsprings=False, from_start=True):
         population = self.population.individuals if not offsprings else self.population.offsprings
-        self.final_deaths = {} if from_start else self.final_deaths
+        self.final_deaths = defaultdict(list) if from_start else self.final_deaths
         runs = self.runs if from_start else int(self.runs/2)
-        
-        if not offsprings:
-            print(f"\033[1mRunning generation {self.generation_count} \033[0m")
-        else:
-            print(f"\033[1mRunning offsprings of generation {self.generation_count} \033[0m")
-        for i in population:
-            self.final_deaths[i.ID] = [] if from_start else self.final_deaths[i.ID]
-            print(f"Finding score for individual {i.ID}...")
+        seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
+        print(f"\033[1mRunning{' offsprings of ' if offsprings else ' '}generation {self.generation_count}\033[0m")
+        for individual in population:
+            print(f"Finding score for individual {individual.ID}...")
             for j in tqdm(range(runs), ascii=True):
-                np.random.seed(self.seeds[j])
+                np.random.seed(seeds[j])
                 self.process.init()
-                self.process.run(weighted_policy_weights=i.genes)
+                self.process.run(weighted_policy_weights=individual.genes)
                 deaths = np.sum(self.process.path[-1].D)
-                self.final_deaths[i.ID].append(deaths)
-            mean_score = np.mean(self.final_deaths[i.ID])
+                self.final_deaths[individual.ID].append(deaths)
+            mean_score = np.mean(self.final_deaths[individual.ID])
             print(f"Mean score: {mean_score:.0f}\n")
-            i.mean_score = mean_score
+            individual.mean_score = mean_score
 
     def one_sided_t_test(self, s1, s2):
         significant_best = False
-        s1 = np.array(s1) 
+        s1 = np.array(s1)
         s2 = np.array(s2)
         if not (s1==s2).all():
             z = s1 - s2
-            less = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
-            if less < 0.5:
-                significant_best=True
+            p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
+            significant_best = p < 0.5
         return significant_best
 
     def find_best_individual(self, offsprings=False):
-        best, second_best = True, True
-        range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, 2)
+        range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, len(self.population.offsprings))
         for i in range(range1): # test two best
             first = self.population.individuals[i] if not offsprings else self.population.offsprings[i]
-            for j in range(1, range2):
-                if j==i: continue
+            for j in range(i+1, range2):
                 second = self.population.individuals[j] if not offsprings else self.population.offsprings[j]
                 s1, s2 = self.final_deaths[first.ID], self.final_deaths[second.ID]
-                significant_best = self.one_sided_t_test(s1, s2)
-                if not significant_best:
-                    if i==0:
-                        best, second_best = False, False
-                        return best, second_best
-                    elif i==1:
-                        best, second_best = True, False
-                        return best, second_best
-        return best, second_best
+                if not self.one_sided_t_test(s1, s2): return False
+        return True
 
-    def new_generation(self):
-        if self.generation_count == -1: self.generation_count += 1; return
-        self.find_fitness(from_start=True)
-        significant = self.selection()
-        count = 1
-        while not significant and count <= 2: # returns False if no one is significant best.
-            self.find_fitness(offsprings=False, from_start=False)
-            significant = self.selection()
+    def evaluate_generation(self):
+        self.find_fitness()
+        count = 0
+        while not self.selection() and count <= 2: # returns False if no one is significant best.
+            self.find_fitness(from_start=False)
             count += 1
         utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
         utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_deaths)
         self.to_pandas()
         if np.mean(self.final_deaths[self.population.individuals[0].ID]) < np.mean(self.best_deaths):
             self.best_individual = self.population.individuals[0]
-            self.best_deaths = self.final_deaths[self.population.individuals[0].ID]
+            self.best_deaths = self.final_deaths[self.best_individual.ID]
             self.generations_since_new_best = 0
         else:
             self.generations_since_new_best += 1
             if self.generations_since_new_best > 2:
                 self.converged = True
+                print(f"Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}")
                 return
         self.crossover()
         self.mutation()
         self.repair_offsprings()
-        self.find_fitness(offsprings=True)
-        significant = self.selection(offsprings=True)
-        count = 1
-        while not significant and count <= 2: # returns False if no one is significant best.
-            self.find_fitness(offsprings=True, from_start=False)
-            significant = self.selection(offsprings = True)
+        offsprings = True
+        self.find_fitness(offsprings)
+        count = 0
+        while not self.selection(offsprings) and count <= 2: # returns False if no one is significant best.
+            self.find_fitness(offsprings, from_start=False)
             count += 1
-        remove = False if self.generation_count < 10 else True
-        self.population.new_generation(remove=remove)
+        self.population.new_generation(self.generation_count)
         self.generation_count += 1
 
     def selection(self, offsprings=False):
-        if not offsprings:
-            self.population.sort_by_mean()
-            best, second_best = self.find_best_individual()
-            return best and second_best
-        else:
-            self.population.sort_by_mean(offsprings=True)
-            best, second_best = self.find_best_individual(offsprings=True)
-            return best and second_best 
+        self.population.sort_by_mean(offsprings)
+        return self.find_best_individual(offsprings)
 
     def crossover(self):
         p1 = self.population.individuals[0].genes
@@ -166,7 +141,7 @@ class SimpleGeneticAlgorithm:
         o2.genes = o2_genes
         o3 = Individual()
         o3.genes = np.divide(p1+p2, 2)
-        self.population.offsprings = [o1,o2, o3]
+        self.population.offsprings = [o1,o2,o3]
 
     def mutation(self):
         for offspring in self.population.offsprings:
@@ -199,8 +174,8 @@ class SimpleGeneticAlgorithm:
 
     def to_pandas(self):
         generation = [self.generation_count for _ in range(len(self.population.individuals))]
-        ids = [i.ID for i in self.population.individuals]
-        mean_score = [i.mean_score for i in self.population.individuals]
+        ids = [individual.ID for individual in self.population.individuals]
+        mean_score = [individual.mean_score for individual in self.population.individuals]
         gen_df = pd.DataFrame({"generation": generation, "individual": ids, "mean_score": mean_score})
         if self.generation_count == 0 :
             gen_df.to_csv(self.overview_path, header=True, index=False)
@@ -212,13 +187,15 @@ class Population:
     def __init__(self, population_size):
         self.individuals = [Individual(i) for i in range(population_size)]
         self.least_fittest_index = 0
-        self.offsprings = [None,None]
+        self.offsprings = None
 
     def get_individual(self, i):
         return self.individuals[i]
     
-    def new_generation(self, remove = False):
-        if remove:
+    def new_generation(self, generation_count):
+        if 10 < generation_count <= 20:
+            self.individuals = self.individuals[:-2]
+        elif generation_count > 20:
             self.individuals = self.individuals[:-1]
         self.individuals.append(self.offsprings[0])
     
@@ -252,8 +229,10 @@ class Individual:
             for j in range(4):
                 genes[:, :, j] = 0.25
         elif 9 <= i < 10: # Set one weight vector randomly, make for each timestep
-            high = 100 if i > 0 else 50
-            weights = np.random.randint(low=0, high=high, size=(4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            weights = np.zeros(4)
+            for j in range(4):
+                high = 100 if j > 0 else 50
+                weights[j] = np.random.randint(low=0, high=high) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
             norm = np.sum(weights)
             genes[:, :] = np.divide(weights, norm)
         else:
