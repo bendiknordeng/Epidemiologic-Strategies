@@ -1,5 +1,7 @@
 import numpy as np
 from datetime import timedelta
+from collections import defaultdict
+from functools import partial
 
 class State:
     def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, new_infected, 
@@ -64,7 +66,7 @@ class State:
             if self.wave_count[self.wave_state] < 4:
                 self.wave_count[self.wave_state] += 1
             if self.vaccines_available > 0:
-                self.strategy_count[self.wave_state] += 1
+                self.strategy_count[self.wave_state][self.wave_count[self.wave_state]] += 1
 
         # Update compartment values
         S, E1, E2, A, I, R, D, V, new_infected, new_deaths = epidemic_function(self, decision, decision_period, information)
@@ -138,7 +140,7 @@ class State:
         
         wave_state = 'U'
         wave_count = {'U': 1, 'D': 0, 'N': 0}
-        strategy_count = {'U': 0, 'D': 0, 'N': 0}
+        strategy_count = defaultdict(partial(defaultdict, int))
 
         return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, 
                     I.copy(), I.copy(), 0, wave_state, wave_count, strategy_count, start_date, time_step) 
