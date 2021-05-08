@@ -24,8 +24,6 @@ if __name__ == '__main__':
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy = policies[-1]
-    initial_wave_state = 'U'
-    initial_wave_count = {'U': 1, 'D': 0, 'N': 0}
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -65,8 +63,6 @@ if __name__ == '__main__':
                         alphas=config.initial_alphas,
                         flow_scale=config.initial_flow_scale,
                         population=population,
-                        wave_state=initial_wave_state,
-                        wave_count=initial_wave_count,
                         start_date=start_date)
     
     mdp = MarkovDecisionProcess(

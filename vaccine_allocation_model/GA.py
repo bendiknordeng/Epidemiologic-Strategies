@@ -48,8 +48,8 @@ class SimpleGeneticAlgorithm:
                 np.random.seed(seeds[j])
                 self.process.init()
                 self.process.run(weighted_policy_weights=individual.genes)
-                wave_count = self.process.path[-1].wave_count
-                for wave_state, count in wave_count.items():
+                strategy_count = self.process.path[-1].strategy_count
+                for wave_state, count in strategy_count.items():
                     for wave in range(count):
                         individual.strategy_count[wave_state][str(wave+1)] += 1
                 deaths = np.sum(self.process.path[-1].D)
