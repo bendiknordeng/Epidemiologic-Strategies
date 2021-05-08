@@ -54,6 +54,15 @@ class State:
         Returns
             A new initialized State instance
         """
+        # Update information
+        contact_weights = information['contact_weights']
+        alphas = information['alphas']
+        flow_scale = information['flow_scale']
+        if not (information['wave_state'] == self.wave_state): # update if changed status
+            self.wave_state = information['wave_state']
+            if self.wave_count[self.wave_state] < 4:
+                self.wave_count[self.wave_state] += 1
+
         # Update compartment values
         S, E1, E2, A, I, R, D, V, new_infected, new_deaths = epidemic_function(self, decision, decision_period, information)
 
@@ -66,14 +75,6 @@ class State:
         time_step = self.time_step + decision_period
         date = self.date + timedelta(decision_period//4)
 
-        # Update information
-        contact_weights = information['contact_weights']
-        alphas = information['alphas']
-        flow_scale = information['flow_scale']
-        if not (information['wave_state'] == self.wave_state): # update if changed status
-            wave_state = information['wave_state']
-            self.wave_count[wave_state] += 1 if self.wave_count[wave_state] < 4 else 0
-    
         return State(S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available,
                     new_infected, self.total_infected+new_infected, new_deaths, self.wave_state, self.wave_count, date, time_step)
     

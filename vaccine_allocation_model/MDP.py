@@ -45,7 +45,7 @@ class MarkovDecisionProcess:
         self.wave_state_timeline = None
     
     def init(self):
-        self.initial_state.wave_count = {"U":0, "D":0, "N":0}
+        self.initial_state.wave_count = {"U":1, "D":0, "N":0}
         self.state = self.initial_state
         self.path = [self.state]
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
@@ -108,7 +108,7 @@ class MarkovDecisionProcess:
             decision_period: number of periods forward whein time that the decision directly affects
         """
         if weighted_policy_weights is not None:
-            i = {"U":0, "D":1, "N":2}[self.state.wave_state]
+            i = {"U": 0, "D": 1, "N": 2}[self.state.wave_state]
             j = self.state.wave_count[self.state.wave_state]
             self.weighted_policy_weights = weighted_policy_weights[i][j-1]
         decision = self.policy()
