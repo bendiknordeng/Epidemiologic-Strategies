@@ -102,7 +102,6 @@ class State:
         status += "\n"
         status += f"Wave State: {self.wave_state}\n"
         status += f"Wave Count: {self.wave_count}\n"
-        status += f"Strategy Count: {self.strategy_count}\n"
         for i in range(len(info)):
             status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
         return status

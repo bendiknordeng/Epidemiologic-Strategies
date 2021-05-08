@@ -1,6 +1,8 @@
 import numpy as np
+from numpy.core.numeric import Inf
 import scipy
 from covid import utils
+from covid.utils import tcolors
 import pandas as pd
 import os
 from datetime import datetime
@@ -9,76 +11,97 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, runs, population_size, process, verbose):
-        self.runs = runs
+    def __init__(self, simulations, population_size, process, verbose):
+        self.simulations = simulations
         self.process = process
         self.population_size = population_size
-        self.population = Population(population_size)
+        self.population = Population(population_size, verbose)
         self.best_fitness_score = np.infty
         self.second_best_fitness_score = np.infty
         self.generation_count = 0
         self.final_deaths = defaultdict(list)
         self.best_individual = None
         self.best_deaths = np.inf
-        self.converged = False
         self.generations_since_new_best = 0
         self.number_of_runs = []
         self.generate_output_dirs()
-        self.verbose = verbose      
+        self.verbose = verbose
 
-    def evaluate_generation(self):
-        self.run_population()
-        self.write_to_file()
-        self.check_convergence()
-        self.crossover(self.generation_count)
-        self.mutation()
-        self.repair_offsprings()
-        self.run_population(offsprings=True)
-        self.population.new_generation(self.generation_count)
-        self.generation_count += 1
+    def run(self):
+        while True:
+            self.run_population()
+            self.write_to_file()
+            if self.check_convergence():
+                break
+            self.crossover(self.generation_count)
+            self.mutation()
+            self.repair_offsprings()
+            self.run_population(offsprings=True)
+            self.population.new_generation(self.generation_count)
+            self.generation_count += 1
 
     def run_population(self, offsprings=False):
-        if self.verbose: print(f"\033[1mRunning{' offsprings of ' if offsprings else ' '}generation {self.generation_count}\033[0m")
+        if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
         self.find_fitness(offsprings)
         count = 0
-        while not self.find_best_individual(offsprings) and count <= 2:
+        significant_best = self.find_best_individual(offsprings)
+        while not significant_best and count <= 2:
             if self.verbose: print("Running more simulations...")
             self.find_fitness(offsprings, from_start=False)
+            significant_best = self.find_best_individual(offsprings)
             count += 1
         self.find_runs(count)
 
+        if self.verbose:
+            if significant_best:
+                print(f"{tcolors.OKGREEN}Significant best {'offspring' if offsprings else 'individual'} found{tcolors.ENDC}")
+                if offsprings:
+                    print(f"Best offspring of generation {self.generation_count}: {self.population.offsprings[0]}")
+                else:
+                    print(f"Best individual of generation {self.generation_count}: {self.population.individuals[0]}")
+            else:
+                print(f"{tcolors.FAIL}Significant best {'offspring' if offsprings else 'individual'} not found.")
+
+        return significant_best
+
     def check_convergence(self):
+        candidate = self.population.individuals[0]
         if self.generation_count == 0:
-            self.best_individual = self.population.individuals[0]
-            self.best_deaths = self.final_deaths[self.best_individual.ID]
+            self.best_individual = candidate
+            self.best_deaths = self.final_deaths[candidate.ID]
         else:
-            self.population.offsprings = [self.population.individuals[0], self.best_individual]
+            if candidate == self.best_individual:
+                self.generations_since_new_best += 1
+                if self.generations_since_new_best > 2:
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}{tcolors.ENDC}")
+                    return True
+                return False
+            if self.verbose: print(f"Testing best of generation {self.generation_count} against all-time high")
+            self.population.offsprings = [candidate, self.best_individual]
             self.find_fitness(offsprings=True)
             new_best = self.find_best_individual(offsprings=True)
-            if self.verbose: print(f"Testing best of generation {self.generation_count} against all-time high")
             count = 0
-            while not new_best and count <= 2: # returns False if no one is significant best.
-                self.find_fitness(offsprings=True, from_start=False)
+            while not new_best and count < 3:
+                new_best = self.find_fitness(offsprings=True, from_start=False)
                 count += 1
             if new_best:
-                self.best_individual = self.population.individuals[0]
-                self.best_deaths = self.final_deaths[self.best_individual.ID]
+                self.best_individual = candidate
+                self.best_deaths = self.final_deaths[candidate.ID]
                 self.generations_since_new_best = 0
             else:
                 self.generations_since_new_best += 1
                 if self.generations_since_new_best > 2:
-                    self.converged = True
-                    print(f"Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}")
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}{tcolors.ENDC}")
                     return True
-            return False
+        return False
 
     def find_fitness(self, offsprings=False, from_start=True):
         population = self.population.individuals if not offsprings else self.population.offsprings
         self.final_deaths = defaultdict(list) if from_start else self.final_deaths
-        runs = self.runs if from_start else int(self.runs/2)
+        runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
         for individual in population:
-            if self.verbose: print(f"Finding score for individual {individual.ID}...")
+            if self.verbose: print(f"\nFinding score for individual {individual.ID}...")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
                 self.process.init()
@@ -89,10 +112,11 @@ class SimpleGeneticAlgorithm:
                 deaths = np.sum(self.process.path[-1].D)
                 self.final_deaths[individual.ID].append(deaths)
             mean_score = np.mean(self.final_deaths[individual.ID])
-            if self.verbose: print(f"Mean score: {mean_score:.0f}\n")
+            if self.verbose: print(f"Mean score: {mean_score:.0f}")
             individual.mean_score = mean_score
 
     def find_best_individual(self, offsprings=False):
+        if self.verbose: print(f"\nFinding best individual...")
         self.population.sort_by_mean(offsprings)
         range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, len(self.population.offsprings))
         for i in range(range1): # test two best
@@ -101,13 +125,8 @@ class SimpleGeneticAlgorithm:
                 second = self.population.individuals[j] if not offsprings else self.population.offsprings[j]
                 s1, s2 = self.final_deaths[first.ID], self.final_deaths[second.ID]
                 if not self.t_test(s1, s2):
-                    if self.verbose: print(f"Significance not fulfilled between {first} and {second}.")
+                    if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
                     return False
-        if self.verbose: 
-            if offsprings:
-                print(f"Best child of generation {self.generation_count}: {first}")
-            else:
-                print(f"Best individual of generation {self.generation_count}: {first}")
         return True
 
     def t_test(self, s1, s2, significance=0.1):
@@ -147,11 +166,11 @@ class SimpleGeneticAlgorithm:
             o2_genes[:, c_row, :c_col] = p2[:, c_row, :c_col]
             o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
             o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
-        o1 = Individual(generation=generation_count)
+        o1 = Individual(generation=generation_count, offspring=True)
         o1.genes = o1_genes
-        o2 = Individual(generation=generation_count)
+        o2 = Individual(generation=generation_count, offspring=True)
         o2.genes = o2_genes
-        o3 = Individual(generation=generation_count)
+        o3 = Individual(generation=generation_count, offspring=True)
         o3.genes = np.divide(p1+p2, 2)
         self.population.offsprings = [o1,o2,o3]
 
@@ -185,9 +204,9 @@ class SimpleGeneticAlgorithm:
             offspring.genes = np.divide(offspring.genes, norm)
 
     def find_runs(self, count):
-        number_runs = self.runs
+        number_runs = self.simulations
         if count > 0:
-            for _ in range(count): number_runs += int(self.runs/2)
+            for _ in range(count): number_runs += int(self.simulations/2)
         self.number_of_runs.append(number_runs)
 
     def write_to_file(self):
@@ -217,16 +236,14 @@ class SimpleGeneticAlgorithm:
         self.overview_path = folder_path + f"/generation_overview.csv"
         self.individuals_path = folder_path + f"/individuals/individuals_"
         self.final_score_path = folder_path + f"/final_scores/final_score_"
-        self.GA_path = folder_path + f"/GA_object.pkl"
 
 class Population: 
-    def __init__(self, population_size):
+    def __init__(self, population_size, verbose):
         self.individuals = [Individual(i) for i in range(population_size)]
+        self.verbose = verbose
         self.least_fittest_index = 0
         self.offsprings = None
-
-    def get_individual(self, i):
-        return self.individuals[i]
+        if self.verbose: print(f"{tcolors.OKCYAN}Initial population: {self.individuals}{tcolors.ENDC}")
     
     def new_generation(self, generation_count):
         if 10 < generation_count <= 20:
@@ -234,6 +251,7 @@ class Population:
         elif generation_count > 20:
             self.individuals = self.individuals[:-1]
         self.individuals.append(self.offsprings[0])
+        if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}")
     
     def sort_by_mean(self, offsprings=False):
         if not offsprings:
@@ -242,21 +260,24 @@ class Population:
             self.offsprings = sorted(self.offsprings, key=lambda x: x.mean_score)    
 
 class Individual:
-    id_counter=1
+    ID_COUNTER=1
+    GENERATION=0
 
-    def __init__(self, i=-1, generation=0):
-        self.ID = self.create_id(generation)
+    def __init__(self, i=-1, generation=0, offspring=False):
+        self.ID = self.get_id(generation, offspring)
         self.mean_score = 0
         self.genetype = i
         self.genes = self.create_genes(i)
         self.strategy_count = defaultdict(partial(defaultdict, partial(defaultdict, int)))
     
-    def create_id(self, generation):
-        id = f"gen_{generation}"
-        id += f"_{Individual.id_counter:04d}"
-        Individual.id_counter += 1
+    def get_id(self, generation, offspring):
+        if offspring and generation == Individual.GENERATION: 
+            Individual.GENERATION += 1
+            Individual.ID_COUNTER = 1
+        id = f"gen_{Individual.GENERATION}"
+        id += f"_{Individual.ID_COUNTER:03d}"
+        Individual.ID_COUNTER += 1
         return id
-
 
     def create_genes(self, i):
         genes = np.zeros((3,4,4))
@@ -288,4 +309,7 @@ class Individual:
         return genes
 
     def __str__(self):
+        return self.ID
+    
+    def __repr__(self):
         return self.ID

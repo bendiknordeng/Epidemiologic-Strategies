@@ -22,7 +22,7 @@ if __name__ == '__main__':
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first']
     policy = policies[-1]
 
     # Read data and generate parameters
@@ -35,20 +35,9 @@ if __name__ == '__main__':
     commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    weights = np.array([[[1., 0., 0., 0.],
-                        [1., 0., 0., 0.],
-                        [1., 0., 0., 0.],
-                        [1., 0., 0., 0.]],
-                        [[1., 0., 0., 0.],
-                        [1., 0., 0., 0.],
-                        [1., 0., 0., 0.],
-                        [1., 0., 0., 0.]],
-                        [[1., 0., 0., 0.],
-                        [1., 0., 0., 0.],
-                        [1., 0., 0., 0.],
-                        [1., 0., 0., 0.]]])
 
     # Simulation settings
+    run_GA = True
     verbose = False
     use_response_measures = False
     include_flow = True
@@ -86,32 +75,25 @@ if __name__ == '__main__':
                         response_measure_model=response_measure_model, 
                         use_response_measures=use_response_measures,
                         horizon=horizon,
-                        policy=policy,
+                        policy='weighted' if run_GA else policy,
                         historic_data=historic_data,
                         verbose=verbose)
 
-    # results = []                   
-    # for i in tqdm(range(runs)):
-    #    np.random.seed(i*10)
-    #    mdp.init()
-    #    mdp.run(weights)
-    #    results.append(mdp.path[-1])
-    #    utils.print_results(mdp.path[-1], population, age_labels, policy)
+    if run_GA:
+        GA = SimpleGeneticAlgorithm(runs, 2, mdp, verbose=True)
+        GA.run()
+    else:
+        results = []                   
+        for i in tqdm(range(runs)):
+            np.random.seed(i*10)
+            mdp.init()
+            mdp.run()
+            results.append(mdp.path[-1])
+            utils.print_results(mdp.path[-1], population, age_labels, policy)
 
-    # import pdb;pdb.set_trace()
-
-    # utils.get_average_results(results, population, age_labels, policy)
-
-    GA = SimpleGeneticAlgorithm(runs, 2, mdp, verbose=True)
-    
-    while not GA.converged:
-        GA.evaluate_generation()
-
-    utils.write_pickle(GA.GA_path, GA)
+        utils.get_average_results(results, population, age_labels, policy)
 
     if plot_results:
-        #plot.plot_control_measures(mdp.path, all=False)
-
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
@@ -120,4 +102,5 @@ if __name__ == '__main__':
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
+        #plot.plot_control_measures(mdp.path, all=False)
 
