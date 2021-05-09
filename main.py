@@ -13,6 +13,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
+    np.random.seed(10)
     runs = 20
     day = 30
     month = 4
@@ -22,10 +23,12 @@ if __name__ == '__main__':
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    policy_number = -2
+    policies = ['random', 'no_vaccines', 'susceptible_based', 
+                'infection_based', 'oldest_first', 'contact_based', 
+                'commuter_based', 'weighted']
+    policy_number = 6
     ga_objectives = ["deaths", "weighted", "yll"]
-    ga_objective_number = -1
+    ga_objective_number = 0
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -37,20 +40,22 @@ if __name__ == '__main__':
     commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    
+
     # Simulation settings
     run_GA = False
     verbose = False
     use_response_measures = False
     include_flow = True
     use_waves = True
-    stochastic = False
+    stochastic = True
     plot_results = False
 
     vaccine_policy = Policy(
                     config=config,
                     policy=policies[policy_number],
-                    population=population[population.columns[2:-1]].values)
+                    population=population[population.columns[2:-1]].values,
+                    contact_matrices=contact_matrices,
+                    age_flow_scaling=age_group_flow_scaling)
 
     epidemic_function = SEAIR(
                     commuters=commuters,
