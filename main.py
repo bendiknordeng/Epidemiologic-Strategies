@@ -61,7 +61,7 @@ if __name__ == '__main__':
                     stochastic=stochastic,
                     use_waves=use_waves)
 
-    initial_state = State.initialize_state(
+    initial_state = State.generate_initial_state(
                     num_initial_infected=initial_infected,
                     vaccines_available=initial_vaccines_available,
                     contact_weights=config.initial_contact_weights,

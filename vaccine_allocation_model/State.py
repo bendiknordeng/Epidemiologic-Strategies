@@ -119,8 +119,8 @@ class State:
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, contact_weights, 
-                        alphas, flow_scale, population, start_date, time_step=0):
+    def generate_initial_state(num_initial_infected, vaccines_available, contact_weights, 
+                                alphas, flow_scale, population, start_date, time_step=0):
         """Generate initial state for the Markov Decision Process
 
         Args:
@@ -137,14 +137,14 @@ class State:
             State: initial state object for the simulation
         """
         pop = population[population.columns[2:-1]].values
-        S = pop.copy()
+        S  = pop.copy()
         E1 = np.zeros(pop.shape)
         E2 = np.zeros(pop.shape)
-        A = np.zeros(pop.shape)
-        I = np.zeros(pop.shape)
-        R = np.zeros(pop.shape)
-        D = np.zeros(pop.shape)
-        V = np.zeros(pop.shape)
+        A  = np.zeros(pop.shape)
+        I  = np.zeros(pop.shape)
+        R  = np.zeros(pop.shape)
+        D  = np.zeros(pop.shape)
+        V  = np.zeros(pop.shape)
 
         while num_initial_infected > 0:
             region = np.random.randint(0, pop.shape[0])
