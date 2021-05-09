@@ -2,7 +2,7 @@ from covid import plot
 from covid import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.seair import SEAIR
+from covid.SEAIR import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 import numpy as np
 from tqdm import tqdm
