@@ -24,7 +24,7 @@ class State:
             new_infected (numpy.ndarray): number of new infected in each region for each age group (#regions, #age_groups)
             total_infected (numpy.ndarray): number of cumulative effected in each region for each age group (#regions, #age_groups)
             new_deaths (numpy.ndarray): number of new deaths in each region for each age group (#regions, #age_groups)
-            wave_state (string): current wave state ('U', 'D', 'N')
+            wave_state (str): current wave state ('U', 'D', 'N')
             wave_count (dict): count of wave states at this time_step
             strategy_count (dict): count of wave states when vaccines have been available (vaccines_available > 0)
             date (datetime.date): current date in the simulation
@@ -51,6 +51,7 @@ class State:
         self.strategy_count = strategy_count
         self.date = date
         self.time_step = time_step
+        self.yll = 0
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """Transition fucntion for the current state in the process
@@ -118,8 +119,8 @@ class State:
         return status
 
     @staticmethod
-    def initialize_state(num_initial_infected, vaccines_available, contact_weights, 
-                        alphas, flow_scale, population, start_date, time_step=0):
+    def generate_initial_state(num_initial_infected, vaccines_available, contact_weights, 
+                                alphas, flow_scale, population, start_date, time_step=0):
         """Generate initial state for the Markov Decision Process
 
         Args:
@@ -136,14 +137,14 @@ class State:
             State: initial state object for the simulation
         """
         pop = population[population.columns[2:-1]].values
-        S = pop.copy()
+        S  = pop.copy()
         E1 = np.zeros(pop.shape)
         E2 = np.zeros(pop.shape)
-        A = np.zeros(pop.shape)
-        I = np.zeros(pop.shape)
-        R = np.zeros(pop.shape)
-        D = np.zeros(pop.shape)
-        V = np.zeros(pop.shape)
+        A  = np.zeros(pop.shape)
+        I  = np.zeros(pop.shape)
+        R  = np.zeros(pop.shape)
+        D  = np.zeros(pop.shape)
+        V  = np.zeros(pop.shape)
 
         while num_initial_infected > 0:
             region = np.random.randint(0, pop.shape[0])

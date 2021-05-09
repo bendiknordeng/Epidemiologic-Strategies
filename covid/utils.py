@@ -7,9 +7,6 @@ import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
 from covid import plot
-from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import LinearRegression
 from scipy.stats import skewnorm
 import json
 from collections import Counter
@@ -38,7 +35,7 @@ def create_named_tuple(filepath):
     contents = file.read()
     dictionary = ast.literal_eval(contents)
     file.close()
-    return namedtuple('_', dictionary.keys())(**dictionary)
+    return namedtuple('config', dictionary.keys())(**dictionary)
 
 def generate_dummy_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
@@ -230,6 +227,16 @@ def generate_contact_matrices(bins, labels, population, country=None):
                 symmetric_matrix[i][j] = 1/(N_norway[a_i]+N_norway[a_j]) * (corrected_matrix[i][j] * N_norway[a_i] + corrected_matrix[j][i] * N_norway[a_j]) # Symmetry
         matrices.append(symmetric_matrix)
     return matrices
+
+def generate_weighted_contact_matrix(C, contact_weights):
+        """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
+
+        Parameters
+            weights: list of floats indicating the weight of each contact matrix for school, workplace, etc. 
+        Returns
+            weighted contact matrix used in modelling
+        """
+        return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)
 
 def get_age_group_flow_scaling(bins, labels, population):
     percent_commuters = 0.36 # numbers from SSB
