@@ -13,7 +13,7 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
-    runs = 10
+    runs = 1
     day = 30
     month = 4
     year = 2020
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     use_waves = True
     stochastic = True
     plot_results = False
+
 
     epidemic_function = SEAIR(
                         commuters=commuters,
@@ -92,16 +93,17 @@ if __name__ == '__main__':
 
     #utils.get_average_results(results, population, age_labels, policy)
 
-    GA = SimpleGeneticAlgorithm(runs, 2, mdp)
+    # GA = SimpleGeneticAlgorithm(runs, 2, mdp)
     
-    while not GA.converged:
-        GA.evaluate_generation()
+    # while not GA.converged:
+    #     GA.evaluate_generation()
 
 
     if plot_results:
         #plot.plot_control_measures(mdp.path, all=False)
 
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
+        
         R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
@@ -109,4 +111,10 @@ if __name__ == '__main__':
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
+
+    history, new_infections = utils.transform_path_to_numpy(mdp.path)
+    print(history.shape)
+    import pdb; pdb.set_trace()
+
+
 
