@@ -14,14 +14,11 @@ class SimpleGeneticAlgorithm:
     def __init__(self, simulations, population_size, process, verbose):
         self.simulations = simulations
         self.process = process
-        self.population_size = population_size
         self.population = Population(population_size, verbose)
-        self.best_fitness_score = np.infty
-        self.second_best_fitness_score = np.infty
         self.generation_count = 0
-        self.final_deaths = defaultdict(list)
+        self.final_scores = defaultdict(list)
         self.best_individual = None
-        self.best_deaths = np.inf
+        self.best_scores = np.inf
         self.generations_since_new_best = 0
         self.number_of_runs = []
         self.generate_output_dirs()
@@ -69,12 +66,12 @@ class SimpleGeneticAlgorithm:
         candidate = self.population.individuals[0]
         if self.generation_count == 0:
             self.best_individual = candidate
-            self.best_deaths = self.final_deaths[candidate.ID]
+            self.best_scores = self.final_scores[candidate.ID]
         else:
             if candidate == self.best_individual:
                 self.generations_since_new_best += 1
                 if self.generations_since_new_best > 2:
-                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}{tcolors.ENDC}")
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
                     return True
                 return False
             if self.verbose: print(f"Testing best of generation {self.generation_count} against all-time high")
@@ -87,18 +84,18 @@ class SimpleGeneticAlgorithm:
                 count += 1
             if new_best:
                 self.best_individual = candidate
-                self.best_deaths = self.final_deaths[candidate.ID]
+                self.best_scores = self.final_scores[candidate.ID]
                 self.generations_since_new_best = 0
             else:
                 self.generations_since_new_best += 1
                 if self.generations_since_new_best > 2:
-                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}{tcolors.ENDC}")
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
                     return True
         return False
 
     def find_fitness(self, offsprings=False, from_start=True):
         population = self.population.individuals if not offsprings else self.population.offsprings
-        self.final_deaths = defaultdict(list) if from_start else self.final_deaths
+        self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
         for individual in population:
@@ -110,9 +107,9 @@ class SimpleGeneticAlgorithm:
                 for wave_state, count in self.process.path[-1].strategy_count.items():
                     for wave_count, count in count.items():
                         individual.strategy_count[self.generation_count][wave_state][wave_count] += count
-                deaths = np.sum(self.process.path[-1].D)
-                self.final_deaths[individual.ID].append(deaths)
-            mean_score = np.mean(self.final_deaths[individual.ID])
+                score = np.sum(self.process.path[-1].total_infected)*0.01 + np.sum(self.process.path[-1].D)
+                self.final_scores[individual.ID].append(score)
+            mean_score = np.mean(self.final_scores[individual.ID])
             if self.verbose: print(f"Mean score: {mean_score:.0f}")
             individual.mean_score = mean_score
 
@@ -124,7 +121,7 @@ class SimpleGeneticAlgorithm:
             first = self.population.individuals[i] if not offsprings else self.population.offsprings[i]
             for j in range(i+1, range2):
                 second = self.population.individuals[j] if not offsprings else self.population.offsprings[j]
-                s1, s2 = self.final_deaths[first.ID], self.final_deaths[second.ID]
+                s1, s2 = self.final_scores[first.ID], self.final_scores[second.ID]
                 if not self.t_test(s1, s2):
                     if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
                     return False
@@ -212,7 +209,7 @@ class SimpleGeneticAlgorithm:
 
     def write_to_file(self):
         utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
-        utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_deaths)
+        utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_scores)
         self.to_pandas()
 
     def to_pandas(self):
