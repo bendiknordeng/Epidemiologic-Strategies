@@ -24,7 +24,7 @@ class State:
             new_infected (numpy.ndarray): number of new infected in each region for each age group (#regions, #age_groups)
             total_infected (numpy.ndarray): number of cumulative effected in each region for each age group (#regions, #age_groups)
             new_deaths (numpy.ndarray): number of new deaths in each region for each age group (#regions, #age_groups)
-            wave_state (string): current wave state ('U', 'D', 'N')
+            wave_state (str): current wave state ('U', 'D', 'N')
             wave_count (dict): count of wave states at this time_step
             strategy_count (dict): count of wave states when vaccines have been available (vaccines_available > 0)
             date (datetime.date): current date in the simulation

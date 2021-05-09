@@ -9,7 +9,7 @@ from covid.utils import get_wave_timeline, tcolors
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state,
                 response_measure_model, use_response_measures, horizon, policy, verbose, historic_data=None):
-        """A Markov decision process adminestering states, decisions and exogeneous information for an epidemic.
+        """ A Markov decision process adminestering states, decisions and exogeneous information for an epidemic
 
         Args:
             config (namedtuple): case specific data
@@ -40,7 +40,7 @@ class MarkovDecisionProcess:
         self.wave_state_timeline = None
     
     def init(self):
-        """Resets the MarkovDecisionProcess to make multible runs possible"""
+        """ Resets the MarkovDecisionProcess to make multible runs possible"""
         self.initial_state.wave_state = 'U'
         self.initial_state.wave_count = {"U": 1, "D": 0, "N": 0}
         self.initial_state.strategy_count.clear()
@@ -62,7 +62,7 @@ class MarkovDecisionProcess:
             self.update_state(weighted_policy_weights, week)
     
     def check_stop_criteria(self, week):
-        """Checks if a stop criteria is reached
+        """ Checks if a stop criteria is reached
 
         Args:
             week (int): current week of simulation
@@ -110,7 +110,7 @@ class MarkovDecisionProcess:
         return information
 
     def update_state(self, weighted_policy_weights, week):
-        """Updates the state
+        """ Updates the state
 
         Args:
             weighted_policy_weights (numpy.ndarray): weights for the different policies if current policy is weighted
@@ -126,7 +126,7 @@ class MarkovDecisionProcess:
         self.path.append(self.state)
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas, previous_flow_scale):
-        """Maps infection numbers to response measure using neural network models
+        """ Maps infection numbers to response measure using neural network models
 
         Args:
             previous_cw (numpy.ndarray): previous contact weights
