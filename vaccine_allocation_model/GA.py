@@ -9,7 +9,16 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, simulations, population_size, process, verbose, objective="yll"):
+    def __init__(self, simulations, population_size, process, objective, verbose):
+        """initializes a simple genetic algorithm instance
+
+        Args:
+            simulations (int): number specifying number of simulations
+            population_size (int): number of individuals to initialize population with
+            process (MarkovDecisionProcess): a process to simulate fitness of individuals
+            objective (str): choice of metric to evaluate fitness
+            verbose (bool): specify whether to print or not
+        """
         self.simulations = simulations
         self.process = process
         self.population = Population(population_size, verbose)
@@ -18,17 +27,20 @@ class SimpleGeneticAlgorithm:
         self.best_individual = None
         self.best_scores = np.inf
         self.generations_since_new_best = 0
-        self.objective_metric={
-            "deaths": lambda process: np.sum(process.path[-1].D),
-            "weighted": lambda process: np.sum(process.path[-1].total_infected)*0.01 + np.sum(process.path[-1].D),
-            "yll": lambda process: np.sum(process.path[-1].yll)
-        }
-        self.objective = objective
+        self.objective = self._set_objective(objective)
         self.number_of_runs = []
         self.generate_output_dirs()
         self.verbose = verbose
 
+    def _set_objective(self, objective):
+        return {"deaths": lambda process: np.sum(process.path[-1].D),
+                "weighted": lambda process: np.sum(process.path[-1].total_infected)*0.01 + np.sum(process.path[-1].D),
+                "yll": lambda process: np.sum(process.path[-1].yll)
+                }[objective]
+
     def run(self):
+        """function to evaluate current generation, create offsprings, evaluate offsprings, and generate new generations if not converged
+        """
         while True:
             self.run_population()
             self.write_to_file()
@@ -42,7 +54,14 @@ class SimpleGeneticAlgorithm:
             self.generation_count += 1
 
     def run_population(self, offsprings=False):
-        # TODO: When running find_best_individuals(), finding significant best does not matter.
+        """for current population, simulate
+
+        Args:
+            offsprings (bool, optional): [description]. Defaults to False.
+
+        Returns:
+            [type]: [description]
+        """
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
         self.find_fitness(offsprings)
         count = 0
@@ -111,8 +130,7 @@ class SimpleGeneticAlgorithm:
                 for wave_state, count in self.process.path[-1].strategy_count.items():
                     for wave_count, count in count.items():
                         individual.strategy_count[self.generation_count][wave_state][wave_count] += count
-                import pdb;pdb.set_trace()
-                score = self.objective_metric[self.objective](self.process)
+                score = self.objective(self.process)
                 self.final_scores[individual.ID].append(score)
             mean_score = np.mean(self.final_scores[individual.ID])
             if self.verbose: print(f"Mean score: {mean_score:.0f}")

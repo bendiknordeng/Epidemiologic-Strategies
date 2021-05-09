@@ -24,6 +24,8 @@ if __name__ == '__main__':
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
     policy_number = -2
+    ga_objectives = ["deaths", "weighted", "yll"]
+    ga_objective_number = -1
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -84,7 +86,7 @@ if __name__ == '__main__':
                     verbose=verbose)
 
     if run_GA:
-        GA = SimpleGeneticAlgorithm(runs, 20, mdp, verbose=True)
+        GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True)
         GA.run()
     else:
         results = []                   
