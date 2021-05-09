@@ -13,6 +13,7 @@ from sklearn.linear_model import LinearRegression
 from scipy.stats import skewnorm
 import json
 from collections import Counter
+import geopandas as gpd
 
 class tcolors:
     HEADER = '\033[95m'
@@ -683,3 +684,28 @@ def get_avg_std(final_states, population, age_labels):
     age_total = population[age_labels].sum().to_numpy()
     total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
     return np.sum(average_dead), total_std_dead
+
+def generate_geopandas(pop, fpath_spatial_data):
+    """[summary]
+
+    Args:
+        population ([type]): [description]
+        fpath_spatial_data ([type]): [description]
+
+    Returns:
+        [type]: [description]
+    """
+    pop['region_id'] = pop['region_id'].astype('str')
+    pop = pop[['region_id', 'population', 'region']]
+
+    # read in geopandas
+    gdf = gpd.read_file(fpath_spatial_data)
+    gdf = gdf[['kommunenummer', 'geometry']]
+    df = pd.DataFrame(gdf)
+
+    # merge population and transform to geopandas 
+    gdf = gpd.GeoDataFrame(df.merge(pop, right_on='region_id', left_on='kommunenummer',  suffixes=('', '_y')), geometry='geometry')
+    gdf = gdf.drop(columns=['kommunenummer'])
+    gdf = gdf.dropna() # very important in order to convert to crs
+    gdf = gdf.to_crs(3857)
+    return gdf

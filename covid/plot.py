@@ -8,14 +8,14 @@ import seaborn as sns
 from datetime import timedelta
 import pandas as pd
 import numpy as np
-
-
 from matplotlib.dates import date2num, num2date
 from matplotlib import dates as mdates
 from scipy.interpolate import interp1d
 from matplotlib import ticker
 from matplotlib.colors import ListedColormap
-
+import contextily as ctx
+import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 color_scheme = {
     "S": '#0000ff',
@@ -237,3 +237,86 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
             plt.title(c_descriptions[i])
             plt.show()
 
+def plot_spatial(gdf, res_accumulated_regions, compartment_labels):
+    """[summary]
+
+    Args:
+        gdf ([type]): [description]
+        res_accumulated_regions ([type]): [description]
+        compartment_labels ([type]): [description]
+    """
+
+    # extract bounds from gdf 
+    west, south, east, north = gdf.total_bounds
+
+    # make the plots 
+    num_weeks = 50 # remove when done
+
+    for time_step in tqdm(range(num_weeks)):
+        
+        import pdb; pdb.set_trace()
+        # Update values to plot in gdf
+        for i in range(len(compartment_labels)):
+            gdf[compartment_labels[i]] = res_accumulated_regions[time_step, i]
+
+        # add axis for spatial plot
+        fig, ax = plt.subplots(figsize=(14,14), dpi=72)
+        gdf.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=3)
+        gdf.plot(ax=ax, column='E1', zorder=3)
+        
+        # add background
+        ctx.add_basemap(ax, zoom='auto', crs=3857, source=ctx.providers.Stamen.TonerLite, alpha=0.6, attribution="")
+        ax.set_axis_off()
+        ax.set_xlim(west, east)
+        ax.set_ylim(south, north)
+        ax.axis('off')
+        plt.tight_layout()
+        
+        # axes for SEIR plot 
+        inset_ax = fig.add_axes([0.6, 0.14, 0.37, 0.27])
+        inset_ax.patch.set_alpha(0.5)
+
+        # lines
+        inset_ax.plot(res_accumulated_regions[:time_step, 0], label="S",  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 2], label="E2", ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 3], label="A",  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 4], label="I",  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 5], label="R",  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 6], label="D",  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 7], label="V",  ls='-', lw=1.5, alpha=0.8)
+
+        # fots on line
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 0], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 1], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 2], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 3], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 4], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 5], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 6], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 7], s=20, alpha=0.8)
+
+        # Shaded area and vertical dotted line between S and I curves in SEIR plot 
+        #inset_ax.fill_between(np.arange(0, time_step), res_accumulated_regions[:time_step, 0].sum(axis=1), res_accumulated_regions[:time_step, 3].sum(axis=1), alpha=0.035, color='r')
+        #inset_ax.plot([time_step, time_step], [0, max(res_accumulated_regions[(time_step-1), 0].sum(), res_accumulated_regions[(time_step-1), 3].sum())], ls='--', lw=0.7, alpha=0.8, color='r')
+        
+        # axes titles, label coordinates, values, font_sizes, grid, spines_colours, ticks_colurs, legend, title for SEIR plot
+        inset_ax.set_ylabel('Population', size=14, alpha=1, rotation=90)
+        inset_ax.set_xlabel('Weeks', size=14, alpha=1)
+        inset_ax.yaxis.set_label_coords(-0.15, 0.55)
+        inset_ax.tick_params(direction='in', size=10)
+        inset_ax.set_xlim(-4, num_weeks)
+        inset_ax.set_ylim(-24000, 5500000)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        inset_ax.grid(alpha=0.4)
+        inset_ax.spines['right'].set_visible(False)
+        inset_ax.spines['top'].set_visible(False)
+        inset_ax.spines['left'].set_color('darkslategrey')
+        inset_ax.spines['bottom'].set_color('darkslategrey')
+        inset_ax.tick_params(axis='x', colors='darkslategrey')
+        inset_ax.tick_params(axis='y', colors='darkslategrey')
+        plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
+        plt.title("COVID-19 development in week: {}".format(time_step), fontsize=18, color= 'dimgray')
+
+        plt.savefig("plots/flows_{}.jpg".format(time_step), dpi=fig.dpi)

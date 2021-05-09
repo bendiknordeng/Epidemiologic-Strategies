@@ -7,17 +7,14 @@ from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 import numpy as np
 from tqdm import tqdm
 
+
 if __name__ == '__main__':
     # Get filepaths 
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
     np.random.seed(10)
-<<<<<<< HEAD
     runs = 1
-=======
-    runs = 20
->>>>>>> main
     day = 30
     month = 4
     year = 2020
@@ -46,8 +43,8 @@ if __name__ == '__main__':
     use_response_measures = False
     include_flow = True
     use_waves = True
-    stochastic = False
-    plot_results = False
+    stochastic = True
+    plot_results = True
 
 
     epidemic_function = SEAIR(
@@ -97,18 +94,30 @@ if __name__ == '__main__':
             utils.print_results(mdp.path[-1], population, age_labels, policy)
         utils.get_average_results(results, population, age_labels, policy)
 
+
     if plot_results:
+        # import pdb; pdb.set_trace()
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         
         R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
-        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        # plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
         # infection_results_age = new_infections.sum(axis=1)
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
         #plot.plot_control_measures(mdp.path, all=False)
+        
+        fpath = 'data/geospatial/municipalities_spatial_data.json'
+        gdf = utils.generate_geopandas(population, fpath)
 
-    history, new_infections = utils.transform_path_to_numpy(mdp.path)
-    print(history.shape)
-    import pdb; pdb.set_trace()
+        # generate random data
+        res = np.random.rand(61, 8, 356)   #weeks, #compartments, #regions
+        res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
+        num_weeks, num_compartments, num_regions = res.shape
+        compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+
+        import pdb; pdb.set_trace()
+
+        plot.plot_spatial(gdf, res_accumulated_regions, compartment_labels)
+    
