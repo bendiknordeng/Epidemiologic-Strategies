@@ -1,4 +1,5 @@
 import numpy as np
+from covid.utils import generate_weighted_contact_matrix
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
@@ -71,7 +72,7 @@ class SEAIR:
         else:
             R_eff = self.R0
         alphas = information['alphas']
-        C = self.generate_weighted_contact_matrix(information['contact_weights'])
+        C = generate_weighted_contact_matrix(self.contact_matrices, information['contact_weights'])
         visitors = self.commuters[0]
         commuters = self.commuters[1] * information['flow_scale']
 
@@ -126,6 +127,7 @@ class SEAIR:
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
 
+            # Get transition values
             new_E1  = np.clip(contact_cases + commuter_cases, None, S)
             new_E2  = E1 * sigma * p
             new_A   = E1 * sigma * (1 - p)
@@ -143,19 +145,8 @@ class SEAIR:
             R  = R + new_R_I + new_R_A
             D  = D + new_D
 
-            # Save number of new infected
+            # Save number of new infected and dead
             total_new_infected[i] = new_I
             total_new_deaths[i] = new_D
 
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)
-
-    def generate_weighted_contact_matrix(self, contact_weights):
-        """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
-
-        Parameters
-            weights: list of floats indicating the weight of each contact matrix for school, workplace, etc. 
-        Returns
-            weighted contact matrix used in modelling
-        """
-        C = self.contact_matrices
-        return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)

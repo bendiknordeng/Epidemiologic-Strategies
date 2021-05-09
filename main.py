@@ -13,17 +13,17 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    np.random.seed(10)
     runs = 20
     day = 30
     month = 4
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 70 # number of decision_periods
+    horizon = 60 # number of decision_periods
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
+    policy_number = -2
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -37,7 +37,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     
     # Simulation settings
-    run_GA = True
+    run_GA = False
     verbose = False
     use_response_measures = False
     include_flow = True
@@ -47,7 +47,7 @@ if __name__ == '__main__':
 
     vaccine_policy = Policy(
                     config=config,
-                    policy=policies[-2],
+                    policy=policies[policy_number],
                     population=population[population.columns[2:-1]].values)
 
     epidemic_function = SEAIR(
