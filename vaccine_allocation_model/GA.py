@@ -33,7 +33,7 @@ class SimpleGeneticAlgorithm:
         self.verbose = verbose
 
     def _generate_output_dirs(self):
-            start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
+            start_of_run = datetime.now().strftime("%Y_%m_%d_%H:%M:%S")
             run_folder = f"/results/GA_{start_of_run}"
             folder_path = os.getcwd()+run_folder
             individuals_path = folder_path + "/individuals"
@@ -240,6 +240,10 @@ class SimpleGeneticAlgorithm:
         o2.genes = o2_genes
         o3 = Individual(generation=generation_count, offspring=True)
         o3.genes = np.divide(p1+p2, 2)
+        o4 = Individual(generation=generation_count, offspring=True)
+        o4.genes = np.divide(p1+3*p2, 4)
+        o4 = Individual(generation=generation_count, offspring=True)
+        o4.genes = np.divide(3*p1+p2, 4)
         self.population.offsprings = [o1,o2,o3]
 
     def mutation(self):

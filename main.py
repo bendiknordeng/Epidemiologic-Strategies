@@ -13,8 +13,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    np.random.seed(10)
-    runs = 20
+    runs = 30
     day = 30
     month = 4
     year = 2020
