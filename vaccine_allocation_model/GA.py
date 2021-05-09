@@ -1,5 +1,6 @@
 import threading
 import numpy as np
+from numpy.core.numeric import Inf
 import scipy
 from covid import utils
 from covid.utils import tcolors
