@@ -3,6 +3,7 @@ from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
 import time
+from covid import utils
 from covid.utils import get_wave_timeline, tcolors
 
 class MarkovDecisionProcess:
@@ -53,6 +54,10 @@ class MarkovDecisionProcess:
         for week in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if self.check_stop_criteria(week):
+                age_bins = self.config.age_bins
+                deaths_per_age = np.sum(self.state.D, axis=0)
+                yll = utils.get_yll(age_bins, utils.generate_labels_from_bins(age_bins), deaths_per_age)    
+                self.state.yll = yll
                 break
             self.update_state(weighted_policy_weights, week)
     
