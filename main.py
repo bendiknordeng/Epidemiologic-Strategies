@@ -13,7 +13,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    runs = 30
+    runs = 40
     day = 30
     month = 4
     year = 2020
@@ -27,7 +27,7 @@ if __name__ == '__main__':
                 'commuter_based', 'weighted']
     policy_number = 6
     ga_objectives = ["deaths", "weighted", "yll"]
-    ga_objective_number = 2
+    ga_objective_number = 0
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)

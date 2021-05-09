@@ -242,9 +242,9 @@ class SimpleGeneticAlgorithm:
         o3.genes = np.divide(p1+p2, 2)
         o4 = Individual(generation=generation_count, offspring=True)
         o4.genes = np.divide(p1+3*p2, 4)
-        o4 = Individual(generation=generation_count, offspring=True)
-        o4.genes = np.divide(3*p1+p2, 4)
-        self.population.offsprings = [o1,o2,o3]
+        o5 = Individual(generation=generation_count, offspring=True)
+        o5.genes = np.divide(3*p1+p2, 4)
+        self.population.offsprings = [o1,o2,o3,o4,o5]
 
     def mutation(self):
         """Randomly altering the genes of offsprings
