@@ -1,27 +1,21 @@
 import numpy as np
+from covid.utils import generate_weighted_contact_matrix
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
-                death_rates, config, paths, include_flow, stochastic, use_waves):
-        """ 
-        Parameters:
-            commuter_effect: Matrix of the percentage population growth or decline during working hours 
-            contact_matrices: Contact matrices between age groups
-            population: pd.DataFrame with columns region_id, region_name, population (quantity)
-            config: named tuple with following parameters
-                age_group_flow_scaling: list of scaling factors for flow of each age group
-                R0: Basic reproduction number (e.g 2.4)
-                efficacy: vaccine efficacy (e.g 0.95)
-                proportion_symptomatic_infections: Proportion of symptomatic infections(e.g 0.8)
-                latent_period: Time before vaccine is effective (e.g 5.1*4)
-                recovery_period: Time to recover from receiving the virus to not being  (e.g 21'4)
-                pre_isolation_infection_period: Pre-isolation infection period (e.g 4.6*4)
-                post_isolation_recovery_period: Post-isolation recovery period (e.g 16.4*4)
-                fatality_rate_symptomatic: Fatality rate for people that experience symptoms (e.g 0.01)
-            include_flow: boolean, true if we want to model population flow between regions
-            hidden_cases: boolean, true if we want to model hidden cases of infection
-            write_to_csv: boolean, true if we want to write results to csv
-            write_weekly: boolean, false if we want to write daily results, true if weekly
+                death_rates, config, include_flow, stochastic, use_waves):
+        """ Compartmental simulation model 
+
+        Args:
+            commuters (numpy.ndarray): matrix giving number of individuals commuting between two regions (#regions, #age_groups)
+            contact_matrices (numpy.ndarray): symmetric matrix giving average contact between age groups (#age_groups, #age_groups)
+            population (pandas.DataFrame): information about population in reions and age groups
+            age_group_flow_scaling (numpy.ndarray): scaling factors for commuting in each age group
+            death_rates (nuumpy.ndarray): death probabilities for each age group
+            config (namedtuple): case specific data
+            include_flow (boolean): True if simulation should include flow
+            stochastic (boolean): True if commuting and contact infection should be stochastic
+            use_waves (boolean): True if wave logic should be modeled
         """
         self.R0 = config.R0
         self.periods_per_day = config.periods_per_day
@@ -42,23 +36,17 @@ class SEAIR:
         self.stochastic = stochastic
         self.include_flow = include_flow
         self.use_waves = use_waves
-        self.paths = paths
 
     def simulate(self, state, decision, decision_period, information):
-        """  simulates the development of an epidemic as modelled by current parameters
-        
-        Parameters:
-            state: State object with values for each compartment
-            decision: Vaccine allocation for each period for each region, shape (decision_period, nr_regions)
-            decision_period: number of steps the simulation makes
-            information: dict of exogenous information for each region, shape (decision_period, nr_regions, nr_regions)
-            write_to_csv: Bool, True if history is to be saved as csv
-            write_weekly: Bool, True if history is to be sampled on a weekly basis
-            hidden_cases: Bool, True if random hidden infections is to be included in modelling
+        """Simulates the development of an epidemic as modelled by current parameters
+
+        Args:
+            state (State): State object with values for each compartment
+            decision (numpy.ndarray): Vaccine allocation for each region and age group (#regions, #age_groups)
+            decision_period (int): number of timesteps in the simulation
+            information (dict): exogenous information
         Returns:
-            res: accumulated SEIR values for all regions as whole (decision_period, )
-            total_new_infected.sum(): accumulated infected for the decision_period, float.
-            history: compartment values for each region, time step, and age group shape: (#decision_period,  #compartments, #regions, #age groups)
+            np.ndarrays: compartmental values and new infected/dead
         """
         # Meta-parameters
         S, E1, E2, A, I, R, D, V = state.get_compartments_values()
@@ -71,7 +59,7 @@ class SEAIR:
         else:
             R_eff = self.R0
         alphas = information['alphas']
-        C = self.generate_weighted_contact_matrix(information['contact_weights'])
+        C = generate_weighted_contact_matrix(self.contact_matrices, information['contact_weights'])
         visitors = self.commuters[0]
         commuters = self.commuters[1] * information['flow_scale']
 
@@ -126,6 +114,7 @@ class SEAIR:
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
 
+            # Get transition values
             new_E1  = np.clip(contact_cases + commuter_cases, None, S)
             new_E2  = E1 * sigma * p
             new_A   = E1 * sigma * (1 - p)
@@ -143,19 +132,8 @@ class SEAIR:
             R  = R + new_R_I + new_R_A
             D  = D + new_D
 
-            # Save number of new infected
+            # Save number of new infected and dead
             total_new_infected[i] = new_I
             total_new_deaths[i] = new_D
 
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)
-
-    def generate_weighted_contact_matrix(self, contact_weights):
-        """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
-
-        Parameters
-            weights: list of floats indicating the weight of each contact matrix for school, workplace, etc. 
-        Returns
-            weighted contact matrix used in modelling
-        """
-        C = self.contact_matrices
-        return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)

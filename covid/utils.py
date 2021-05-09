@@ -227,6 +227,16 @@ def generate_contact_matrices(bins, labels, population, country=None):
         matrices.append(symmetric_matrix)
     return matrices
 
+def generate_weighted_contact_matrix(C, contact_weights):
+        """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
+
+        Parameters
+            weights: list of floats indicating the weight of each contact matrix for school, workplace, etc. 
+        Returns
+            weighted contact matrix used in modelling
+        """
+        return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)
+
 def get_age_group_flow_scaling(bins, labels, population):
     percent_commuters = 0.36 # numbers from SSB
     df = pd.read_csv('data/employed_per_age.csv')

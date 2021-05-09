@@ -20,7 +20,7 @@ class MarkovDecisionProcess:
             response_measure_model (dict, dict): dictionaries with an MLPClassifier and a StandardScaler for each response measure
             use_response_measures (boolean): True if the simulation should involve response measures
             horizon (int): giving the number of decision periods to simulate
-            policy (string): indicating which vaccine allocation policy to follow
+            policy (Policy): vaccine allocation policy
             verbose (boolean): True if one wants information in the form of terminal output
             historic_data (pandas.DataFrame, optional): historic data from Folkehelseinstituttet (FHI) regarding vaccine supply. Defaults to None.
         """
@@ -49,11 +49,7 @@ class MarkovDecisionProcess:
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
 
     def run(self, weighted_policy_weights=None):
-        """ Updates states from current time_step to a specified horizon
-
-        Returns
-            A path that shows resulting traversal of states
-        """
+        """ Updates states from current time_step until horizon is reached"""
         run_range = range(self.state.time_step, self.horizon) if self.verbose or weighted_policy_weights is not None else tqdm(range(self.state.time_step, self.horizon))
         for week in run_range:
             if self.verbose: print(self.state, end="\n"*2)
@@ -66,25 +62,30 @@ class MarkovDecisionProcess:
             self.update_state(weighted_policy_weights, week)
     
     def check_stop_criteria(self, week):
-        if np.sum(self.state.R) / np.sum(self.population.population) > 0.9: # stop if recovered population is 70 % of total population
-            print(f"{tcolors.BOLD}Reached stop-criteria week {week}. Recovered population > 90%.{tcolors.ENDC}\n")
+        """Checks if a stop criteria is reached
+
+        Args:
+            week (int): current week of simulation
+
+        Returns:
+            boolean: True if stop criteria is reached
+        """
+        if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
+            print(f"{tcolors.BOLD}Reached stop-criteria week {week}. Recovered population > 70%.{tcolors.ENDC}\n")
             return True
         if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
             print(f"{tcolors.BOLD}Reached stop-criteria on week {week}. Infected population is zero.{tcolors.ENDC}\n")
-            return True
-        if np.sum(self.state.V) / np.sum(self.population.population) > 0.3:
-            print(f"{tcolors.BOLD}Reached stop-criteria week {week}. Vaccinated population > 30%.{tcolors.ENDC}\n")
             return True
         return False
 
     def get_exogenous_information(self, state, week):
         """ Receives the exogenous information at time_step t
 
-        Parameters
-            t: time_step
-            state: state that 
+        Args
+            state (State): current state of the simulation
+            week (int): current week of simulation 
         Returns:
-            returns a dictionary of information contain 'flow_scale', 'vaccine_supply', 'contact_matrices_weights', 'wave_incline', 'wave_decline'
+            dict: exogeneous information regarding 'vaccine_supply', 'R', 'wave_state', 'contact_weights', 'alphas' and 'flow_scale'
         """
         today = pd.Timestamp(state.date)
         end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//self.config.periods_per_day))
@@ -109,21 +110,34 @@ class MarkovDecisionProcess:
         return information
 
     def update_state(self, weighted_policy_weights, week):
-        """ Updates the state of the decision process.
+        """Updates the state
 
-        Parameters
-            decision_period: number of periods forward whein time that the decision directly affects
+        Args:
+            weighted_policy_weights (numpy.ndarray): weights for the different policies if current policy is weighted
+            week (int): current week of simulation
         """
         if weighted_policy_weights is not None:
             i = {"U": 0, "D": 1, "N": 2}[self.state.wave_state]
             j = self.state.wave_count[self.state.wave_state]
             self.weighted_policy_weights = weighted_policy_weights[i][j-1]
-        decision = self.policy.get_decision(self.state, self.state.vaccines_available)
+        decision = self.policy.get_decision(self.state, self.state.vaccines_available, self.weighted_policy_weights)
         information = self.get_exogenous_information(self.state, week)
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, self.decision_period)
         self.path.append(self.state)
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas, previous_flow_scale):
+        """Maps infection numbers to response measure using neural network models
+
+        Args:
+            previous_cw (numpy.ndarray): previous contact weights
+            previous_alphas (numpy.ndarray): previous contact scales
+            previous_flow_scale (numpy.ndarray): previous mobility scale
+
+        Returns:
+            (numpy.ndarray): new contact weights 
+            (numpy.ndarray): new contact scales
+            (numpy.ndarray): new mobility scales
+        """
         if len(self.path) > 3:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
