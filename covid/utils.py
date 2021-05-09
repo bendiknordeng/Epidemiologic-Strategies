@@ -672,7 +672,6 @@ def get_yll(age_bins, age_labels, deaths_per_age_group):
     yll = np.multiply(expected_years_remaining, deaths_per_age_group) 
     return int(np.round(np.sum(yll)))
 
-
 def load_response_measure_models():
     models = {}
     scalers = {}

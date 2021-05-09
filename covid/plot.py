@@ -6,15 +6,12 @@ import pandas as pd
 from . import utils
 import seaborn as sns
 from datetime import timedelta
-import pandas as pd
-import numpy as np
 from matplotlib.dates import date2num, num2date
 from matplotlib import dates as mdates
 from scipy.interpolate import interp1d
 from matplotlib import ticker
 from matplotlib.colors import ListedColormap
 import contextily as ctx
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 color_scheme = {
@@ -27,28 +24,6 @@ color_scheme = {
     "D": '#000000',
     "V": '#00e8e0'
 }
-
-def seir_plot_weekly(res, start_date, labels):
-    """ plots accumulated SEIR curves
-    
-    Parameters
-        res: numpy array with shape (decision_period*horizon, #compartments)
-        start_date: datetime object giving start date
-        labels: labels for plotted compartments 
-    """
-    fig = plt.figure(figsize=(10,5))
-    fig.suptitle('Weekly compartment values')
-    for i in range(len(labels)):
-        plt.plot(res[::, i], color=color_scheme[labels[i]], label=labels[i])
-    ticks = min(len(res), 20)
-    step = int(np.ceil(len(res)/ticks))
-    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
-    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
-    plt.ylabel("Compartment values")
-    plt.xlabel("Week")
-    plt.legend()
-    plt.grid()
-    plt.show()
 
 def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=False):
     """ plots infection for different age groups per week
@@ -77,6 +52,29 @@ def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=Fal
     plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
     labels = [ln.get_label() for ln in lines]
     plt.legend(lines, labels)
+    plt.grid()
+    plt.show()
+
+def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
+    """ plots cumulative infection for different age groups per week
+    
+    Parameters
+        res: numpy array with shape (decision_period*horizon, #compartments)
+        start_date: datetime object giving start date
+        labels: labels for plotted age_groups 
+    """
+    fig = plt.figure(figsize=(10,5))
+    fig.suptitle('Weekly cumulative infected in each age group')
+    for i, label in enumerate(labels):
+        plt.plot(np.cumsum(res[:, i]), label=label) 
+    plt.plot(np.cumsum(res.sum(axis=1)), color='r', linestyle='dashed', label="All")
+    ticks = min(len(res), 20)
+    step = int(np.ceil(len(res)/ticks))
+    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
+    plt.ylabel("Infected (cumulative)")
+    plt.xlabel("Week")
+    plt.legend()
     plt.grid()
     plt.show()
 
@@ -250,7 +248,7 @@ def plot_spatial(gdf, res_accumulated_regions, compartment_labels):
     west, south, east, north = gdf.total_bounds
 
     # make the plots 
-    num_weeks = 50 # remove when done
+    num_weeks = 1 # remove when done
 
     for time_step in tqdm(range(num_weeks)):
         
@@ -319,4 +317,5 @@ def plot_spatial(gdf, res_accumulated_regions, compartment_labels):
         plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
         plt.title("COVID-19 development in week: {}".format(time_step), fontsize=18, color= 'dimgray')
 
+        plt.show()
         plt.savefig("plots/flows_{}.jpg".format(time_step), dpi=fig.dpi)

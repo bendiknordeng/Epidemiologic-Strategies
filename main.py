@@ -108,21 +108,21 @@ if __name__ == '__main__':
         
         R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
-        # plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
         # infection_results_age = new_infections.sum(axis=1)
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
         #plot.plot_control_measures(mdp.path, all=False)
         
-        fpath = 'data/geospatial/municipalities_spatial_data.json'
-        gdf = utils.generate_geopandas(population, fpath)
+        # fpath = 'data/geospatial/municipalities_spatial_data.json'
+        # gdf = utils.generate_geopandas(population, fpath)
 
-        # generate random data
-        res = np.random.rand(61, 8, 356)   #weeks, #compartments, #regions
-        res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
-        num_weeks, num_compartments, num_regions = res.shape
-        compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+        # # generate random data
+        # res = np.random.rand(61, 8, 356)   #weeks, #compartments, #regions
+        # res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
+        # num_weeks, num_compartments, num_regions = res.shape
+        # compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
 
-        plot.plot_spatial(gdf, res_accumulated_regions, compartment_labels)
+        # plot.plot_spatial(gdf, res_accumulated_regions, compartment_labels)
     
