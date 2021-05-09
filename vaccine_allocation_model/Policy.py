@@ -11,7 +11,15 @@ class Policy:
         """
         self.config = config
         self.policy_name = policy
-        self.vaccine_allocation = self._set_policy(policy)
+        self.policies = {
+            "random": self._random_policy,
+            "no_vaccines": self._no_vaccines,
+            "susceptible_based": self._susceptible_based_policy,
+            "infection_based": self._infection_based_policy,
+            "oldest_first": self._oldest_first_policy,
+            "weighted": self._weighted_policy
+            }
+        self.vaccine_allocation = self.policies[policy]
         self.population = population
 
     def get_decision(self, state, vaccines, weights):
@@ -26,17 +34,6 @@ class Policy:
             numpy.ndarray: vaccine allocation given the state, vaccines available and policy_weights (#regions, #age_groups)
         """
         return self.vaccine_allocation(state, vaccines, weights)
-
-    def _set_policy(self, policy):
-        """ Sets the vaccine allocation policy """
-        return {
-            "random": self._random_policy,
-            "no_vaccines": self._no_vaccines,
-            "susceptible_based": self._susceptible_based_policy,
-            "infection_based": self._infection_based_policy,
-            "oldest_first": self._oldest_first_policy,
-            "weighted": self._weighted_policy
-            }[policy]
 
     def _random_policy(self, state, vaccines):
         """ Define allocation of vaccines based on a random distribution
@@ -140,7 +137,7 @@ class Policy:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             vaccines_per_policy = M * weights
             for i, policy in enumerate(weighted_policies):
-                vaccine_allocation += self.policies[policy](M=vaccines_per_policy[i])
+                vaccine_allocation += self.policies[policy](state, vaccines_per_policy[i])
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             return decision
         return vaccine_allocation

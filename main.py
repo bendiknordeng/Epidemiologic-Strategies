@@ -23,7 +23,7 @@ if __name__ == '__main__':
     initial_infected = 10
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    policy_number = -2
+    policy_number = -1
     ga_objectives = ["deaths", "weighted", "yll"]
     ga_objective_number = -1
 
@@ -39,7 +39,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
     
     # Simulation settings
-    run_GA = False
+    run_GA = True
     verbose = False
     use_response_measures = False
     include_flow = True
