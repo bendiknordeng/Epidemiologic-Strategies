@@ -155,6 +155,7 @@ class SimpleGeneticAlgorithm:
                     for wave_count, count in count.items():
                         individual.strategy_count[self.generation_count][wave_state][wave_count] += count
                 score = self.objective(self.process)
+                import pdb;pdb.set_trace()
                 self.final_scores[individual.ID].append(score)
             mean_score = np.mean(self.final_scores[individual.ID])
             if self.verbose: print(f"Mean score: {mean_score:.0f}")

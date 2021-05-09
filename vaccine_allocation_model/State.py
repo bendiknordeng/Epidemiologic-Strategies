@@ -104,10 +104,11 @@ class State:
         info = ["Susceptibles", "Exposed (latent)",
                 "Exposed (presymptomatic)", "Asymptomatic infected",
                 "Infected", "Recovered", "Dead", "Vaccinated", 
-                "New infected", "Total infected"]
+                "New infected", "Total infected", "YLL"]
         values = [np.sum(compartment) for compartment in self.get_compartments_values()]
         values.append(np.sum(self.new_infected))
         values.append(np.sum(self.total_infected))
+        values.append(np.sum(self.yll))
         percent = 100 * np.array(values)/total_pop
         status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
         status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"

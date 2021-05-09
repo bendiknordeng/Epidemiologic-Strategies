@@ -54,12 +54,12 @@ class MarkovDecisionProcess:
         for week in run_range:
             if self.verbose: print(self.state, end="\n"*2)
             if self.check_stop_criteria(week):
-                age_bins = self.config.age_bins
-                deaths_per_age = np.sum(self.state.D, axis=0)
-                yll = utils.get_yll(age_bins, utils.generate_labels_from_bins(age_bins), deaths_per_age)    
-                self.state.yll = yll
                 break
             self.update_state(weighted_policy_weights, week)
+        age_bins = self.config.age_bins
+        deaths_per_age = np.sum(self.state.D, axis=0)
+        yll = utils.get_yll(age_bins, utils.generate_labels_from_bins(age_bins), deaths_per_age)    
+        self.path[-1].yll = yll
     
     def check_stop_criteria(self, week):
         """ Checks if a stop criteria is reached

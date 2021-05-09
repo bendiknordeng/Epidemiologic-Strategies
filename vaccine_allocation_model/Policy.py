@@ -164,7 +164,6 @@ class Policy:
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
         priority = sorted(zip(range(len(self.age_flow_scaling)), self.age_flow_scaling), key=lambda x: x[1], reverse=True)
-        import pdb;pdb.set_trace()
         vaccine_allocation = np.zeros(self.population.shape)
         M = vaccines
         if M > 0:

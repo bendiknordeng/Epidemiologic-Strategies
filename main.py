@@ -27,7 +27,7 @@ if __name__ == '__main__':
                 'commuter_based', 'weighted']
     policy_number = 6
     ga_objectives = ["deaths", "weighted", "yll"]
-    ga_objective_number = 0
+    ga_objective_number = 2
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     # Simulation settings
-    run_GA = False
+    run_GA = True
     verbose = False
     use_response_measures = False
     include_flow = True
