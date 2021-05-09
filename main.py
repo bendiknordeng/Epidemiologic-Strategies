@@ -2,7 +2,7 @@ from covid import plot
 from covid import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.seair import SEAIR
+from covid.SEAIR import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 import numpy as np
 from tqdm import tqdm
@@ -13,19 +13,21 @@ if __name__ == '__main__':
 
     # Set initial parameters
     np.random.seed(10)
+<<<<<<< HEAD
     runs = 1
+=======
+    runs = 20
+>>>>>>> main
     day = 30
     month = 4
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
     horizon = 70 # number of decision_periods
     decision_period = 28
-    initial_infected = 20
+    initial_infected = 10
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first']
     policy = policies[-1]
-    initial_wave_state = 'U'
-    initial_wave_count = {'U': 1, 'D': 0, 'N': 0}
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -34,16 +36,17 @@ if __name__ == '__main__':
     contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
-    commuters = utils.generate_ssb_od_matrix(age_group_flow_scaling, paths.municipalities_commute)
+    commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     # Simulation settings
+    run_GA = False
     verbose = False
     use_response_measures = False
     include_flow = True
     use_waves = True
-    stochastic = True
+    stochastic = False
     plot_results = False
 
 
@@ -66,8 +69,6 @@ if __name__ == '__main__':
                         alphas=config.initial_alphas,
                         flow_scale=config.initial_flow_scale,
                         population=population,
-                        wave_state=initial_wave_state,
-                        wave_count=initial_wave_count,
                         start_date=start_date)
     
     mdp = MarkovDecisionProcess(
@@ -79,29 +80,24 @@ if __name__ == '__main__':
                         response_measure_model=response_measure_model, 
                         use_response_measures=use_response_measures,
                         horizon=horizon,
-                        policy=policy,
+                        policy='weighted' if run_GA else policy,
                         historic_data=historic_data,
                         verbose=verbose)
 
-    #results = []                   
-    #for i in tqdm(range(runs)):
-    #    np.random.seed(i*10)
-    #    mdp.init()
-    #    mdp.run()
-    #    results.append(mdp.path[-1])
-    #    utils.print_results(mdp.path[-1], population, age_labels, policy)
-
-    #utils.get_average_results(results, population, age_labels, policy)
-
-    # GA = SimpleGeneticAlgorithm(runs, 2, mdp)
-    
-    # while not GA.converged:
-    #     GA.evaluate_generation()
-
+    if run_GA:
+        GA = SimpleGeneticAlgorithm(runs, 20, mdp, verbose=True)
+        GA.run()
+    else:
+        results = []                   
+        for i in tqdm(range(runs)):
+            np.random.seed(i*10)
+            mdp.init()
+            mdp.run()
+            results.append(mdp.path[-1])
+            utils.print_results(mdp.path[-1], population, age_labels, policy)
+        utils.get_average_results(results, population, age_labels, policy)
 
     if plot_results:
-        #plot.plot_control_measures(mdp.path, all=False)
-
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         
         R_eff = mdp.wave_timeline
@@ -111,10 +107,8 @@ if __name__ == '__main__':
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
+        #plot.plot_control_measures(mdp.path, all=False)
 
     history, new_infections = utils.transform_path_to_numpy(mdp.path)
     print(history.shape)
     import pdb; pdb.set_trace()
-
-
-

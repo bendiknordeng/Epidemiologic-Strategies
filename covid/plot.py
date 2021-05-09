@@ -67,7 +67,6 @@ def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=Fal
     ax1.set_xlabel('Week')
     ax1.set_ylabel('Infected')
     if include_R:
-        # R_eff = utils.moving_average(R_eff, 3)
         ax2 = ax1.twinx()
         lines.append(ax2.plot(R_eff[:len(res)], color='k', linestyle='dashdot', label="R_eff")[0])
         ax2.set_ylabel('R effective')

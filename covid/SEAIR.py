@@ -73,7 +73,7 @@ class SEAIR:
         alphas = information['alphas']
         C = self.generate_weighted_contact_matrix(information['contact_weights'])
         visitors = self.commuters[0]
-        OD = self.commuters[1] * information['flow_scale']
+        commuters = self.commuters[1] * information['flow_scale']
 
         # Initialize variables for saving history
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
@@ -100,7 +100,6 @@ class SEAIR:
             # Vaccinate before flow
             new_V = np.nan_to_num(np.minimum(S, decision/decision_period)) # in case new infected during decision period
             unused_V = np.sum(new_V - decision/decision_period)
-            if unused_V > 0: import pdb;pdb.set_trace()
             state.vaccines_available += unused_V
 
             successfully_new_V = epsilon * new_V
@@ -117,7 +116,7 @@ class SEAIR:
             if self.include_flow and working_hours:
                 # Define current transmission of infection with commuters
                 lam_j = np.clip(beta * (r_e * E2 + r_a * A + I)/visitors, 0, 1)
-                commuter_cases = S/N * np.array([np.matmul(OD * age_flow_scaling[a], lam_j[:,a]) for a in range(len(age_flow_scaling))]).T
+                commuter_cases = S/N * np.array([np.matmul(commuters * age_flow_scaling[a], lam_j[:,a]) for a in range(len(age_flow_scaling))]).T
                 if self.stochastic:
                     commuter_cases = np.random.poisson(commuter_cases)
 
@@ -125,10 +124,7 @@ class SEAIR:
             lam_i = np.clip(beta * (alphas[0] * r_e * E2 + alphas[1] * r_a * A + alphas[2] * I), 0, 1)
             contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
-                try:
-                    contact_cases = np.random.poisson(contact_cases)
-                except:
-                    import pdb;pdb.set_trace()
+                contact_cases = np.random.poisson(contact_cases)
 
             new_E1  = np.clip(contact_cases + commuter_cases, None, S)
             new_E2  = E1 * sigma * p

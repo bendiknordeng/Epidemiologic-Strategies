@@ -14,6 +14,17 @@ from scipy.stats import skewnorm
 import json
 from collections import Counter
 
+class tcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKCYAN = '\033[96m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
 def create_named_tuple(filepath):
     """ generate a namedtuple from a txt file
 
@@ -51,7 +62,7 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_ssb_od_matrix(age_flow_scaling, fpath_muncipalities_commute):
+def generate_commuter_matrix(age_flow_scaling, fpath_muncipalities_commute):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
@@ -62,20 +73,20 @@ def generate_ssb_od_matrix(age_flow_scaling, fpath_muncipalities_commute):
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
     """
     df = pd.read_csv(fpath_muncipalities_commute)
-    OD = df.pivot(columns='to', index='from', values='n').fillna(0).values
-    visitors = np.array([OD.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+    commuters = df.pivot(columns='to', index='from', values='n').fillna(0).values
+    visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
     visitors[np.where(visitors == 0)] = 1
-    return visitors, OD
+    return visitors, commuters
 
-def write_pickle(filepath, arr):
+def write_pickle(filepath, object):
     """ writes an array to file as a pickle
 
     Parameters
         filepath: string file path
         arr: array that is written to file 
     """
-    with open(filepath,'wb') as f:
-        pkl.dump(arr, f)
+    with open(filepath, 'wb') as f:
+        pkl.dump(object, f)
 
 def read_pickle(filepath):
     """ read pickle and returns an array

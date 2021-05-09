@@ -1,6 +1,7 @@
 import numpy as np
 import scipy
 from covid import utils
+from covid.utils import tcolors
 import pandas as pd
 import os
 from datetime import datetime
@@ -9,57 +10,123 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, runs, population_size, process):
-        self.population_size = population_size
-        self.population = Population(population_size)
-        self.best_fitness_score = np.infty
-        self.second_best_fitness_score = np.infty
-        self.generation_count = 0
-        self.final_deaths = defaultdict(list)
-        self.best_individual = Individual()
-        self.best_deaths = np.inf
-        self.converged = False # If search for best individual has not converged
+    def __init__(self, simulations, population_size, process, verbose):
+        self.simulations = simulations
         self.process = process
-        self.runs = runs
+        self.population = Population(population_size, verbose)
+        self.generation_count = 0
+        self.final_scores = defaultdict(list)
+        self.best_individual = None
+        self.best_scores = np.inf
         self.generations_since_new_best = 0
-        start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
-        run_folder = f"/results/GA_{start_of_run}"
-        folder_path = os.getcwd()+run_folder
-        individuals_path = folder_path + "/individuals"
-        final_scores_path = folder_path + "/final_scores"
-        os.mkdir(folder_path)
-        os.mkdir(individuals_path)
-        os.mkdir(final_scores_path)
-        self.overview_path = folder_path + f"/generation_overview.csv"
-        self.individuals_path = folder_path + f"/individuals/individuals_"
-        self.final_score_path = folder_path + f"/final_scores/final_score_"
         self.number_of_runs = []
-        self.GA_path = folder_path + f"/GA_object.pkl"
+        self.generate_output_dirs()
+        self.verbose = verbose
+
+    def run(self):
+        while True:
+            self.run_population()
+            self.write_to_file()
+            if self.check_convergence():
+                break
+            self.crossover(self.generation_count)
+            self.mutation()
+            self.repair_offsprings()
+            self.run_population(offsprings=True)
+            self.population.new_generation(self.generation_count)
+            self.generation_count += 1
+
+    def run_population(self, offsprings=False):
+        # TODO: When running find_best_individuals(), finding significant best does not matter.
+        if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
+        self.find_fitness(offsprings)
+        count = 0
+        significant_best = self.find_best_individual(offsprings)
+        while not significant_best and count <= 2:
+            if self.verbose: print("Running more simulations...")
+            self.find_fitness(offsprings, from_start=False)
+            significant_best = self.find_best_individual(offsprings)
+            count += 1
+        self.find_runs(count)
+
+        if self.verbose:
+            if significant_best:
+                print(f"{tcolors.OKGREEN}Significant best {'offspring' if offsprings else 'individual'} found{tcolors.ENDC}")
+                if offsprings:
+                    print(f"Best offspring of generation {self.generation_count}: {self.population.offsprings[0]}")
+                else:
+                    print(f"Best individual of generation {self.generation_count}: {self.population.individuals[0]}")
+            else:
+                print(f"{tcolors.FAIL}Significant best {'offspring' if offsprings else 'individual'} not found.")
+
+        return significant_best
+
+    def check_convergence(self):
+        candidate = self.population.individuals[0]
+        if self.generation_count == 0:
+            self.best_individual = candidate
+            self.best_scores = self.final_scores[candidate.ID]
+        else:
+            if candidate == self.best_individual:
+                self.generations_since_new_best += 1
+                if self.generations_since_new_best > 2:
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
+                    return True
+                return False
+            if self.verbose: print(f"Testing best of generation {self.generation_count} against all-time high")
+            self.population.offsprings = [candidate, self.best_individual]
+            self.find_fitness(offsprings=True)
+            new_best = self.find_best_individual(offsprings=True)
+            count = 0
+            while not new_best and count < 3:
+                new_best = self.find_fitness(offsprings=True, from_start=False)
+                count += 1
+            if new_best:
+                self.best_individual = candidate
+                self.best_scores = self.final_scores[candidate.ID]
+                self.generations_since_new_best = 0
+            else:
+                self.generations_since_new_best += 1
+                if self.generations_since_new_best > 2:
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
+                    return True
+        return False
 
     def find_fitness(self, offsprings=False, from_start=True):
         population = self.population.individuals if not offsprings else self.population.offsprings
-        self.final_deaths = defaultdict(list) if from_start else self.final_deaths
-        runs = self.runs if from_start else int(self.runs/2)
+        self.final_scores = defaultdict(list) if from_start else self.final_scores
+        runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
-        print(f"\033[1mRunning{' offsprings of ' if offsprings else ' '}generation {self.generation_count}\033[0m")
         for individual in population:
-            print(f"Finding score for individual {individual.ID}...")
+            if self.verbose: print(f"\nFinding score for individual {individual.ID}...")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
                 self.process.init()
                 self.process.run(weighted_policy_weights=individual.genes)
-                wave_count = self.process.path[-1].wave_count
-                for wave_state, count in wave_count.items():
-                    print(wave_state, count)
-                    for wave in range(count):
-                        individual.strategy_count[wave_state][str(wave+1)] += 1
-                deaths = np.sum(self.process.path[-1].D)
-                self.final_deaths[individual.ID].append(deaths)
-            mean_score = np.mean(self.final_deaths[individual.ID])
-            print(f"Mean score: {mean_score:.0f}\n")
+                for wave_state, count in self.process.path[-1].strategy_count.items():
+                    for wave_count, count in count.items():
+                        individual.strategy_count[self.generation_count][wave_state][wave_count] += count
+                score = np.sum(self.process.path[-1].total_infected)*0.01 + np.sum(self.process.path[-1].D)
+                self.final_scores[individual.ID].append(score)
+            mean_score = np.mean(self.final_scores[individual.ID])
+            if self.verbose: print(f"Mean score: {mean_score:.0f}")
             individual.mean_score = mean_score
 
-    def one_sided_t_test(self, s1, s2, significance=0.1):
+    def find_best_individual(self, offsprings=False):
+        if self.verbose: print(f"\nFinding best individual...")
+        self.population.sort_by_mean(offsprings)
+        range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, len(self.population.offsprings))
+        for i in range(range1): # test two best
+            first = self.population.individuals[i] if not offsprings else self.population.offsprings[i]
+            for j in range(i+1, range2):
+                second = self.population.individuals[j] if not offsprings else self.population.offsprings[j]
+                s1, s2 = self.final_scores[first.ID], self.final_scores[second.ID]
+                if not self.t_test(s1, s2):
+                    if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
+                    return False
+        return True
+
+    def t_test(self, s1, s2, significance=0.1):
         significant_best = False
         s1 = np.array(s1)
         s2 = np.array(s2)
@@ -69,63 +136,7 @@ class SimpleGeneticAlgorithm:
             significant_best = p < significance
         return significant_best
 
-    def find_best_individual(self, offsprings=False):
-        range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, len(self.population.offsprings))
-        for i in range(range1): # test two best
-            first = self.population.individuals[i] if not offsprings else self.population.offsprings[i]
-            for j in range(i+1, range2):
-                second = self.population.individuals[j] if not offsprings else self.population.offsprings[j]
-                s1, s2 = self.final_deaths[first.ID], self.final_deaths[second.ID]
-                if not self.one_sided_t_test(s1, s2): return False
-        return True
-
-    def evaluate_generation(self):
-        self.find_fitness()
-        count = 0
-        while not self.selection() and count <= 2: # returns False if no one is significant best.
-            self.find_fitness(from_start=False)
-            count += 1
-        self.find_runs(count)
-        utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
-        utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_deaths)
-        self.to_pandas()
-        if np.mean(self.final_deaths[self.population.individuals[0].ID]) < np.mean(self.best_deaths):
-            self.population.offsprings = [self.population.individuals[0], self.best_individual]
-            self.find_fitness(offsprings=True)
-            new_best = self.selection(offsprings=True)
-            count = 0
-            while not new_best and count <= 2: # returns False if no one is significant best.
-                self.find_fitness(offsprings=True, from_start=False)
-                count += 1
-            if new_best:
-                self.best_individual = self.population.individuals[0]
-                self.best_deaths = self.final_deaths[self.best_individual.ID]
-                self.generations_since_new_best = 0
-            else:
-                self.generations_since_new_best += 1
-                if self.generations_since_new_best > 2:
-                    self.converged = True
-                    utils.write_pickle(self.GA_path, self)
-                    print(f"Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_deaths)}")
-                    return
-        self.crossover()
-        self.mutation()
-        self.repair_offsprings()
-        offsprings = True
-        self.find_fitness(offsprings)
-        count = 0
-        while not self.selection(offsprings) and count <= 2: # returns False if no one is significant best.
-            self.find_fitness(offsprings, from_start=False)
-            count += 1
-        self.find_runs(count)
-        self.population.new_generation(self.generation_count)
-        self.generation_count += 1
-
-    def selection(self, offsprings=False):
-        self.population.sort_by_mean(offsprings)
-        return self.find_best_individual(offsprings)
-
-    def crossover(self):
+    def crossover(self, generation_count):
         p1 = self.population.individuals[0].genes
         p2 = self.population.individuals[1].genes
         shape = p1.shape
@@ -152,11 +163,11 @@ class SimpleGeneticAlgorithm:
             o2_genes[:, c_row, :c_col] = p2[:, c_row, :c_col]
             o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
             o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
-        o1 = Individual()
+        o1 = Individual(generation=generation_count, offspring=True)
         o1.genes = o1_genes
-        o2 = Individual()
+        o2 = Individual(generation=generation_count, offspring=True)
         o2.genes = o2_genes
-        o3 = Individual()
+        o3 = Individual(generation=generation_count, offspring=True)
         o3.genes = np.divide(p1+p2, 2)
         self.population.offsprings = [o1,o2,o3]
 
@@ -189,6 +200,17 @@ class SimpleGeneticAlgorithm:
             norm = np.sum(offspring.genes, axis=2, keepdims=True)
             offspring.genes = np.divide(offspring.genes, norm)
 
+    def find_runs(self, count):
+        number_runs = self.simulations
+        if count > 0:
+            for _ in range(count): number_runs += int(self.simulations/2)
+        self.number_of_runs.append(number_runs)
+
+    def write_to_file(self):
+        utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
+        utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_scores)
+        self.to_pandas()
+
     def to_pandas(self):
         generation = [self.generation_count for _ in range(len(self.population.individuals))]
         ids = [individual.ID for individual in self.population.individuals]
@@ -199,20 +221,26 @@ class SimpleGeneticAlgorithm:
         else:
             gen_df.to_csv(self.overview_path, mode='a', header=False, index=False)
 
-    def find_runs(self, count):
-        number_runs = self.runs
-        if count > 0:
-            for _ in range(count): number_runs += int(self.runs/2)
-        self.number_of_runs.append(number_runs)
+    def generate_output_dirs(self):
+        start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
+        run_folder = f"/results/GA_{start_of_run}"
+        folder_path = os.getcwd()+run_folder
+        individuals_path = folder_path + "/individuals"
+        final_scores_path = folder_path + "/final_scores"
+        os.mkdir(folder_path)
+        os.mkdir(individuals_path)
+        os.mkdir(final_scores_path)
+        self.overview_path = folder_path + f"/generation_overview.csv"
+        self.individuals_path = folder_path + f"/individuals/individuals_"
+        self.final_score_path = folder_path + f"/final_scores/final_score_"
 
 class Population: 
-    def __init__(self, population_size):
+    def __init__(self, population_size, verbose):
         self.individuals = [Individual(i) for i in range(population_size)]
+        self.verbose = verbose
         self.least_fittest_index = 0
         self.offsprings = None
-
-    def get_individual(self, i):
-        return self.individuals[i]
+        if self.verbose: print(f"{tcolors.OKCYAN}Initial population: {self.individuals}{tcolors.ENDC}")
     
     def new_generation(self, generation_count):
         if 10 < generation_count <= 20:
@@ -220,6 +248,7 @@ class Population:
         elif generation_count > 20:
             self.individuals = self.individuals[:-1]
         self.individuals.append(self.offsprings[0])
+        if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}")
     
     def sort_by_mean(self, offsprings=False):
         if not offsprings:
@@ -228,18 +257,30 @@ class Population:
             self.offsprings = sorted(self.offsprings, key=lambda x: x.mean_score)    
 
 class Individual:
-    def __init__(self, i=-1):
-        self.ID = id(self)
+    ID_COUNTER=1
+    GENERATION=0
+
+    def __init__(self, i=-1, generation=0, offspring=False):
+        self.ID = self.get_id(generation, offspring)
         self.mean_score = 0
-        self.rank = -1
+        self.genetype = i
         self.genes = self.create_genes(i)
-        self.strategy_count = defaultdict(partial(defaultdict, int))
+        self.strategy_count = defaultdict(partial(defaultdict, partial(defaultdict, int)))
     
+    def get_id(self, generation, offspring):
+        if offspring and generation == Individual.GENERATION: 
+            Individual.GENERATION += 1
+            Individual.ID_COUNTER = 1
+        id = f"gen_{Individual.GENERATION}"
+        id += f"_{Individual.ID_COUNTER:03d}"
+        Individual.ID_COUNTER += 1
+        return id
+
     def create_genes(self, i):
         genes = np.zeros((3,4,4))
-        if 0 <= i <= 3:
+        if 0 <= i < 4:
             genes[:,:,i] = 1
-        elif 4 <= i <= 6:
+        elif 4 <= i < 7:
             j = (i+1)%4
             k = (i+3)%4 if i==6 else (i+2)%4
             genes[:, :, j] = 0.5
@@ -263,3 +304,9 @@ class Individual:
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
+
+    def __str__(self):
+        return self.ID
+    
+    def __repr__(self):
+        return self.ID
