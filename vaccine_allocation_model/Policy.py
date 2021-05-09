@@ -6,7 +6,7 @@ class Policy:
 
         Args:
             config (namedtuple): case specific data
-            policy (string): name of the vaccine allocation policy to be used
+            policy (str): name of the vaccine allocation policy to be used
             population (pandas.DataFrame): information about population in reions and age groups
         """
         self.config = config
