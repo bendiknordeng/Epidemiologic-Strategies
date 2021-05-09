@@ -7,9 +7,6 @@ import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
 from covid import plot
-from sklearn.preprocessing import StandardScaler
-from sklearn.neural_network import MLPRegressor
-from sklearn.linear_model import LinearRegression
 from scipy.stats import skewnorm
 import json
 from collections import Counter
@@ -37,7 +34,7 @@ def create_named_tuple(filepath):
     contents = file.read()
     dictionary = ast.literal_eval(contents)
     file.close()
-    return namedtuple('_', dictionary.keys())(**dictionary)
+    return namedtuple('config', dictionary.keys())(**dictionary)
 
 def generate_dummy_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only

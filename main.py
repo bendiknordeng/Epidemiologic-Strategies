@@ -2,8 +2,9 @@ from covid import plot
 from covid import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from covid.SEAIR import SEAIR
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
+from vaccine_allocation_model.Policy import Policy
+from covid.SEAIR import SEAIR
 import numpy as np
 from tqdm import tqdm
 
@@ -22,8 +23,7 @@ if __name__ == '__main__':
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first']
-    policy = policies[-1]
+    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -35,9 +35,9 @@ if __name__ == '__main__':
     commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-
+    
     # Simulation settings
-    run_GA = False
+    run_GA = True
     verbose = False
     use_response_measures = False
     include_flow = True
@@ -45,39 +45,44 @@ if __name__ == '__main__':
     stochastic = False
     plot_results = False
 
+    vaccine_policy = Policy(
+                    config=config,
+                    policy=policies[-2],
+                    population=population[population.columns[2:-1]].values)
+
     epidemic_function = SEAIR(
-                        commuters=commuters,
-                        contact_matrices=contact_matrices,
-                        population=population,
-                        age_group_flow_scaling=age_group_flow_scaling,
-                        death_rates=death_rates,
-                        config=config,
-                        paths=paths,
-                        include_flow=include_flow,
-                        stochastic=stochastic,
-                        use_waves=use_waves)
+                    commuters=commuters,
+                    contact_matrices=contact_matrices,
+                    population=population,
+                    age_group_flow_scaling=age_group_flow_scaling,
+                    death_rates=death_rates,
+                    config=config,
+                    paths=paths,
+                    include_flow=include_flow,
+                    stochastic=stochastic,
+                    use_waves=use_waves)
 
     initial_state = State.initialize_state(
-                        num_initial_infected=initial_infected,
-                        vaccines_available=initial_vaccines_available,
-                        contact_weights=config.initial_contact_weights,
-                        alphas=config.initial_alphas,
-                        flow_scale=config.initial_flow_scale,
-                        population=population,
-                        start_date=start_date)
-    
+                    num_initial_infected=initial_infected,
+                    vaccines_available=initial_vaccines_available,
+                    contact_weights=config.initial_contact_weights,
+                    alphas=config.initial_alphas,
+                    flow_scale=config.initial_flow_scale,
+                    population=population,
+                    start_date=start_date)
+
     mdp = MarkovDecisionProcess(
-                        config=config,
-                        decision_period=decision_period,
-                        population=population, 
-                        epidemic_function=epidemic_function,
-                        initial_state=initial_state,
-                        response_measure_model=response_measure_model, 
-                        use_response_measures=use_response_measures,
-                        horizon=horizon,
-                        policy='weighted' if run_GA else policy,
-                        historic_data=historic_data,
-                        verbose=verbose)
+                    config=config,
+                    decision_period=decision_period,
+                    population=population, 
+                    epidemic_function=epidemic_function,
+                    initial_state=initial_state,
+                    response_measure_model=response_measure_model, 
+                    use_response_measures=use_response_measures,
+                    horizon=horizon,
+                    policy=vaccine_policy,
+                    historic_data=historic_data,
+                    verbose=verbose)
 
     if run_GA:
         GA = SimpleGeneticAlgorithm(runs, 20, mdp, verbose=True)
@@ -89,8 +94,8 @@ if __name__ == '__main__':
             mdp.init()
             mdp.run()
             results.append(mdp.path[-1])
-            utils.print_results(mdp.path[-1], population, age_labels, policy)
-        utils.get_average_results(results, population, age_labels, policy)
+            utils.print_results(mdp.path[-1], population, age_labels, vaccine_policy)
+        utils.get_average_results(results, population, age_labels, vaccine_policy)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)

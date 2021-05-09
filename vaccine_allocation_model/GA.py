@@ -1,7 +1,6 @@
 import numpy as np
 import scipy
-from covid import utils
-from covid.utils import tcolors
+from covid.utils import tcolors, write_pickle
 import pandas as pd
 import os
 from datetime import datetime
@@ -207,8 +206,8 @@ class SimpleGeneticAlgorithm:
         self.number_of_runs.append(number_runs)
 
     def write_to_file(self):
-        utils.write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
-        utils.write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_scores)
+        write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
+        write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_scores)
         self.to_pandas()
 
     def to_pandas(self):
