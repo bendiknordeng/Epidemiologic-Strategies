@@ -7,8 +7,8 @@ class Policy:
         self.vaccine_distribution = self._set_policy(policy)
         self.population = population
 
-    def get_decision(self, state, vaccines):
-        return self.vaccine_distribution(state, vaccines)
+    def get_decision(self, state, vaccines, weights):
+        return self.vaccine_distribution(state, vaccines, weights)
 
     def _set_policy(self, policy):
         return {

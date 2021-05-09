@@ -57,7 +57,6 @@ if __name__ == '__main__':
                     age_group_flow_scaling=age_group_flow_scaling,
                     death_rates=death_rates,
                     config=config,
-                    paths=paths,
                     include_flow=include_flow,
                     stochastic=stochastic,
                     use_waves=use_waves)
