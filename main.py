@@ -37,12 +37,12 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     # Simulation settings
-    run_GA = True
+    run_GA = False
     verbose = False
     use_response_measures = False
     include_flow = True
     use_waves = True
-    stochastic = True
+    stochastic = False
     plot_results = False
 
     epidemic_function = SEAIR(
@@ -90,7 +90,6 @@ if __name__ == '__main__':
             mdp.run()
             results.append(mdp.path[-1])
             utils.print_results(mdp.path[-1], population, age_labels, policy)
-
         utils.get_average_results(results, population, age_labels, policy)
 
     if plot_results:
