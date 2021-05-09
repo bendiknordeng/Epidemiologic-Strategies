@@ -9,7 +9,7 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, simulations, population_size, process, verbose):
+    def __init__(self, simulations, population_size, process, verbose, objective="yll"):
         self.simulations = simulations
         self.process = process
         self.population = Population(population_size, verbose)
@@ -18,6 +18,12 @@ class SimpleGeneticAlgorithm:
         self.best_individual = None
         self.best_scores = np.inf
         self.generations_since_new_best = 0
+        self.objective_metric={
+            "deaths": lambda process: np.sum(process.path[-1].D),
+            "weighted": lambda process: np.sum(process.path[-1].total_infected)*0.01 + np.sum(process.path[-1].D),
+            "yll": lambda process: np.sum(process.path[-1].yll)
+        }
+        self.objective = objective
         self.number_of_runs = []
         self.generate_output_dirs()
         self.verbose = verbose
@@ -105,7 +111,8 @@ class SimpleGeneticAlgorithm:
                 for wave_state, count in self.process.path[-1].strategy_count.items():
                     for wave_count, count in count.items():
                         individual.strategy_count[self.generation_count][wave_state][wave_count] += count
-                score = np.sum(self.process.path[-1].total_infected)*0.01 + np.sum(self.process.path[-1].D)
+                import pdb;pdb.set_trace()
+                score = self.objective_metric[self.objective](self.process)
                 self.final_scores[individual.ID].append(score)
             mean_score = np.mean(self.final_scores[individual.ID])
             if self.verbose: print(f"Mean score: {mean_score:.0f}")

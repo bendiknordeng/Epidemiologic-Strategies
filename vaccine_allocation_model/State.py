@@ -51,6 +51,7 @@ class State:
         self.strategy_count = strategy_count
         self.date = date
         self.time_step = time_step
+        self.yll = 0
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """Transition fucntion for the current state in the process
