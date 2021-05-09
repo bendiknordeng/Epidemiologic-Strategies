@@ -1,7 +1,8 @@
 import numpy as np
+from covid.utils import generate_weighted_contact_matrix, get_age_group_flow_scaling
 
 class Policy:
-    def __init__(self, config, policy, population):
+    def __init__(self, config, policy, population, contact_matrices, age_flow_scaling):
         """ Defining vaccine allocation pollicy
 
         Args:
@@ -17,10 +18,14 @@ class Policy:
             "susceptible_based": self._susceptible_based_policy,
             "infection_based": self._infection_based_policy,
             "oldest_first": self._oldest_first_policy,
+            "contact_based": self._contact_based_policy,
+            "commuter_based": self._commuter_based_policy,
             "weighted": self._weighted_policy
             }
         self.vaccine_allocation = self.policies[policy]
         self.population = population
+        self.contact_matrices = contact_matrices
+        self.age_flow_scaling = age_flow_scaling
 
     def get_decision(self, state, vaccines, weights):
         """ Retrieves a vaccine allocation
@@ -110,6 +115,61 @@ class Policy:
         if M > 0:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             for age_group in range(self.population.shape[1]-1,0,-1):
+                age_group_demand = demand[:,age_group]
+                total_age_group_demand = np.sum(age_group_demand)
+                if M < total_age_group_demand:
+                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+                    return decision
+                else:
+                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    M -= total_age_group_demand
+                    demand[:,age_group] -= age_group_demand
+            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            return decision
+        return vaccine_allocation
+
+    def _contact_based_policy(self, state, vaccines, *args):
+        """ Define allocation of vaccines based on amount of contact, prioritize age group with most contact
+
+        Returns
+            numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
+        """
+        C = generate_weighted_contact_matrix(self.contact_matrices, self.config.initial_contact_weights)
+        contact_sum = C.sum(axis=1)
+        priority = sorted(zip(range(len(contact_sum)), contact_sum), key=lambda x: x[1], reverse=True)
+        vaccine_allocation = np.zeros(self.population.shape)
+        M = vaccines
+        if M > 0:
+            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+            for age_group in tuple(zip(*priority))[0]:
+                age_group_demand = demand[:,age_group]
+                total_age_group_demand = np.sum(age_group_demand)
+                if M < total_age_group_demand:
+                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+                    return decision
+                else:
+                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    M -= total_age_group_demand
+                    demand[:,age_group] -= age_group_demand
+            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            return decision
+        return vaccine_allocation
+
+    def _commuter_based_policy(self, state, vaccines, *args):   
+        """ Define allocation of vaccines based on amount of contact, prioritize age group with most contact
+
+        Returns
+            numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
+        """
+        priority = sorted(zip(range(len(self.age_flow_scaling)), self.age_flow_scaling), key=lambda x: x[1], reverse=True)
+        import pdb;pdb.set_trace()
+        vaccine_allocation = np.zeros(self.population.shape)
+        M = vaccines
+        if M > 0:
+            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+            for age_group in tuple(zip(*priority))[0]:
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
                 if M < total_age_group_demand:
