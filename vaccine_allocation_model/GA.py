@@ -1,6 +1,4 @@
-import threading
 import numpy as np
-from numpy.core.numeric import Inf
 import scipy
 from covid import utils
 from covid.utils import tcolors
@@ -105,7 +103,6 @@ class SimpleGeneticAlgorithm:
                 np.random.seed(seeds[j])
                 self.process.init()
                 self.process.run(weighted_policy_weights=individual.genes)
-                import pdb; pdb.set_trace()
                 for wave_state, count in self.process.path[-1].strategy_count.items():
                     for wave_count, count in count.items():
                         individual.strategy_count[self.generation_count][wave_state][wave_count] += count
