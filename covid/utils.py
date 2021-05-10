@@ -708,12 +708,11 @@ def generate_geopandas(pop, fpath_spatial_data):
 
     # read in geopandas
     gdf = gpd.read_file(fpath_spatial_data)
-    gdf = gdf[['kommunenummer', 'geometry']]
+    gdf = gdf[['region_id', 'geometry']]
     df = pd.DataFrame(gdf)
 
     # merge population and transform to geopandas 
-    gdf = gpd.GeoDataFrame(df.merge(pop, right_on='region_id', left_on='kommunenummer',  suffixes=('', '_y')), geometry='geometry')
-    gdf = gdf.drop(columns=['kommunenummer'])
+    gdf = gpd.GeoDataFrame(df.merge(pop, right_on='region_id', left_on='region_id',  suffixes=('', '_y')), geometry='geometry')
     gdf = gdf.dropna() # very important in order to convert to crs
     gdf = gdf.to_crs(3857)
     return gdf

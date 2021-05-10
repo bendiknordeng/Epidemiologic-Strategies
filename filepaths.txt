@@ -4,7 +4,7 @@
 'municipalities_pop':                   'data/Folkemengde_kommuner.csv',
 'municipalities_v':                     'data/vaccines_municipalities.pkl',
 'municipalities_commute':               'data/norway_commuters_2017_b2020.csv',
-'municipalities_geo':                   'data/geospatial/municipalities_geospatial.json',
+'municipalities_geo':                   'data/geospatial/municipalities.json',
 'municipalities_names':                 'data/geospatial/municipalities_names.csv',
 'municipalities_hist_data':             'data/historical_infected_municipalities.csv',
 'real_historical_infected':             'data/historical_infected_municipalities.csv',
