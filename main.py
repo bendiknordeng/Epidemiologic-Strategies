@@ -125,11 +125,15 @@ if __name__ == '__main__':
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         history_age_accumulated = history.sum(axis=3)
-        
+
+        # plot seir for different regions
         comps_to_plot = ["E1", "E2", "A", "I", "R", "D", "V"]
         regions_to_plot = ['OSLO', 'BÅTSFJORD']             
         plot.seir_plot_weekly_several_regions(history_age_accumulated, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
 
+        # plot geospatial data
         gdf = utils.generate_geopandas(population, paths.municipalities_geo)
-        plot.plot_spatial(gdf, history_age_accumulated, paths.municipality_plots)
+        plot.plot_geospatial(gdf, history_age_accumulated, paths.municipality_plots)
+        
+        # generate gif
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)

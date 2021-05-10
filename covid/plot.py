@@ -265,12 +265,13 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
         plt.grid()
         plt.show()
         
-def plot_spatial(gdf, res, fpath_plots):
+def plot_geospatial(gdf, res, fpath_plots):
     """[summary]
 
     Args:
         gdf ([type]): [description]
-        res_accumulated_regions ([type]): [description]
+        res ([type]): [description]
+        filepath ([type]): [description]
     """
 
     res_accumulated_regions = res.sum(axis=2)
