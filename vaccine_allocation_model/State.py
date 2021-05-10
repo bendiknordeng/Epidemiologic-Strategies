@@ -2,7 +2,7 @@ import numpy as np
 from datetime import timedelta
 from collections import defaultdict
 from functools import partial
-from covid.utils import tcolors
+from utils import tcolors
 
 class State:
     def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, new_infected, 

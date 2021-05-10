@@ -1,5 +1,5 @@
 import numpy as np
-from covid.utils import generate_weighted_contact_matrix
+from utils import generate_weighted_contact_matrix
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 

@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-from covid.utils import tcolors, write_pickle, calculate_yll
+from utils import tcolors, write_pickle, calculate_yll
 import pandas as pd
 import os
 from datetime import datetime

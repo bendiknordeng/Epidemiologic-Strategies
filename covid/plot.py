@@ -1,9 +1,7 @@
-import sys, os
-sys.path.append(os.getcwd() + "/covid") # when main is one level above this file.
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-from . import utils
+import utils
 import seaborn as sns
 from datetime import timedelta
 from matplotlib.dates import date2num

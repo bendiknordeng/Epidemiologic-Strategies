@@ -1,5 +1,5 @@
 import numpy as np
-from covid.utils import generate_weighted_contact_matrix
+from utils import generate_weighted_contact_matrix
 
 class Policy:
     def __init__(self, config, policy, population, contact_matrices, age_flow_scaling, GA):
