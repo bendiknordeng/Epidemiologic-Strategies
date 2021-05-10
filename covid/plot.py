@@ -6,7 +6,7 @@ import pandas as pd
 from . import utils
 import seaborn as sns
 from datetime import timedelta
-from matplotlib.dates import date2num, num2date
+from matplotlib.dates import date2num
 from matplotlib import dates as mdates
 from scipy.interpolate import interp1d
 from matplotlib import ticker
@@ -389,7 +389,6 @@ def plot_geospatial(gdf, res, fpath_plots):
         plt.draw()
         plt.savefig(f"{fpath_plots}{time_step}.jpg", dpi=fig.dpi)
         plt.close()
-
 
 def create_gif(fpath_gif, fpath_plots):
     """[summary]

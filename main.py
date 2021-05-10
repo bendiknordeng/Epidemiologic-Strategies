@@ -39,7 +39,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
 
     # Run settings
-    run_GA = False
+    run_GA = True
     use_response_measures = False
     include_flow = True
     use_waves = True

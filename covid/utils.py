@@ -144,7 +144,6 @@ def transform_df_to_history(df, column_names, n_regions, n_age_groups):
 
     return np.array(l)
 
-
 def transform_historical_df_to_history(df):
     """ transforms a dataframe to numpy.ndarray
     
@@ -505,7 +504,6 @@ def get_historic_wave_timeline(horizon):
     dates = [d0 + pd.Timedelta(i, "W") for i in range(horizon)]
     df_norway_weekly = df_norway[df_norway.date.isin(dates)]
     return df_norway_weekly.R.values
-
 
 def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
     """ function to calculate posteriors
