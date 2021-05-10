@@ -116,18 +116,10 @@ if __name__ == '__main__':
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
         #plot.plot_control_measures(mdp.path, all=False)
         
-        #
 
     if plot_geo:
-
         fpath = 'data/geospatial/municipalities_spatial_data.json'
         gdf = utils.generate_geopandas(population, fpath)
-
-        # generate random data
-
         history, new_infections = utils.transform_path_to_numpy(mdp.path) 
         res = history.sum(axis=3) #weeks, #compartments, #regions
-        res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
-        num_weeks, num_compartments, num_regions = res.shape
-        compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
         plot.plot_spatial(gdf, res)

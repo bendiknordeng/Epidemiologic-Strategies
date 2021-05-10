@@ -12,6 +12,7 @@ import json
 from collections import Counter
 import geopandas as gpd
 
+
 class tcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -701,6 +702,7 @@ def generate_geopandas(pop, fpath_spatial_data):
     Returns:
         [type]: [description]
     """
+
     pop['region_id'] = pop['region_id'].astype('str')
     pop = pop[['region_id', 'population', 'region']]
 

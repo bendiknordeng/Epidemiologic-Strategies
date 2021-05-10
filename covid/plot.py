@@ -248,8 +248,10 @@ def plot_spatial(gdf, res):
     # extract bounds from gdf 
     west, south, east, north = gdf.total_bounds
 
+    horizon = len(res_accumulated_regions)
+
     # make the plots 
-    for time_step in tqdm(range(len(res_accumulated_regions))):
+    for time_step in tqdm(range(horizon)):
  
         # Plot values on map
         ix_data = 4 # S, E1, E2, A, I, R, D, V
@@ -301,7 +303,7 @@ def plot_spatial(gdf, res):
         inset_ax.set_xlabel('Weeks', size=14, alpha=1)
         inset_ax.yaxis.set_label_coords(-0.15, 0.55)
         inset_ax.tick_params(direction='in', size=10)
-        inset_ax.set_xlim(-4, num_weeks)
+        inset_ax.set_xlim(-4, horizon)
         inset_ax.set_ylim(-24000, 5500000)
         plt.xticks(fontsize=14)
         plt.yticks(fontsize=14)
