@@ -14,7 +14,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    runs = 1
+    runs = 30
     day = 21
     month = 2
     year = 2020
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     # Run settings
-    run_GA = False
+    run_GA = True
     use_response_measures = False
     include_flow = True
     use_waves = True
@@ -93,10 +93,11 @@ if __name__ == '__main__':
 
     if run_GA:
         ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
-        for k, v in ga_objectives: print(f"{k}: {v}")
-        ga_objective_number = int(input("GA Objective (int): "))
+        print("Choose objective for genetic algorithm.")
+        for k, v in ga_objectives.items(): print(f"{k}: {v}")
+        ga_objective_number = int(input("\nGA Objective (int): "))
         print(f"GA Objective is {ga_objectives[ga_objective_number]}")
-        random_individuals = bool(input("Random_individual genes (bool): "))
+        random_individuals = bool(input("Random individual genes (bool): "))
         print(f"Random individual genes: {random_individuals}")
         GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True, random_individuals=random_individuals)
         GA.run()

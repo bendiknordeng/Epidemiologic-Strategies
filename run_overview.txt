@@ -1,7 +1,6 @@
-
-Runs 20210510 - creating 4
-    0041: death objective, 4 weights of policies
-    0042: weighted objective, 4 weights of policies
-    0043: YLL objective, 4 weights of policies
-    0044: YLL objective, 4 weights of policies, only random individuals
-    0046: weighted objective, 4 weights of policies, only random individuals
+Runs 20210510 - creating 5 offsprings
+    1: death objective, 4 weights of policies
+    2: weighted objective, 4 weights of policies
+    3: YLL objective, 4 weights of policies
+    4: YLL objective, 4 weights of policies, only random individuals
+    5: weighted objective, 4 weights of policies, only random individuals
