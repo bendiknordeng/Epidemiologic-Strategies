@@ -265,7 +265,7 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
         plt.grid()
         plt.show()
         
-def plot_geospatial(gdf, res, fpath_plots):
+def plot_geospatial(gdf, res, fpath_plots, population):
     """[summary]
 
     Args:
@@ -275,23 +275,34 @@ def plot_geospatial(gdf, res, fpath_plots):
     """
 
     res_accumulated_regions = res.sum(axis=2)
+    pop_factor = population.population/100000
 
     # extract bounds from gdf 
     west, south, east, north = gdf.total_bounds
-
     horizon = len(res_accumulated_regions)
+
+
+    # get cmap
+    # create colormap object
+    import matplotlib.colors as colors
+    from matplotlib.colors import LinearSegmentedColormap
+    n_colors = 100
+    color_array = plt.get_cmap('Reds')(range(n_colors))
+    color_array[:, -1] = np.linspace(0.3, 1, n_colors)
+    cmap = LinearSegmentedColormap.from_list(name="Reds_transp", colors=color_array)
+    trunc_cmap = LinearSegmentedColormap.from_list('trunc({n}, {a:.2f}, {b:.2f})'.format(n=cmap.name, a=0.0, b=.9), cmap(np.linspace(0.0, .9, n_colors)))
 
     # make the plots 
     for time_step in tqdm(range(horizon)):
  
         # Plot values on map
         ix_data = 4 # S, E1, E2, A, I, R, D, V
-        data_to_plot = res[time_step, ix_data,:]
+        data_to_plot = res[time_step, ix_data,:] * pop_factor
         
         # add axis for spatial plot
         fig, ax = plt.subplots(figsize=(14,14), dpi=72)
         gdf.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=3)
-        gdf.plot(ax=ax, column=data_to_plot, zorder=3)
+        gdf.plot(ax=ax, column=data_to_plot, cmap=trunc_cmap, zorder=3)
         
         # add background
         ctx.add_basemap(ax, zoom='auto', crs=3857, source=ctx.providers.Stamen.TonerLite, alpha=0.6, attribution="")
@@ -299,10 +310,9 @@ def plot_geospatial(gdf, res, fpath_plots):
         ax.set_xlim(west, east)
         ax.set_ylim(south, north)
         ax.axis('off')
-        plt.tight_layout()
         
         # axes for SEIR plot 
-        inset_ax = fig.add_axes([0.6, 0.14, 0.37, 0.27])
+        inset_ax = fig.add_axes([0.5, 0.4, 0.37, 0.27])
         inset_ax.patch.set_alpha(0.5)
 
         # lines
@@ -332,7 +342,7 @@ def plot_geospatial(gdf, res, fpath_plots):
         # axes titles, label coordinates, values, font_sizes, grid, spines_colours, ticks_colurs, legend, title for SEIR plot
         inset_ax.set_ylabel('Population', size=14, alpha=1, rotation=90)
         inset_ax.set_xlabel('Weeks', size=14, alpha=1)
-        inset_ax.yaxis.set_label_coords(-0.15, 0.55)
+        inset_ax.yaxis.set_label_coords(-0.05, 0.55)
         inset_ax.tick_params(direction='in', size=10)
         inset_ax.set_xlim(-4, horizon)
         inset_ax.set_ylim(-24000, 5500000)
@@ -348,7 +358,7 @@ def plot_geospatial(gdf, res, fpath_plots):
         plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
         plt.title("COVID-19 development in week: {}".format(time_step), fontsize=18, color= 'dimgray')
         plt.draw()
-        plt.savefig(f"{fpath_plots}{time_step}.jpg", dpi=fig.dpi)
+        plt.savefig(f"{fpath_plots}{time_step}.jpg", dpi=fig.dpi, bbox_inches = 'tight')
         plt.close()
 
 
@@ -369,3 +379,32 @@ def create_gif(fpath_gif, fpath_plots):
         for filename in tqdm(filenames):
             image = imageio.imread(fpath_plots + '{}'.format(filename))
             writer.append_data(image)
+
+def generate_cmap(res):
+    # find maximum hospitalisation value to make sure the color intensities in the animation are anchored against it
+
+
+    # create colormap object
+    import matplotlib.colors as colors
+    from matplotlib.colors import LinearSegmentedColormap
+    
+    ncolors = 100
+    color_array = plt.get_cmap('Reds')(range(ncolors))
+    color_array[:, -1] = np.linspace(0.3, 1, ncolors)
+    map_object = LinearSegmentedColormap.from_list(name="Reds_transp", colors=color_array)
+
+    # register the colormap object
+    plt.register_cmap(cmap=map_object)
+
+    def trunc_colormap(cmap, minval=0.0, maxval=1.0, n=100):
+        new_cmap = LinearSegmentedColormap.from_list('trunc({n}, {a:.2f}, {b:.2f})'.format(n=cmap.name, a=minval, b=maxval), cmap(np.linspace(minval, maxval, n)))
+    
+    return new_cmap
+
+# cmap = plt.get_cmap('Reds_transp')
+# new_cmap = trunc_colormap(cmap, 0.0, .9)
+
+# # plot some example data
+# fig, ax = plt.subplots()
+# h = ax.imshow(np.random.rand(100,100), cmap='Reds_transp')
+# plt.colorbar(mappable=h)

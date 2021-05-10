@@ -98,67 +98,6 @@ def read_pickle(filepath):
     with open(filepath,'rb') as f:
         return pkl.load(f)
 
-def transform_history_to_df(time_step, history, population, column_names):
-    """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
-
-    Parameters
-        time_step: integer used to indicate the current time step in the simulation
-        history: 3D array with shape (number of time steps, number of compartments, number of regions)
-        population: DataFrame with region_id, region_names, age_group_population and total population (quantity)
-        coloumn_names: string that represents the column names e.g 'SEIRHQ'. 
-    Returns
-        df: dataframe with columns:  'timestep', 'region_id', 'region_name', 'region_population', 'S', 'E', I','R', 'V', 'E_per_100k'
-    """
-    A = history.transpose(0,2,3,1)
-    (periods, regions, age_groups, compartments) = A.shape 
-    B = A.reshape(-1, compartments)
-    df = pd.DataFrame(B, columns=list(column_names))
-    df['date'] = [get_date("20200221", int(time_step)) for time_step in np.floor_divide(df.index.values, regions*age_groups) + time_step//4]
-    df['time_step'] = np.floor_divide(df.index.values, regions*age_groups)*4 + time_step
-    df['age_group'] = np.tile(np.array(population.columns[2:-1]), periods*regions)
-    df['region_id'] = np.array([[[r]*age_groups for r in population.region_id] for _ in range(periods)]).reshape(-1)
-    df['region_name'] = np.array([[[r]*age_groups for r in population.region] for _ in range(periods)]).reshape(-1)
-    df['region_population'] = np.array([[[r]*age_groups for r in population.population] for _ in range(periods)]).reshape(-1)
-    df['E1_per_100k'] = 1e5*df.E1/df.region_population
-    return df[['date', 'time_step', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E1_per_100k']]
-
-def transform_df_to_history(df, column_names, n_regions, n_age_groups):
-    """ transforms a dataframe to 3D array
-    
-    Parameters
-        df:  dataframe 
-        column_names: string indicating the column names of the data that will be transformed e.g 'SEIRHQ'. 
-    Returns
-         3D array with shape (number of time steps, number of compartments, number of regions)
-    """
-
-    df = df[list(column_names)]
-    l = []
-    for i in range(0, len(df), n_age_groups):
-        l.append(df.iloc[i:i+5,:].sum())
-    compressed_df = pd.DataFrame(l)
-
-    l = []
-    for i in range(0, len(compressed_df), n_regions):
-        l.append(np.transpose(compressed_df.iloc[i:i+356].to_numpy()))
-
-    return np.array(l)
-
-
-def transform_historical_df_to_history(df):
-    """ transforms a dataframe to 3D array
-    
-    Parameters
-        df:  dataframe of real historical covid data for Norway's municipalities
-    Returns
-         3D array with shape (number of time steps, number of compartments, number of regions)
-    """
-    # Add leading zero for municipality id
-    df['kommune_no'] = df['kommune_no'].apply(lambda x: '{0:0>4}'.format(x)) 
-    df = df[['kommune_no', 'cases']]
-    df = df.rename(columns={'cases': 'I'})
-    return transform_df_to_history(df, 'I')
-
 def generate_custom_population(bins, labels, path_pop, path_region_names):
     """ generates age divided population
 
