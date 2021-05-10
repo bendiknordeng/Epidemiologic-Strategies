@@ -704,7 +704,7 @@ def generate_geopandas(pop, fpath_spatial_data):
     """
 
     pop['region_id'] = pop['region_id'].astype('str')
-    pop = pop[['region_id', 'population', 'region']]
+    pop = pop[['region_id', 'population', 'region_name']]
 
     # read in geopandas
     gdf = gpd.read_file(fpath_spatial_data)
