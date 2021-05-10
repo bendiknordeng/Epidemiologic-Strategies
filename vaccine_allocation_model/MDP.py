@@ -116,11 +116,7 @@ class MarkovDecisionProcess:
             weighted_policy_weights (numpy.ndarray): weights for the different policies if current policy is weighted
             week (int): current week of simulation
         """
-        if weighted_policy_weights is not None:
-            i = {"U": 0, "D": 1, "N": 2}[self.state.wave_state]
-            j = self.state.wave_count[self.state.wave_state]
-            self.weighted_policy_weights = weighted_policy_weights[i][j-1]
-        decision = self.policy.get_decision(self.state, self.state.vaccines_available, self.weighted_policy_weights)
+        decision = self.policy.get_decision(self.state, self.state.vaccines_available, weighted_policy_weights)
         information = self.get_exogenous_information(self.state, week)
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, self.decision_period)
         self.path.append(self.state)
