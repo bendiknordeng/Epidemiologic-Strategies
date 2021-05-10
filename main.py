@@ -8,6 +8,7 @@ from covid.SEAIR import SEAIR
 import numpy as np
 from tqdm import tqdm
 
+
 if __name__ == '__main__':
     # Get filepaths 
     paths = utils.create_named_tuple('filepaths.txt')
@@ -25,10 +26,8 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted']
-    ga_objectives = ["deaths", "weighted", "yll"]
     weights = np.array([0, 0, 0, 0, 1, 0])
     policy_number = -1
-    ga_objective_number = 0
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -47,8 +46,9 @@ if __name__ == '__main__':
     include_flow = True
     use_waves = True
     stochastic = True
-    plot_results = False
     verbose = False
+    plot_results = False
+    plot_geo = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -92,7 +92,13 @@ if __name__ == '__main__':
                     verbose=verbose)
 
     if run_GA:
-        GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True)
+        ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
+        for k, v in ga_objectives: print(f"{k}: {v}")
+        ga_objective_number = int(input("GA Objective (int): "))
+        print(f"GA Objective is {ga_objectives[ga_objective_number]}")
+        random_individuals = bool(input("Random_individual genes (bool): "))
+        print(f"Random individual genes: {random_individuals}")
+        GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True, random_individuals=random_individuals)
         GA.run()
     else:
         results = []                   
@@ -104,14 +110,26 @@ if __name__ == '__main__':
             utils.print_results(mdp.path[-1], population, age_labels, vaccine_policy)
         utils.get_average_results(results, population, age_labels, vaccine_policy)
 
+
     if plot_results:
+        # import pdb; pdb.set_trace()
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
         # infection_results_age = new_infections.sum(axis=1)
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
-        #plot.plot_control_measures(mdp.path, all=False)
+        #plot.plot_control_measures(mdp.path, all=False)   
 
+    if plot_geo:
+        history, new_infections = utils.transform_path_to_numpy(mdp.path)
+        history_age_accumulated = history.sum(axis=3)
+        
+        comps_to_plot = ["E1", "E2", "A", "I", "R", "D", "V"]
+        regions_to_plot = ['OSLO', 'BÅTSFJORD']             
+        plot.seir_plot_weekly_several_regions(history_age_accumulated, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+
+        gdf = utils.generate_geopandas(population, paths.municipalities_geo)
+        plot.plot_spatial(gdf, history_age_accumulated)
+        plot.create_gif(paths.municipality_gif, paths.municipality_plots)

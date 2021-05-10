@@ -9,7 +9,7 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, simulations, population_size, process, objective, verbose):
+    def __init__(self, simulations, population_size, process, objective, verbose, random_individuals=False):
         """initializes a simple genetic algorithm instance
 
         Args:
@@ -21,7 +21,7 @@ class SimpleGeneticAlgorithm:
         """
         self.simulations = simulations
         self.process = process
-        self.population = Population(population_size, verbose)
+        self.population = Population(population_size, verbose, random_individuals)
         self.generation_count = 0
         self.final_scores = defaultdict(list)
         self.best_individual = None
@@ -310,14 +310,18 @@ class SimpleGeneticAlgorithm:
             gen_df.to_csv(self.overview_path, mode='a', header=False, index=False)
 
 class Population: 
-    def __init__(self, population_size, verbose):
+    def __init__(self, population_size, verbose, random_individuals):
         """create population object
 
         Args:
             population_size (int): number of individuals to initialize population with
             verbose (bool): specify whether or not to print
         """
-        self.individuals = [Individual(i) for i in range(population_size)]
+        
+        if random_individuals:
+            self.individuals = [Individual() for _ in range(population_size)]
+        else:
+            self.individuals = [Individual(i) for i in range(population_size)]
         self.verbose = verbose
         self.least_fittest_index = 0
         self.offsprings = None

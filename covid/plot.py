@@ -6,16 +6,16 @@ import pandas as pd
 from . import utils
 import seaborn as sns
 from datetime import timedelta
-import pandas as pd
-import numpy as np
-
-
 from matplotlib.dates import date2num, num2date
 from matplotlib import dates as mdates
 from scipy.interpolate import interp1d
 from matplotlib import ticker
 from matplotlib.colors import ListedColormap
-
+import contextily as ctx
+from tqdm import tqdm
+import imageio
+from os import listdir
+import re
 
 color_scheme = {
     "S": '#0000ff',
@@ -27,28 +27,6 @@ color_scheme = {
     "D": '#000000',
     "V": '#00e8e0'
 }
-
-def seir_plot_weekly(res, start_date, labels):
-    """ plots accumulated SEIR curves
-    
-    Parameters
-        res: numpy array with shape (decision_period*horizon, #compartments)
-        start_date: datetime object giving start date
-        labels: labels for plotted compartments 
-    """
-    fig = plt.figure(figsize=(10,5))
-    fig.suptitle('Weekly compartment values')
-    for i in range(len(labels)):
-        plt.plot(res[::, i], color=color_scheme[labels[i]], label=labels[i])
-    ticks = min(len(res), 20)
-    step = int(np.ceil(len(res)/ticks))
-    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
-    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
-    plt.ylabel("Compartment values")
-    plt.xlabel("Week")
-    plt.legend()
-    plt.grid()
-    plt.show()
 
 def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=False):
     """ plots infection for different age groups per week
@@ -77,6 +55,29 @@ def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=Fal
     plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
     labels = [ln.get_label() for ln in lines]
     plt.legend(lines, labels)
+    plt.grid()
+    plt.show()
+
+def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
+    """ plots cumulative infection for different age groups per week
+    
+    Parameters
+        res: numpy array with shape (decision_period*horizon, #compartments)
+        start_date: datetime object giving start date
+        labels: labels for plotted age_groups 
+    """
+    fig = plt.figure(figsize=(10,5))
+    fig.suptitle('Weekly cumulative infected in each age group')
+    for i, label in enumerate(labels):
+        plt.plot(np.cumsum(res[:, i]), label=label) 
+    plt.plot(np.cumsum(res.sum(axis=1)), color='r', linestyle='dashed', label="All")
+    ticks = min(len(res), 20)
+    step = int(np.ceil(len(res)/ticks))
+    weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
+    plt.ylabel("Infected (cumulative)")
+    plt.xlabel("Week")
+    plt.legend()
     plt.grid()
     plt.show()
 
@@ -237,3 +238,132 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
             plt.title(c_descriptions[i])
             plt.show()
 
+def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fpath_region_names):
+    """plots SEIR plots for different regions
+
+    Args:
+        res (3D-array): data accumulated across all age groups. Shape: (#weeks, #compartments, #regions)
+        start_date (datetime): start date for plotting to begin 
+        comp_labels (list(str)): list of compartment labels to plot 
+        regions (list(str)]): list of region names of the regions to plot SEIR development
+    """
+    df = pd.read_csv(fpath_region_names)
+    region_indices = df[df['region_name'].isin(regions)].index.tolist()
+    for i in range(len(regions)):
+        fig = plt.figure(figsize=(10,5))
+        fig.suptitle(f'Weekly compartment values in {regions[i]}')
+        all_comps = {"S":0, "E1":1, "E2":2, "A":3, "I":4, "R":5, "D":6, "V":7}
+        for comp in comps_to_plot:
+            plt.plot(res[:, all_comps[comp], region_indices[i]], color=color_scheme[comp], label=comp)
+        ticks = min(len(res), 20)
+        step = int(np.ceil(len(res)/ticks))
+        weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+        plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
+        plt.ylabel("Compartment values")
+        plt.xlabel("Week")
+        plt.legend()
+        plt.grid()
+        plt.show()
+        
+def plot_spatial(gdf, res):
+    """[summary]
+
+    Args:
+        gdf ([type]): [description]
+        res_accumulated_regions ([type]): [description]
+    """
+
+    res_accumulated_regions = res.sum(axis=2)
+
+    # extract bounds from gdf 
+    west, south, east, north = gdf.total_bounds
+
+    horizon = len(res_accumulated_regions)
+
+    # make the plots 
+    for time_step in tqdm(range(horizon)):
+ 
+        # Plot values on map
+        ix_data = 4 # S, E1, E2, A, I, R, D, V
+        data_to_plot = res[time_step, ix_data,:]
+        
+        # add axis for spatial plot
+        fig, ax = plt.subplots(figsize=(14,14), dpi=72)
+        gdf.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=3)
+        gdf.plot(ax=ax, column=data_to_plot, zorder=3)
+        
+        # add background
+        ctx.add_basemap(ax, zoom='auto', crs=3857, source=ctx.providers.Stamen.TonerLite, alpha=0.6, attribution="")
+        ax.set_axis_off()
+        ax.set_xlim(west, east)
+        ax.set_ylim(south, north)
+        ax.axis('off')
+        plt.tight_layout()
+        
+        # axes for SEIR plot 
+        inset_ax = fig.add_axes([0.6, 0.14, 0.37, 0.27])
+        inset_ax.patch.set_alpha(0.5)
+
+        # lines
+        inset_ax.plot(res_accumulated_regions[:time_step, 0], label="S",  color=color_scheme['S'],  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", color=color_scheme['E1'], ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 2], label="E2", color=color_scheme['E2'], ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 3], label="A",  color=color_scheme['A'],  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 4], label="I",  color=color_scheme['I'],  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 5], label="R",  color=color_scheme['R'],  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 6], label="D",  color=color_scheme['D'],  ls='-', lw=1.5, alpha=0.8)
+        inset_ax.plot(res_accumulated_regions[:time_step, 7], label="V",  color=color_scheme['V'],  ls='-', lw=1.5, alpha=0.8)
+ 
+        # fots on line
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 0], color=color_scheme['S'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 1], color=color_scheme['E1'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 2], color=color_scheme['E2'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 3], color=color_scheme['A'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 4], color=color_scheme['I'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 5], color=color_scheme['R'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 6], color=color_scheme['D'], s=20, alpha=0.8)
+        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step, 7], color=color_scheme['V'], s=20, alpha=0.8)
+
+        # Shaded area and vertical dotted line between S and I curves in SEIR plot 
+        # inset_ax.fill_between(np.arange(0, time_step), res_accumulated_regions[:time_step, 0].sum(axis=1), res_accumulated_regions[:time_step, 3].sum(axis=1), alpha=0.035, color='r')
+        # inset_ax.plot([time_step, time_step], [0, max(res_accumulated_regions[(time_step-1), 0].sum(), res_accumulated_regions[(time_step-1), 3].sum())], ls='--', lw=0.7, alpha=0.8, color='r')
+        
+        # axes titles, label coordinates, values, font_sizes, grid, spines_colours, ticks_colurs, legend, title for SEIR plot
+        inset_ax.set_ylabel('Population', size=14, alpha=1, rotation=90)
+        inset_ax.set_xlabel('Weeks', size=14, alpha=1)
+        inset_ax.yaxis.set_label_coords(-0.15, 0.55)
+        inset_ax.tick_params(direction='in', size=10)
+        inset_ax.set_xlim(-4, horizon)
+        inset_ax.set_ylim(-24000, 5500000)
+        plt.xticks(fontsize=14)
+        plt.yticks(fontsize=14)
+        inset_ax.grid(alpha=0.4)
+        inset_ax.spines['right'].set_visible(False)
+        inset_ax.spines['top'].set_visible(False)
+        inset_ax.spines['left'].set_color('darkslategrey')
+        inset_ax.spines['bottom'].set_color('darkslategrey')
+        inset_ax.tick_params(axis='x', colors='darkslategrey')
+        inset_ax.tick_params(axis='y', colors='darkslategrey')
+        plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
+        plt.title("COVID-19 development in week: {}".format(time_step), fontsize=18, color= 'dimgray')
+        plt.draw()
+        plt.savefig("plots/flows_{}.jpg".format(time_step), dpi=fig.dpi)
+
+
+def create_gif(path_gif, path_plots):
+    """[summary]
+
+    Args:
+        path_gif ([type]): [description]
+        path_plots ([type]): [description]
+    """
+    def sort_in_order( l ):
+        convert = lambda text: int(text) if text.isdigit() else text
+        alphanumeric_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+        return sorted(l, key=alphanumeric_key)
+    filenames = listdir(path_plots)
+    filenames = sort_in_order(filenames)
+    with imageio.get_writer(path_gif, mode='I', fps=4) as writer:
+        for filename in tqdm(filenames):
+            image = imageio.imread(path_plots + '{}'.format(filename))
+            writer.append_data(image)
