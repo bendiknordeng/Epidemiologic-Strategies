@@ -14,7 +14,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    runs = 5
+    runs = 1
     day = 21
     month = 2
     year = 2020
@@ -42,13 +42,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
     # Run settings
-    run_GA = True
+    run_GA = False
     use_response_measures = False
     include_flow = True
     use_waves = True
     stochastic = True
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
 
     vaccine_policy = Policy(
@@ -121,24 +121,24 @@ if __name__ == '__main__':
         utils.get_average_results(results, population, age_labels, vaccine_policy)
 
     if plot_results:
-        # import pdb; pdb.set_trace()
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
+        results_regions = history.sum(axis=3)
+        infection_results_age = new_infections.sum(axis=1)
+
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
-        # infection_results_age = new_infections.sum(axis=1)
-        # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        # utils.get_r_effective(mdp.path, population, config, from_data=False)
-        # plot.plot_control_measures(mdp.path, all=False)   
+        plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        utils.get_r_effective(mdp.path, population, config, from_data=False)
+
+        # plot seir for different regions
+        comps_to_plot = ["E2", "A", "I"]
+        regions_to_plot = ['OSLO', 'BÆRUM', 'LILLESTRØM', 'LØRENSKOG', "TRONDHEIM", "BERGEN", "KRISTIANSAND", "DRAMMEN", "NITTEDAL", "FROGN", "RÆLINGEN", "EIDSVOLL"]             
+        plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         history_age_accumulated = history.sum(axis=3)
-
-        # plot seir for different regions
-        comps_to_plot = ["E1", "E2", "A", "I", "R", "D", "V"]
-        regions_to_plot = ['OSLO', 'BÅTSFJORD']             
-        plot.seir_plot_weekly_several_regions(history_age_accumulated, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
 
         # plot geospatial data
         gdf = utils.generate_geopandas(population, paths.municipalities_geo)

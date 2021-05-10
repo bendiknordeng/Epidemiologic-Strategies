@@ -629,7 +629,7 @@ def get_r_effective(path, population, config, from_data=False):
                             squeeze=True).sort_index()
         states = states.astype('float64')
     else:
-        regions = np.tile(np.append(population.region.to_numpy(), 'NORWAY'), len(path)).T
+        regions = np.tile(np.append(population.region_name.to_numpy(), 'NORWAY'), len(path)).T
         I_new = np.array([s.new_infected.sum(axis=1) for s in path])
         total_I_new = I_new.sum(axis=1)
         I_new = np.hstack((I_new,total_I_new.reshape(-1,1)))

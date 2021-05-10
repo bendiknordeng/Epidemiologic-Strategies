@@ -247,23 +247,28 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
         comp_labels (list(str)): list of compartment labels to plot 
         regions (list(str)]): list of region names of the regions to plot SEIR development
     """
+    all_comps = {"S":0, "E1":1, "E2":2, "A":3, "I":4, "R":5, "D":6, "V":7}
     df = pd.read_csv(fpath_region_names)
     region_indices = df[df['region_name'].isin(regions)].index.tolist()
+    nrows = int(np.ceil(len(regions)/4))
+    ncols = min(len(regions), 4)
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(5*ncols,5*nrows), sharex=True)
+    fig.suptitle("Weekly compartment values")
     for i in range(len(regions)):
-        fig = plt.figure(figsize=(10,5))
-        fig.suptitle(f'Weekly compartment values in {regions[i]}')
-        all_comps = {"S":0, "E1":1, "E2":2, "A":3, "I":4, "R":5, "D":6, "V":7}
+        row = i // ncols
+        col = i % ncols
+        ax = axs[row][col] if nrows > 1 else axs[col]
+        ax.set_title(f'{regions[i].capitalize()}')
         for comp in comps_to_plot:
-            plt.plot(res[:, all_comps[comp], region_indices[i]], color=color_scheme[comp], label=comp)
-        ticks = min(len(res), 20)
-        step = int(np.ceil(len(res)/ticks))
+            ax.plot(res[:, all_comps[comp], region_indices[i]], color=color_scheme[comp], label=comp)
         weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
-        plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
-        plt.ylabel("Compartment values")
-        plt.xlabel("Week")
-        plt.legend()
-        plt.grid()
-        plt.show()
+        ax.set_xlabel("Week")
+        ax.legend()
+        ax.grid()
+    ticks = min(len(res), 10)
+    step = int(np.ceil(len(res)/ticks))
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
+    plt.show()
         
 def plot_geospatial(gdf, res, fpath_plots):
     """[summary]
