@@ -12,7 +12,6 @@ import json
 from collections import Counter
 import geopandas as gpd
 
-
 class tcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -24,7 +23,7 @@ class tcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
-def create_named_tuple(filepath):
+def create_named_tuple(name, filepath):
     """ generate a namedtuple from a txt file
 
     Parameters
@@ -36,7 +35,9 @@ def create_named_tuple(filepath):
     contents = file.read()
     dictionary = ast.literal_eval(contents)
     file.close()
-    return namedtuple('config', dictionary.keys())(**dictionary)
+    return namedtuple(name, dictionary.keys())(**dictionary)
+
+paths = create_named_tuple('paths', 'filepaths.txt')
 
 def generate_dummy_od_matrix(num_time_steps, num_regions):
     """ generate an OD-matrix used for illustrative purposes only
@@ -61,17 +62,16 @@ def generate_dummy_od_matrix(num_time_steps, num_regions):
         a.append(l)
     return np.array(a)
 
-def generate_commuter_matrix(age_flow_scaling, fpath_muncipalities_commute):
+def generate_commuter_matrix(age_flow_scaling):
     """ generate an OD-matrix used for illustrative purposes only
 
     Parameters
         num_time_steps: int indicating number of time periods e.g 28
         population: a dataframe with region_id, region_name and population
-        fpath_muncipalities_commute: filepath to commuting data between regions
     Returns
         An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) indicating travel in percentage of current population 
     """
-    df = pd.read_csv(fpath_muncipalities_commute)
+    df = pd.read_csv(paths.municipalities_commuters)
     commuters = df.pivot(columns='to', index='from', values='n').fillna(0).values
     visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
     visitors[np.where(visitors == 0)] = 1
@@ -103,7 +103,7 @@ def transform_history_to_df(time_step, history, population, column_names):
 
     Parameters
         time_step: integer used to indicate the current time step in the simulation
-        history: 3D array with shape (number of time steps, number of compartments, number of regions)
+        history: numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
         population: DataFrame with region_id, region_names, age_group_population and total population (quantity)
         coloumn_names: string that represents the column names e.g 'SEIRHQ'. 
     Returns
@@ -123,13 +123,13 @@ def transform_history_to_df(time_step, history, population, column_names):
     return df[['date', 'time_step', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E1_per_100k']]
 
 def transform_df_to_history(df, column_names, n_regions, n_age_groups):
-    """ transforms a dataframe to 3D array
+    """ transforms a dataframe to numpy.ndarray
     
     Parameters
         df:  dataframe 
         column_names: string indicating the column names of the data that will be transformed e.g 'SEIRHQ'. 
     Returns
-         3D array with shape (number of time steps, number of compartments, number of regions)
+         numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
     """
 
     df = df[list(column_names)]
@@ -146,12 +146,12 @@ def transform_df_to_history(df, column_names, n_regions, n_age_groups):
 
 
 def transform_historical_df_to_history(df):
-    """ transforms a dataframe to 3D array
+    """ transforms a dataframe to numpy.ndarray
     
     Parameters
         df:  dataframe of real historical covid data for Norway's municipalities
     Returns
-         3D array with shape (number of time steps, number of compartments, number of regions)
+         numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
     """
     # Add leading zero for municipality id
     df['kommune_no'] = df['kommune_no'].apply(lambda x: '{0:0>4}'.format(x)) 
@@ -159,22 +159,20 @@ def transform_historical_df_to_history(df):
     df = df.rename(columns={'cases': 'I'})
     return transform_df_to_history(df, 'I')
 
-def generate_custom_population(bins, labels, path_pop, path_region_names):
+def generate_custom_population(bins, labels):
     """ generates age divided population
 
     Parameters
-        bins: 1D array of bins in which to divide population
+        bins: numpy.ndarray of bins in which to divide population
         labels: list of strings, names of age groups
-        path_pop: path to population data
-        path_region_names: path to region name data
     Returns
         dataframe with age divided population
     """
-    total_pop = pd.read_csv(path_pop)
+    total_pop = pd.read_csv(paths.age_divided_population)
     age_divided = pd.DataFrame(total_pop.groupby(['region_id', pd.cut(total_pop["age"], bins=bins+[110], labels=labels, include_lowest=True)]).sum('population')['population'])
     age_divided.reset_index(inplace=True)
     age_divided = age_divided.pivot(index='region_id', columns=['age'])['population']
-    region_names_id = pd.read_csv(path_region_names, delimiter=",").drop_duplicates()
+    region_names_id = pd.read_csv(paths.municipalities_names, delimiter=",").drop_duplicates()
     df = pd.merge(region_names_id, age_divided, on="region_id", how='right', sort=True)
     df['population'] = df.loc[:,df.columns[2:2+len(labels)]].sum(axis=1)
     return df
@@ -183,7 +181,7 @@ def generate_labels_from_bins(bins):
     """ generates labels for population dataframe
 
     Parameters
-        bins: 1D array of bins to divide population
+        bins: numpy.ndarray of bins to divide population
     Returns
         labels defining the population bins
     """
@@ -196,8 +194,8 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
-def generate_contact_matrices(bins, labels, population, fpath_contact_data, fpath_europe_data, country=None):
-    df = pd.read_csv(fpath_contact_data)
+def generate_contact_matrices(bins, labels, population, country=None):
+    df = pd.read_csv(paths.contact_data)
     if country: df = df[df.country == country]
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
@@ -208,7 +206,7 @@ def generate_contact_matrices(bins, labels, population, fpath_contact_data, fpat
     for col in df_mat.columns[2:-1]:
         df_mat[col] = df_mat[col]/(df_mat.pop_0)
 
-    N_eu = pd.read_csv(fpath_europe_data)
+    N_eu = pd.read_csv(paths.europe_data)
     N_eu.age = pd.cut(N_eu['age'], bins=bins+[110], labels=labels, include_lowest=True)
     N_eu = N_eu.groupby('age').sum()['population']
     N_eu_tot = N_eu.sum()
@@ -239,24 +237,24 @@ def generate_weighted_contact_matrix(C, contact_weights):
         """
         return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)
 
-def get_age_group_flow_scaling(bins, labels, population, fpath_employed):
+def get_age_group_flow_scaling(bins, labels, population):
     percent_commuters = 0.36 # numbers from SSB
-    df = pd.read_csv(fpath_employed)
+    df = pd.read_csv(paths.employed_by_age)
     df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
     commuters = df.groupby('age').sum()['employed'].to_numpy() * percent_commuters
     sum_age_groups = population[population.columns[2:-1]].sum().to_numpy()
     age_group_commuter_percent = commuters/sum_age_groups
     return age_group_commuter_percent/age_group_commuter_percent.sum()
 
-def get_age_group_fatality_prob(bins, labels, fpath_deaths):
-    df = pd.read_csv(fpath_deaths)
+def get_age_group_fatality_prob(bins, labels):
+    df = pd.read_csv(paths.deaths_by_age)
     df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
     infected = df.groupby('age').sum()['cases'].to_numpy()
     dead = df.groupby('age').sum()['deaths'].to_numpy()
     return dead/infected * (1.9/3.6) # Our world data on hospital beds per 1000 (California/Norway)
 
-def get_historic_data(path):
-    historic_data = pd.read_csv(path)  # set to None if not used
+def get_historic_data():
+    historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
     historic_data.date = pd.to_datetime(historic_data.date)
     return historic_data
 
@@ -265,7 +263,7 @@ def write_history(write_weekly, history, population, time_step, results_weekly, 
 
     Parameters
         write_weekly: Bool, if the results should be written on weekly basis
-        history: 3D array with shape (number of time steps, number of compartments, number of regions)
+        history: numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
         population: pd.DataFrame with columns region_id, region_name, population (quantity)
         time_step: Int, indicating the time step of the simulation
         results_weekly: Bool, indicating if weekly results exists. Stored data is removed if True.
@@ -367,7 +365,7 @@ def print_results(state, population, age_labels, policy, save_to_file=False):
     dead = state.D.sum(axis=0)
     age_total = population[age_labels].sum().to_numpy()
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
-    result = f"{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
+    result = f"\n\n{columns[0]:<9} {columns[1]:>20} {columns[2]:>20} {columns[3]:>20}\n"
     for i in range(len(age_labels)):
         age_pop = np.sum(population[age_labels[i]])
         result += f"{age_labels[i]:<9}"
@@ -377,7 +375,7 @@ def print_results(state, population, age_labels, policy, save_to_file=False):
     result += f"{'All':<9}"
     result += f"{np.sum(infected):>12,.0f} ({100 * np.sum(infected)/total_pop:>5.2f}%)"
     result += f"{np.sum(vaccinated):>12,.0f} ({100 * np.sum(vaccinated)/total_pop:>5.2f}%)"
-    result += f"{np.sum(dead):>12,.0f} ({100 * np.sum(dead)/total_pop:>5.2f}%)"
+    result += f"{np.sum(dead):>12,.0f} ({100 * np.sum(dead)/total_pop:>5.2f}%)\n"
     print(result)
 
     if save_to_file:
@@ -415,7 +413,7 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
     total_std_dead = np.sqrt(np.sum(np.square(std_dead) * age_total)/ total_pop)
 
     columns = ["Age group", "Infected", "Vaccinated", "Dead", "Total"]
-    result = f"{columns[0]:<10} {columns[1]:^36} {columns[2]:^36} {columns[3]:^36}\n"
+    result = f"\n{columns[0]:<10} {columns[1]:^36} {columns[2]:^36} {columns[3]:^36}\n"
     for i in range(len(age_labels)):
         age_pop = np.sum(population[age_labels[i]])
         result += f"{age_labels[i]:<10}"
@@ -454,7 +452,7 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
     """
     with open('data/waves/wave_parameters.json') as file:
         data = json.load(file)
-    transition_mat = pd.read_csv('data/waves/wave_transition.csv', index_col=0).T.to_dict()
+    transition_mat = pd.read_csv(paths.wave_transition, index_col=0).T.to_dict()
     decision_period_days = int(decision_period/periods_per_day)
     wave_timeline = np.zeros(horizon)
     current_state = 'U'
@@ -497,7 +495,7 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
     return wave_timeline, wave_state_timeline
 
 def get_historic_wave_timeline(horizon):
-    df = pd.read_csv('data/world_r_eff.csv',
+    df = pd.read_csv(paths.world_r_eff,
         usecols=['country','date','R'],
         squeeze=True
         ).sort_index()
@@ -622,7 +620,7 @@ def get_r_effective(path, population, config, from_data=False):
     """
     # Read in data
     if from_data:
-        states = pd.read_csv('data/fhi_data_daily.csv',
+        states = pd.read_csv(paths.fhi_data_daily,
                             usecols=['date', 'region', 'I_new'],
                             parse_dates=['date'],
                             index_col=['region', 'date'],
@@ -669,18 +667,16 @@ def get_r_effective(path, population, config, from_data=False):
     else:
         plot.plot_rt(result)
 
-def get_expected_yll(age_bins, age_labels, fpath_expected_years):
+def get_expected_yll(age_bins, age_labels):
     """ Retrieves the expected years remaining for each age group
 
     Args:
-        age_bins (1D array): int describing different age groups
-        age_labels (1D array): strings with description of different age groups
-        deaths_per_age_group (1D array): Number of deaths per age groups
-
+        age_bins (numpy.ndarray): int describing different age groups
+        age_labels (numpy.ndarray): strings with description of different age groups
     Returns:
         int: yll
     """
-    df = pd.read_csv(fpath_expected_years)
+    df = pd.read_csv(paths.expected_years)
     df.age = pd.cut(df['age'], bins=age_bins+[110], labels=age_labels, include_lowest=True)
     expected_years_remaining = df.groupby('age').mean()['expected_years_remaining'].to_numpy()
     return expected_years_remaining
@@ -718,16 +714,6 @@ def get_avg_std(final_states, population, age_labels):
     return np.sum(average_dead), total_std_dead
 
 def generate_geopandas(pop, fpath_spatial_data):
-    """[summary]
-
-    Args:
-        population ([type]): [description]
-        fpath_spatial_data ([type]): [description]
-
-    Returns:
-        [type]: [description]
-    """
-
     pop['region_id'] = pop['region_id'].astype('str')
     pop = pop[['region_id', 'population', 'region_name']]
 

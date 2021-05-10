@@ -18,13 +18,9 @@
 'deaths_by_age':                        'data/age_groups/deaths_by_age.csv',
 'employed_by_age':                      'data/age_groups/employed_per_age.csv',
 'expected_years':                       'data/age_groups/expected_years.csv',
+'wave_transition':                      'data/waves/wave_transition.csv',
+'world_r_eff':                          'data/waves/world_r_eff.csv',
 'heat_maps':                            'plots/contact_matrices/',
 'results_history_daily':                'results/history_daily.csv',
-'results_history_weekly':               'results/history_weekly.csv',
-'response_measure_model_mlp':           'models/response_measure_model_mlp.sav',
-'response_measure_scaler_mlp':          'models/response_measure_scaler_mlp.sav',
-'response_measure_model_reg':           'models/response_measure_model_reg.sav',
-'response_measure_scaler_reg':          'models/response_measure_scaler_reg.sav'
+'results_history_weekly':               'results/history_weekly.csv'
 }
-
-

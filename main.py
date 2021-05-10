@@ -8,13 +8,9 @@ from covid.SEAIR import SEAIR
 import numpy as np
 from tqdm import tqdm
 
-
 if __name__ == '__main__':
-    # Get filepaths 
-    paths = utils.create_named_tuple('filepaths.txt')
-
     # Set initial parameters
-    runs = 1
+    runs = 10
     day = 24
     month = 2
     year = 2020
@@ -26,20 +22,21 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted']
-    weights = np.array([0, 0, 0, 0, 0, 1])
     policy_number = -1
+    weights = np.array([0, 0, 0, 0, 0, 1])
 
     # Read data and generate parameters
-    config = utils.create_named_tuple(paths.config)
+    paths = utils.create_named_tuple('paths', 'filepaths.txt')
+    config = utils.create_named_tuple('config', paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
-    population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
-    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population, paths.contact_data, paths.europe_data)
-    age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population, paths.employed_by_age)
-    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels, paths.deaths_by_age)
-    expected_years_remaining = utils.get_expected_yll(config.age_bins, age_labels, paths.expected_years)
-    commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commuters)
+    population = utils.generate_custom_population(config.age_bins, age_labels)
+    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
+    age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
+    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
+    expected_years_remaining = utils.get_expected_yll(config.age_bins, age_labels)
+    commuters = utils.generate_commuter_matrix(age_group_flow_scaling)
     response_measure_model = utils.load_response_measure_models()
-    historic_data = utils.get_historic_data(paths.fhi_data_daily)
+    historic_data = utils.get_historic_data()
 
     # Run settings
     run_GA = False
@@ -48,7 +45,7 @@ if __name__ == '__main__':
     use_waves = True
     stochastic = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
 
     vaccine_policy = Policy(
@@ -127,14 +124,13 @@ if __name__ == '__main__':
         results_regions = history.sum(axis=3)
         infection_results_age = new_infections.sum(axis=1)
         infection_results_regions = new_infections.sum(axis=2)
-
-        # plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
-        # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        # utils.get_r_effective(mdp.path, population, config, from_data=False)
-
         regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG']
-        # comps_to_plot = ["E2", "A", "I"]
-        # plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+        comps_to_plot = ["E2", "A", "I"]
+
+        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        utils.get_r_effective(mdp.path, population, config, from_data=False)
+        plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
         plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
 
     if plot_geo:
