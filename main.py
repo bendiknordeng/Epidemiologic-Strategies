@@ -1,16 +1,16 @@
-from covid import plot
+import plot
 import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
 from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 from vaccine_allocation_model.Policy import Policy
-from covid.SEAIR import SEAIR
+from vaccine_allocation_model.SEAIR import SEAIR
 import numpy as np
 from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 10
+    runs = 1
     day = 24
     month = 2
     year = 2020
@@ -40,10 +40,10 @@ if __name__ == '__main__':
 
     # Run settings
     run_GA = True
-    use_response_measures = False
     include_flow = True
     use_waves = True
     stochastic = True
+    use_response_measures = False
     verbose = False
     plot_results = False
     plot_geo = False

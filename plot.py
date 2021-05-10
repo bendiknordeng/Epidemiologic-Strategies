@@ -9,7 +9,7 @@ from matplotlib import dates as mdates
 from scipy.interpolate import interp1d
 from matplotlib import ticker
 from matplotlib.colors import ListedColormap
-import contextily as ctx
+# import contextily as ctx
 from tqdm import tqdm
 import imageio
 from os import listdir

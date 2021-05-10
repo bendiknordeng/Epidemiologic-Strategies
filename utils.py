@@ -6,11 +6,11 @@ from collections import namedtuple
 import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
-from covid import plot
+import plot
 from scipy.stats import skewnorm
 import json
 from collections import Counter
-import geopandas as gpd
+# import geopandas as gpd
 
 
 class tcolors:
