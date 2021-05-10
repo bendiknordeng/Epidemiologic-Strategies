@@ -124,11 +124,10 @@ if __name__ == '__main__':
         gdf = utils.generate_geopandas(population, fpath)
 
         # generate random data
-        res = np.random.rand(61, 8, 356)   #weeks, #compartments, #regions
+
+        history, new_infections = utils.transform_path_to_numpy(mdp.path) 
+        res = history.sum(axis=3) #weeks, #compartments, #regions
         res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
         num_weeks, num_compartments, num_regions = res.shape
         compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
-
-        import pdb; pdb.set_trace()
-    
-        plot.plot_spatial(gdf, res_accumulated_regions, compartment_labels)
+        plot.plot_spatial(gdf, res)

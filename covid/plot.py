@@ -249,10 +249,8 @@ def plot_spatial(gdf, res):
     west, south, east, north = gdf.total_bounds
 
     # make the plots 
-    num_weeks = 1 # remove when done
-
-    for time_step in tqdm(range(num_weeks)):
-        
+    for time_step in tqdm(range(len(res_accumulated_regions))):
+ 
         # Plot values on map
         ix_data = 4 # S, E1, E2, A, I, R, D, V
         data_to_plot = res[time_step, ix_data,:]
@@ -260,7 +258,7 @@ def plot_spatial(gdf, res):
         # add axis for spatial plot
         fig, ax = plt.subplots(figsize=(14,14), dpi=72)
         gdf.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=3)
-        gdf.plot(ax=ax, column='E1', zorder=3)
+        gdf.plot(ax=ax, column=data_to_plot, zorder=3)
         
         # add background
         ctx.add_basemap(ax, zoom='auto', crs=3857, source=ctx.providers.Stamen.TonerLite, alpha=0.6, attribution="")
