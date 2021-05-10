@@ -284,7 +284,7 @@ def infection_plot_weekly_several_regions(res, start_date, regions, fpath_region
     nrows = int(np.ceil(len(regions)/4))
     ncols = min(len(regions), 4)
     fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(5*ncols,5*nrows), sharex=True)
-    fig.suptitle("Weekly compartment values")
+    fig.suptitle("Weekly infection numbers")
     for i in range(len(regions)):
         row = i // ncols
         col = i % ncols

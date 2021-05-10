@@ -196,8 +196,8 @@ def generate_labels_from_bins(bins):
     labels.append(str(bins[-1]+1)+"+")
     return labels
 
-def generate_contact_matrices(bins, labels, population, country=None):
-    df = pd.read_csv('data/contact_data.csv')
+def generate_contact_matrices(bins, labels, population, fpath_contact_data, fpath_europe_data, country=None):
+    df = pd.read_csv(fpath_contact_data)
     if country: df = df[df.country == country]
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
@@ -208,7 +208,7 @@ def generate_contact_matrices(bins, labels, population, country=None):
     for col in df_mat.columns[2:-1]:
         df_mat[col] = df_mat[col]/(df_mat.pop_0)
 
-    N_eu = pd.read_csv('data/population_europe_2008.csv')
+    N_eu = pd.read_csv(fpath_europe_data)
     N_eu.age = pd.cut(N_eu['age'], bins=bins+[110], labels=labels, include_lowest=True)
     N_eu = N_eu.groupby('age').sum()['population']
     N_eu_tot = N_eu.sum()
@@ -239,17 +239,17 @@ def generate_weighted_contact_matrix(C, contact_weights):
         """
         return np.sum(np.array([np.array(C[i])*contact_weights[i] for i in range(len(C))]), axis=0)
 
-def get_age_group_flow_scaling(bins, labels, population):
+def get_age_group_flow_scaling(bins, labels, population, fpath_employed):
     percent_commuters = 0.36 # numbers from SSB
-    df = pd.read_csv('data/employed_per_age.csv')
+    df = pd.read_csv(fpath_employed)
     df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
     commuters = df.groupby('age').sum()['employed'].to_numpy() * percent_commuters
     sum_age_groups = population[population.columns[2:-1]].sum().to_numpy()
     age_group_commuter_percent = commuters/sum_age_groups
     return age_group_commuter_percent/age_group_commuter_percent.sum()
 
-def get_age_group_fatality_prob(bins, labels):
-    df = pd.read_csv('data/deaths_by_age.csv')
+def get_age_group_fatality_prob(bins, labels, fpath_deaths):
+    df = pd.read_csv(fpath_deaths)
     df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
     infected = df.groupby('age').sum()['cases'].to_numpy()
     dead = df.groupby('age').sum()['deaths'].to_numpy()
@@ -452,9 +452,9 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
         wave_state_timeline (list(str)): characters indicating the wave state for each week of the simulation horizon
 
     """
-    with open('data/wave_parameters.json') as file:
+    with open('data/waves/wave_parameters.json') as file:
         data = json.load(file)
-    transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
+    transition_mat = pd.read_csv('data/waves/wave_transition.csv', index_col=0).T.to_dict()
     decision_period_days = int(decision_period/periods_per_day)
     wave_timeline = np.zeros(horizon)
     current_state = 'U'
@@ -669,7 +669,7 @@ def get_r_effective(path, population, config, from_data=False):
     else:
         plot.plot_rt(result)
 
-def get_expected_yll(age_bins, age_labels):
+def get_expected_yll(age_bins, age_labels, fpath_expected_years):
     """ Retrieves the expected years remaining for each age group
 
     Args:
@@ -680,7 +680,7 @@ def get_expected_yll(age_bins, age_labels):
     Returns:
         int: yll
     """
-    df = pd.read_csv('data/expected_years.csv')
+    df = pd.read_csv(fpath_expected_years)
     df.age = pd.cut(df['age'], bins=age_bins+[110], labels=age_labels, include_lowest=True)
     expected_years_remaining = df.groupby('age').mean()['expected_years_remaining'].to_numpy()
     return expected_years_remaining

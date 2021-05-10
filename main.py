@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     # Set initial parameters
     runs = 1
-    day = 21
+    day = 24
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
@@ -33,11 +33,11 @@ if __name__ == '__main__':
     config = utils.create_named_tuple(paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
     population = utils.generate_custom_population(config.age_bins, age_labels, paths.age_divided_population, paths.municipalities_names)
-    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
-    age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
-    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
-    expected_years_remaining = utils.get_expected_yll(config.age_bins, age_labels)
-    commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
+    contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population, paths.contact_data, paths.europe_data)
+    age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population, paths.employed_by_age)
+    death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels, paths.deaths_by_age)
+    expected_years_remaining = utils.get_expected_yll(config.age_bins, age_labels, paths.expected_years)
+    commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commuters)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
@@ -132,7 +132,7 @@ if __name__ == '__main__':
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
 
-        regions_to_plot = ['TRONDHEIM', 'LØRENSKOG']
+        regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG']
         # comps_to_plot = ["E2", "A", "I"]
         # plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
         plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)

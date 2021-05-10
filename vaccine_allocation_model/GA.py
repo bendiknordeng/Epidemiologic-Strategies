@@ -34,19 +34,6 @@ class SimpleGeneticAlgorithm:
         self._generate_output_dirs()
         self.verbose = verbose
 
-    def _generate_output_dirs(self):
-            start_of_run = datetime.now().strftime("%Y_%m_%d_%H%M%S")
-            run_folder = f"/results/GA_{start_of_run}"
-            folder_path = os.getcwd()+run_folder
-            individuals_path = folder_path + "/individuals"
-            final_scores_path = folder_path + "/final_scores"
-            os.mkdir(folder_path)
-            os.mkdir(individuals_path)
-            os.mkdir(final_scores_path)
-            self.overview_path = folder_path + f"/generation_overview.csv"
-            self.individuals_path = folder_path + f"/individuals/individuals_"
-            self.final_score_path = folder_path + f"/final_scores/final_score_"
-
     def _set_objective(self, objective):
         return {"deaths": lambda process: np.sum(process.state.D),
                 "weighted": lambda process: np.sum(process.state.total_infected)*0.01 + np.sum(process.state.D),
@@ -54,8 +41,7 @@ class SimpleGeneticAlgorithm:
                 }[objective]
 
     def run(self):
-        """function to evaluate current generation, create offsprings, evaluate offsprings, and generate new generations if not converged
-        """
+        """ Function to evaluate current generation, create offsprings, evaluate offsprings, and generate new generations if not converged """
         while True:
             self.run_population()
             self.write_to_file()
@@ -69,7 +55,7 @@ class SimpleGeneticAlgorithm:
             self.generation_count += 1
 
     def run_population(self, offsprings=False):
-        """for current population, simulate
+        """ For current population, simulate
 
         Args:
             offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
@@ -102,7 +88,7 @@ class SimpleGeneticAlgorithm:
         return significant_best
 
     def check_convergence(self):
-        """checks if the best individual of the current population is better than the previous best
+        """ Checks if the best individual of the current population is better than the previous best
 
         Returns:
             bool: True if new all-time best individual is found
@@ -138,7 +124,7 @@ class SimpleGeneticAlgorithm:
         return False
 
     def find_fitness(self, offsprings=False, from_start=True):
-        """find estimated fitness of every individual through simulation of process
+        """ Find estimated fitness of every individual through simulation of process
 
         Args:
             offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
@@ -164,7 +150,7 @@ class SimpleGeneticAlgorithm:
             individual.mean_score = mean_score
 
     def find_best_individual(self, offsprings=False):
-        """loop through two most promising individuals to check for significance
+        """ Loop through two most promising individuals to check for significance
 
         Args:
             offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
@@ -186,7 +172,7 @@ class SimpleGeneticAlgorithm:
         return True
 
     def t_test(self, s1, s2, significance=0.1):
-        """performs one-sided t-test to check to variables for significant difference
+        """ Performs one-sided t-test to check to variables for significant difference
 
         Args:
             s1 (list): list of outcomes from simulations, from presumed best individual
@@ -206,7 +192,7 @@ class SimpleGeneticAlgorithm:
         return significant_best
 
     def crossover(self, generation_count):
-        """creates offspring from two fittest individuals
+        """ Creates offspring from two fittest individuals
 
         Args:
             generation_count (int): what generation that is creating offsprings
@@ -250,8 +236,7 @@ class SimpleGeneticAlgorithm:
         self.population.offsprings = [o1,o2,o3,o4,o5]
 
     def mutation(self):
-        """Randomly altering the genes of offsprings
-        """
+        """ Randomly altering the genes of offsprings """
         for offspring in self.population.offsprings:
             shape = offspring.genes.shape
             draw = np.random.random() 
@@ -271,8 +256,7 @@ class SimpleGeneticAlgorithm:
                 draw = np.random.random()
     
     def repair_offsprings(self):
-        """Make sure the genes of offsprings are feasible, i.e. normalize.
-        """
+        """ Make sure the genes of offsprings are feasible, i.e. normalize. """
         for offspring in self.population.offsprings:
             norm = np.sum(offspring.genes, axis=2, keepdims=True)
             for loc in np.argwhere(norm==0):
@@ -283,7 +267,7 @@ class SimpleGeneticAlgorithm:
             offspring.genes = np.divide(offspring.genes, norm)
 
     def find_runs(self, count):
-        """Find number of runs needed before significance is needed.
+        """ Find number of runs needed before significance is needed.
 
         Args:
             count (int)): how many extra iterations needed to reach significant
@@ -293,16 +277,27 @@ class SimpleGeneticAlgorithm:
             for _ in range(count): number_runs += int(self.simulations/2)
         self.number_of_runs.append(number_runs)
 
+    def _generate_output_dirs(self):
+        start_of_run = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+        run_folder = f"/results/GA_{start_of_run}"
+        folder_path = os.getcwd()+run_folder
+        individuals_path = folder_path + "/individuals"
+        final_scores_path = folder_path + "/final_scores"
+        os.mkdir(folder_path)
+        os.mkdir(individuals_path)
+        os.mkdir(final_scores_path)
+        self.overview_path = folder_path + f"/generation_overview.csv"
+        self.individuals_path = folder_path + f"/individuals/individuals_"
+        self.final_score_path = folder_path + f"/final_scores/final_score_"
+
     def write_to_file(self):
-        """dump individuals and corresponding scores as pickle
-        """
+        """ Dump individuals and corresponding scores as pickle """
         write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
         write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_scores)
         self.to_pandas()
 
     def to_pandas(self):
-        """ Write summary of genetic algorithm run to csv
-        """
+        """ Write summary of genetic algorithm run to csv """
         generation = [self.generation_count for _ in range(len(self.population.individuals))]
         ids = [individual.ID for individual in self.population.individuals]
         mean_score = [individual.mean_score for individual in self.population.individuals]
@@ -314,7 +309,7 @@ class SimpleGeneticAlgorithm:
 
 class Population: 
     def __init__(self, population_size, verbose, random_individuals):
-        """create population object
+        """ Create population object
 
         Args:
             population_size (int): number of individuals to initialize population with
@@ -331,7 +326,7 @@ class Population:
         if self.verbose: print(f"{tcolors.OKCYAN}Initial population: {self.individuals}{tcolors.ENDC}")
     
     def new_generation(self, generation_count):
-        """create new generation 
+        """ Create new generation 
 
         Args:
             generation_count (int): what number of population this is
@@ -344,7 +339,7 @@ class Population:
         if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}")
     
     def sort_by_mean(self, offsprings=False):
-        """ sort individuals or offspring in ascending order
+        """ Sort individuals or offspring in ascending order
 
         Args:
             offsprings (bool, optional): True if offsprings are to be sorted. Defaults to False.
@@ -359,7 +354,7 @@ class Individual:
     GENERATION=0
 
     def __init__(self, i=-1, generation=0, offspring=False):
-        """create individual instance
+        """ Create individual instance
 
         Args:
             i (int, optional): what number of individual it is, to determine genes. Defaults to -1.
@@ -373,7 +368,7 @@ class Individual:
         self.strategy_count = defaultdict(partial(defaultdict, partial(defaultdict, int)))
     
     def get_id(self, generation, offspring):
-        """generate id of individual
+        """ Generate id for an individual
 
         Args:
             generation (int): what generation the individual belongs to
@@ -391,7 +386,7 @@ class Individual:
         return id
 
     def create_genes(self, i):
-        """create genes for individual
+        """ Create genes for an individual
 
         Args:
             i (int): number in order to assign different genes to different individuals
