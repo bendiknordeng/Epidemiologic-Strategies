@@ -2,6 +2,7 @@ import numpy as np
 from datetime import timedelta
 from collections import defaultdict
 from functools import partial
+from covid.utils import tcolors
 
 class State:
     def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, alphas, flow_scale, vaccines_available, new_infected, 
@@ -51,7 +52,6 @@ class State:
         self.strategy_count = strategy_count
         self.date = date
         self.time_step = time_step
-        self.yll = 0
 
     def get_transition(self, decision, information, epidemic_function, decision_period):
         """Transition fucntion for the current state in the process
@@ -104,15 +104,32 @@ class State:
         info = ["Susceptibles", "Exposed (latent)",
                 "Exposed (presymptomatic)", "Asymptomatic infected",
                 "Infected", "Recovered", "Dead", "Vaccinated", 
-                "New infected", "Total infected", "YLL"]
+                "New infected", "Total infected"]
         values = [np.sum(compartment) for compartment in self.get_compartments_values()]
         values.append(np.sum(self.new_infected))
         values.append(np.sum(self.total_infected))
-        values.append(np.sum(self.yll))
         percent = 100 * np.array(values)/total_pop
         status = f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
         status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"
-        status += "\n"
+        status += f"Wave State: {self.wave_state}\n"
+        status += f"Wave Count: {self.wave_count}\n"
+        for i in range(len(info)):
+            status += f"{info[i]:<25} {values[i]:>7.0f} ({percent[i]:>5.2f}%)\n"
+        return status
+    
+    def __repr__(self):
+        total_pop = np.sum(self.get_compartments_values()[:-1])
+        info = ["Susceptibles", "Exposed (latent)",
+                "Exposed (presymptomatic)", "Asymptomatic infected",
+                "Infected", "Recovered", "Dead", "Vaccinated", 
+                "New infected", "Total infected"]
+        values = [np.sum(compartment) for compartment in self.get_compartments_values()]
+        values.append(np.sum(self.new_infected))
+        values.append(np.sum(self.total_infected))
+        percent = 100 * np.array(values)/total_pop
+        status = f"{tcolors.BOLD}MDP State object{tcolors.ENDC}\n"
+        status += f"Date: {self.date} (week {self.date.isocalendar()[1]})\n"
+        status += f"Timestep: {self.time_step} (day {self.time_step//4})\n"
         status += f"Wave State: {self.wave_state}\n"
         status += f"Wave Count: {self.wave_count}\n"
         for i in range(len(info)):

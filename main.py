@@ -14,12 +14,12 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    runs = 30
+    runs = 5
     day = 21
     month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 100 # number of decision_periods
+    horizon = 70 # number of decision_periods
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
@@ -36,6 +36,7 @@ if __name__ == '__main__':
     contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
+    expected_years_remaining = utils.get_expected_yll(config.age_bins, age_labels)
     commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
@@ -48,7 +49,7 @@ if __name__ == '__main__':
     stochastic = True
     verbose = False
     plot_results = False
-    plot_geo = True
+    plot_geo = False
 
     vaccine_policy = Policy(
                     config=config,
@@ -96,21 +97,28 @@ if __name__ == '__main__':
         print("Choose objective for genetic algorithm.")
         for k, v in ga_objectives.items(): print(f"{k}: {v}")
         ga_objective_number = int(input("\nGA Objective (int): "))
-        print(f"GA Objective is {ga_objectives[ga_objective_number]}")
         random_individuals = bool(input("Random individual genes (bool): "))
-        print(f"Random individual genes: {random_individuals}")
-        GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True, random_individuals=random_individuals)
+        population_size = int(input("Initial population size (int): "))
+        simulations = int(input("Number of simulations (int): "))
+
+        GA = SimpleGeneticAlgorithm(
+                    simulations=simulations, 
+                    population_size=population_size, 
+                    process=mdp,
+                    objective=ga_objectives[ga_objective_number], 
+                    random_individuals=random_individuals,
+                    expected_years_remaining=expected_years_remaining,
+                    verbose=True)
         GA.run()
     else:
         results = []                   
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
-            mdp.init()
+            mdp.reset()
             mdp.run(weights)
-            results.append(mdp.path[-1])
-            utils.print_results(mdp.path[-1], population, age_labels, vaccine_policy)
+            results.append(mdp.state)
+            utils.print_results(mdp.state, population, age_labels, vaccine_policy)
         utils.get_average_results(results, population, age_labels, vaccine_policy)
-
 
     if plot_results:
         # import pdb; pdb.set_trace()
@@ -121,7 +129,7 @@ if __name__ == '__main__':
         # infection_results_age = new_infections.sum(axis=1)
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
-        #plot.plot_control_measures(mdp.path, all=False)   
+        # plot.plot_control_measures(mdp.path, all=False)   
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)

@@ -439,7 +439,7 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
-def get_wave_timeline(horizon, decision_period, periods_per_day):
+def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
     """generates a wave timeline and a wave state timeline over the simulation horizon
 
     Args:
@@ -456,18 +456,32 @@ def get_wave_timeline(horizon, decision_period, periods_per_day):
         data = json.load(file)
     transition_mat = pd.read_csv('data/wave_transition.csv', index_col=0).T.to_dict()
     decision_period_days = int(decision_period/periods_per_day)
-    days = horizon * decision_period_days
-    wave_timeline = np.zeros(int(days))
+    wave_timeline = np.zeros(horizon)
     current_state = 'U'
-    wave_state_count = []
+    wave_state_count = [current_state]
     wave_state_timeline = []
+    len_current_state = 0
+    from_start = True
     i = 0
+    if args:
+        i = args[2]
+        wave_timeline[:i] = args[0][:i]
+        wave_state_timeline = args[1][:i]
+        current_state = wave_state_timeline[-1]
+        previous_states = list(set(wave_state_timeline)-{current_state})
+        len_current_state = min([wave_state_timeline[::-1].index(state) for state in previous_states]) // decision_period_days
+        wave_state_count = [wave_state_timeline[0]]
+        for ws in wave_state_timeline[1:]:
+            if ws != wave_state_count[-1]:
+                wave_state_count.append(ws)
+        from_start = False
+
     while True:
-        wave_state_count.append(current_state)
         n_wave = Counter(wave_state_count)[current_state]-1
         params = data['duration'][current_state][str(1 + (n_wave%4))]
         duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
-        duration = min(max(duration, params['min']), params['max'])
+        duration = min(max(duration, params['min']), params['max']) // decision_period_days
+        if not from_start: duration -= len_current_state
         try:
             for week in range(i, i+int(duration)):
                 params = data['R'][current_state][str(1 + (n_wave%4))]
@@ -479,8 +493,7 @@ def get_wave_timeline(horizon, decision_period, periods_per_day):
             current_state = np.random.choice(['U', 'D', 'N'], p=list(transition_mat[current_state].values()))
         except:
             break
-    wave_timeline = moving_average(wave_timeline,decision_period_days)[::decision_period_days]
-    wave_state_timeline = wave_state_timeline[::decision_period_days]
+        wave_state_count.append(current_state)
     return wave_timeline, wave_state_timeline
 
 def get_historic_wave_timeline(horizon):
@@ -656,8 +669,8 @@ def get_r_effective(path, population, config, from_data=False):
     else:
         plot.plot_rt(result)
 
-def get_yll(age_bins, age_labels, deaths_per_age_group):
-    """Calculates the Years of Lost Lives (YLL)
+def get_expected_yll(age_bins, age_labels):
+    """ Retrieves the expected years remaining for each age group
 
     Args:
         age_bins (1D array): int describing different age groups
@@ -670,6 +683,18 @@ def get_yll(age_bins, age_labels, deaths_per_age_group):
     df = pd.read_csv('data/expected_years.csv')
     df.age = pd.cut(df['age'], bins=age_bins+[110], labels=age_labels, include_lowest=True)
     expected_years_remaining = df.groupby('age').mean()['expected_years_remaining'].to_numpy()
+    return expected_years_remaining
+
+def calculate_yll(expected_years_remaining, deaths_per_age_group):
+    """ Calculates the Years of Life Lost (YLL)
+
+    Args:
+        expected_years_remaining (numpy.ndarray): expected years remaining for each age group
+        deaths_per_age_group (np.ndarray): accumulated deaths per age_group
+
+    Returns:
+        int: total years of life lost
+    """
     yll = np.multiply(expected_years_remaining, deaths_per_age_group) 
     return int(np.round(np.sum(yll)))
 

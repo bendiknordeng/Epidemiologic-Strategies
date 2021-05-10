@@ -1,6 +1,6 @@
 import numpy as np
 import scipy
-from covid.utils import tcolors, write_pickle
+from covid.utils import tcolors, write_pickle, calculate_yll
 import pandas as pd
 import os
 from datetime import datetime
@@ -9,7 +9,8 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, simulations, population_size, process, objective, verbose, random_individuals=False):
+    def __init__(self, simulations, population_size, process, objective, 
+                random_individuals, expected_years_remaining, verbose):
         """initializes a simple genetic algorithm instance
 
         Args:
@@ -27,6 +28,7 @@ class SimpleGeneticAlgorithm:
         self.best_individual = None
         self.best_scores = np.inf
         self.generations_since_new_best = 0
+        self.expected_years_remaining = expected_years_remaining
         self.objective = self._set_objective(objective)
         self.number_of_runs = []
         self._generate_output_dirs()
@@ -46,9 +48,9 @@ class SimpleGeneticAlgorithm:
             self.final_score_path = folder_path + f"/final_scores/final_score_"
 
     def _set_objective(self, objective):
-        return {"deaths": lambda process: np.sum(process.path[-1].D),
-                "weighted": lambda process: np.sum(process.path[-1].total_infected)*0.01 + np.sum(process.path[-1].D),
-                "yll": lambda process: np.sum(process.path[-1].yll)
+        return {"deaths": lambda process: np.sum(process.state.D),
+                "weighted": lambda process: np.sum(process.state.total_infected)*0.01 + np.sum(process.state.D),
+                "yll": lambda process: calculate_yll(self.expected_years_remaining, process.state.D.sum(axis=0))
                 }[objective]
 
     def run(self):
@@ -76,6 +78,7 @@ class SimpleGeneticAlgorithm:
             bool: True if the two best scores of the population also is significant best
         """
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
+        self.process.init()
         self.find_fitness(offsprings)
         count = 0
         significant_best = self.find_best_individual(offsprings)
@@ -94,7 +97,7 @@ class SimpleGeneticAlgorithm:
                 else:
                     print(f"Best individual of generation {self.generation_count}: {self.population.individuals[0]}")
             else:
-                print(f"{tcolors.FAIL}Significant best {'offspring' if offsprings else 'individual'} not found.")
+                print(f"{tcolors.FAIL}Significant best {'offspring' if offsprings else 'individual'} not found.{tcolors.ENDC}")
 
         return significant_best
 
@@ -149,9 +152,9 @@ class SimpleGeneticAlgorithm:
             if self.verbose: print(f"\nFinding score for individual {individual.ID}...")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
-                self.process.init()
+                self.process.reset()
                 self.process.run(weighted_policy_weights=individual.genes)
-                for wave_state, count in self.process.path[-1].strategy_count.items():
+                for wave_state, count in self.process.state.strategy_count.items():
                     for wave_count, count in count.items():
                         individual.strategy_count[self.generation_count][wave_state][wave_count] += count
                 score = self.objective(self.process)

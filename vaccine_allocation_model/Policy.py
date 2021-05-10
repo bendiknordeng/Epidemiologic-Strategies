@@ -39,6 +39,8 @@ class Policy:
         Returns:
             numpy.ndarray: vaccine allocation given the state, vaccines available and policy_weights (#regions, #age_groups)
         """
+        if state.vaccines_available == 0:
+            return self._no_vaccines()
         return self.vaccine_allocation(state, vaccines, weights)
 
     def _random_policy(self, state, vaccines):
@@ -190,6 +192,8 @@ class Policy:
         Returns:
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
+        if weights is None:
+            return self._no_vaccines()
         if self.GA:
             i = {"U": 0, "D": 1, "N": 2}[state.wave_state]
             j = state.wave_count[state.wave_state]

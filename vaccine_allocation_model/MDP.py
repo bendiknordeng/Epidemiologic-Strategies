@@ -5,6 +5,7 @@ from datetime import timedelta
 import time
 from covid import utils
 from covid.utils import get_wave_timeline, tcolors
+from copy import copy, deepcopy
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state,
@@ -28,98 +29,102 @@ class MarkovDecisionProcess:
         self.decision_period = decision_period
         self.population = population
         self.epidemic_function = epidemic_function
-        self.initial_state = initial_state
         self.response_measure_model = response_measure_model
         self.use_response_measures = use_response_measures
         self.horizon = horizon
         self.policy = policy
         self.verbose = verbose
         self.historic_data = historic_data
-        self.weighted_policy_weights = None
-        self.wave_timeline = None
-        self.wave_state_timeline = None
+        self.initial_state = initial_state
+        self.init()
     
     def init(self):
-        """ Resets the MarkovDecisionProcess to make multible runs possible"""
-        self.initial_state.wave_state = 'U'
-        self.initial_state.wave_count = {"U": 1, "D": 0, "N": 0}
-        self.initial_state.strategy_count.clear()
-        self.state = self.initial_state
-        self.path = [self.state]
+        self.state = deepcopy(self.initial_state)
+        self.simulation_period = 0
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
+        path = [self.initial_state]
+        initial_run = True
+        while initial_run and not self.reached_stop_criteria():
+            initial_run = self.update_state()
+            path.append(self.state)
+            self.simulation_period += 1
+        self.start_state = self.state
+        self.start_path = path
+        self.start_simulation_period = self.simulation_period
+        self.start_wave_timeline = self.wave_timeline
+        self.start_wave_state_timeline = self.wave_state_timeline
+        print(f"\n{tcolors.BOLD}Starting state:\n{self.start_state}{tcolors.ENDC}")
+
+    def reset(self):
+        """ Resets the MarkovDecisionProcess to make multible runs possible"""
+        self.state = copy(self.start_state)
+        self.path = copy(self.start_path)
+        self.simulation_period = self.start_simulation_period
+        self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
+                                                                        self.config.periods_per_day, self.start_wave_timeline, 
+                                                                        self.start_wave_state_timeline, self.simulation_period)
 
     def run(self, weighted_policy_weights=None):
         """ Updates states from current time_step until horizon is reached"""
-        run_range = range(self.state.time_step, self.horizon) if self.verbose or weighted_policy_weights is not None else tqdm(range(self.state.time_step, self.horizon))
-        for week in run_range:
+        while not self.reached_stop_criteria():
             if self.verbose: print(self.state, end="\n"*2)
-            if self.check_stop_criteria(week):
-                break
-            self.update_state(weighted_policy_weights, week)
-        age_bins = self.config.age_bins
-        deaths_per_age = np.sum(self.state.D, axis=0)
-        yll = utils.get_yll(age_bins, utils.generate_labels_from_bins(age_bins), deaths_per_age)    
-        self.path[-1].yll = yll
+            self.update_state(weighted_policy_weights)
+            self.path.append(self.state)
+            self.simulation_period += 1
     
-    def check_stop_criteria(self, week):
+    def reached_stop_criteria(self):
         """ Checks if a stop criteria is reached
-
-        Args:
-            week (int): current week of simulation
 
         Returns:
             boolean: True if stop criteria is reached
         """
+        if self.simulation_period == self.horizon:
+            return True
         if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
-            print(f"{tcolors.BOLD}Reached stop-criteria week {week}. Recovered population > 70%.{tcolors.ENDC}\n")
+            print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Recovered population > 70%.{tcolors.ENDC}\n")
             return True
         if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
-            print(f"{tcolors.BOLD}Reached stop-criteria on week {week}. Infected population is zero.{tcolors.ENDC}\n")
+            print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Infected population is zero.{tcolors.ENDC}\n")
             return True
         return False
 
-    def get_exogenous_information(self, state, week):
-        """ Receives the exogenous information at time_step t
+    def get_exogenous_information(self):
+        """ Retrieves the exogenous information for the current decision period
 
-        Args
-            state (State): current state of the simulation
-            week (int): current week of simulation 
         Returns:
             dict: exogeneous information regarding 'vaccine_supply', 'R', 'wave_state', 'contact_weights', 'alphas' and 'flow_scale'
         """
-        today = pd.Timestamp(state.date)
-        end_of_decision_period = pd.Timestamp(state.date+timedelta(self.decision_period//self.config.periods_per_day))
+        today = pd.Timestamp(self.state.date)
+        end_of_decision_period = pd.Timestamp(self.state.date+timedelta(self.decision_period//self.config.periods_per_day))
         mask = (self.historic_data['date'] > today) & (self.historic_data['date'] <= end_of_decision_period)
-        week_data = self.historic_data[mask]
-        if week_data.empty:
+        decision_period_data = self.historic_data[mask]
+        if decision_period_data.empty:
             vaccine_supply = np.zeros(self.state.S.shape)
         else:
-            vaccine_supply = int(week_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
+            vaccine_supply = int(decision_period_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
         if self.use_response_measures:
             contact_weights, alphas, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.alphas, self.state.flow_scale)
         else:
             contact_weights, alphas, flow_scale = self.config.initial_contact_weights, self.config.initial_alphas, self.config.initial_flow_scale
-        information = {
-            'vaccine_supply': vaccine_supply,
-            'R': self.wave_timeline[week],
-            'wave_state': self.wave_state_timeline[week],
-            'contact_weights': contact_weights,
-            'alphas': alphas,
-            'flow_scale': flow_scale
-            }
-        return information
+        return {'vaccine_supply': vaccine_supply,
+                'R': self.wave_timeline[self.simulation_period],
+                'wave_state': self.wave_state_timeline[self.simulation_period],
+                'contact_weights': contact_weights,
+                'alphas': alphas,
+                'flow_scale': flow_scale}
 
-    def update_state(self, weighted_policy_weights, week):
+    def update_state(self, weighted_policy_weights=None):
         """ Updates the state
 
         Args:
-            weighted_policy_weights (numpy.ndarray): weights for the different policies if current policy is weighted
-            week (int): current week of simulation
+            weighted_policy_weights (numpy.ndarray, optional): weights for the different policies if current policy is weighted. Defaults to None
+        Returns:
+            boolean: True if initial runs are complete (runs before decisions are relevant)
         """
         decision = self.policy.get_decision(self.state, self.state.vaccines_available, weighted_policy_weights)
-        information = self.get_exogenous_information(self.state, week)
+        information = self.get_exogenous_information()
         self.state = self.state.get_transition(decision, information, self.epidemic_function.simulate, self.decision_period)
-        self.path.append(self.state)
+        return self.state.vaccines_available == 0 # stopping criteria for initial run
 
     def _map_infection_to_response_measures(self, previous_cw, previous_alphas, previous_flow_scale):
         """ Maps infection numbers to response measure using neural network models
@@ -202,3 +207,18 @@ class MarkovDecisionProcess:
             return new_cw, new_alphas, new_flow_scale
         
         return previous_cw, previous_alphas, previous_flow_scale
+
+    def __str__(self):
+        status = f"Horizon: {self.horizon}\n"
+        status += f"Decision period: {self.decision_period}\n"
+        status += f"Simulation period: {self.simulation_period}\n"
+        status += f"Policy: {self.policy}\n"
+        return status
+
+    def __repr__(self):
+        status = f"{tcolors.BOLD}MarkovDecisionProcess object.{tcolors.ENDC}\n"
+        status += f"Horizon: {self.horizon}\n"
+        status += f"Decision period: {self.decision_period}\n"
+        status += f"Simulation period: {self.simulation_period}\n"
+        status += f"Policy: {self.policy}\n"
+        return status
