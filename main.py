@@ -14,8 +14,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    np.random.seed(10)
-    runs = 1
+    runs = 30
     day = 30
     month = 4
     year = 2020
@@ -24,10 +23,13 @@ if __name__ == '__main__':
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
-    policies = ['random', 'no_vaccines', 'susceptible_based', 'infection_based', 'oldest_first', 'weighted']
-    policy_number = -2
+    policies = ['random', 'no_vaccines', 'susceptible_based', 
+                'infection_based', 'oldest_first', 'contact_based', 
+                'commuter_based', 'weighted']
+    policy_number = -1
     ga_objectives = ["deaths", "weighted", "yll"]
-    ga_objective_number = -1
+    ga_objective_number = int(input("GA Objective (int): "))
+    print(f"GA Objective is {ga_objectives[ga_objective_number]}")
 
     # Read data and generate parameters
     config = utils.create_named_tuple(paths.config)
@@ -39,10 +41,10 @@ if __name__ == '__main__':
     commuters = utils.generate_commuter_matrix(age_group_flow_scaling, paths.municipalities_commute)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
-    
+
     # Simulation settings
-    run_GA = False
-    verbose = False
+    run_GA = True
+    verbose = True
     use_response_measures = False
     include_flow = True
     use_waves = True
@@ -54,7 +56,9 @@ if __name__ == '__main__':
     vaccine_policy = Policy(
                     config=config,
                     policy=policies[policy_number],
-                    population=population[population.columns[2:-1]].values)
+                    population=population[population.columns[2:-1]].values,
+                    contact_matrices=contact_matrices,
+                    age_flow_scaling=age_group_flow_scaling)
 
     epidemic_function = SEAIR(
                     commuters=commuters,
@@ -90,7 +94,9 @@ if __name__ == '__main__':
                     verbose=verbose)
 
     if run_GA:
-        GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True)
+        random_individuals = bool(input("random_individuals (bool): "))
+        print(f"random individuals value: {random_individuals}")
+        GA = SimpleGeneticAlgorithm(runs, 20, mdp, ga_objectives[ga_objective_number], verbose=True, random_individuals=random_individuals)
         GA.run()
     else:
         results = []                   
@@ -112,7 +118,6 @@ if __name__ == '__main__':
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
         # infection_results_age = new_infections.sum(axis=1)
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
         #plot.plot_control_measures(mdp.path, all=False)
         

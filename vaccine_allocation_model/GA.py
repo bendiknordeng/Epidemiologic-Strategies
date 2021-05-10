@@ -9,7 +9,7 @@ from collections import defaultdict
 from functools import partial
 
 class SimpleGeneticAlgorithm:
-    def __init__(self, simulations, population_size, process, objective, verbose):
+    def __init__(self, simulations, population_size, process, objective, verbose, random_individuals=False):
         """initializes a simple genetic algorithm instance
 
         Args:
@@ -17,11 +17,11 @@ class SimpleGeneticAlgorithm:
             population_size (int): number of individuals to initialize population with
             process (MarkovDecisionProcess): a process to simulate fitness of individuals
             objective (str): choice of metric to evaluate fitness
-            verbose (bool): specify whether to print or not
+            verbose (bool): specify whether or not to print
         """
         self.simulations = simulations
         self.process = process
-        self.population = Population(population_size, verbose)
+        self.population = Population(population_size, verbose, random_individuals)
         self.generation_count = 0
         self.final_scores = defaultdict(list)
         self.best_individual = None
@@ -29,8 +29,21 @@ class SimpleGeneticAlgorithm:
         self.generations_since_new_best = 0
         self.objective = self._set_objective(objective)
         self.number_of_runs = []
-        self.generate_output_dirs()
+        self._generate_output_dirs()
         self.verbose = verbose
+
+    def _generate_output_dirs(self):
+            start_of_run = datetime.now().strftime("%Y_%m_%d_%H:%M:%S")
+            run_folder = f"/results/GA_{start_of_run}"
+            folder_path = os.getcwd()+run_folder
+            individuals_path = folder_path + "/individuals"
+            final_scores_path = folder_path + "/final_scores"
+            os.mkdir(folder_path)
+            os.mkdir(individuals_path)
+            os.mkdir(final_scores_path)
+            self.overview_path = folder_path + f"/generation_overview.csv"
+            self.individuals_path = folder_path + f"/individuals/individuals_"
+            self.final_score_path = folder_path + f"/final_scores/final_score_"
 
     def _set_objective(self, objective):
         return {"deaths": lambda process: np.sum(process.path[-1].D),
@@ -57,10 +70,10 @@ class SimpleGeneticAlgorithm:
         """for current population, simulate
 
         Args:
-            offsprings (bool, optional): [description]. Defaults to False.
+            offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
 
         Returns:
-            [type]: [description]
+            bool: True if the two best scores of the population also is significant best
         """
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
         self.find_fitness(offsprings)
@@ -86,6 +99,11 @@ class SimpleGeneticAlgorithm:
         return significant_best
 
     def check_convergence(self):
+        """checks if the best individual of the current population is better than the previous best
+
+        Returns:
+            bool: True if new all-time best individual is found
+        """
         candidate = self.population.individuals[0]
         if self.generation_count == 0:
             self.best_individual = candidate
@@ -117,6 +135,12 @@ class SimpleGeneticAlgorithm:
         return False
 
     def find_fitness(self, offsprings=False, from_start=True):
+        """find estimated fitness of every individual through simulation of process
+
+        Args:
+            offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
+            from_start (bool, optional): if fitness is to be estimated from scratch. Defaults to True.
+        """
         population = self.population.individuals if not offsprings else self.population.offsprings
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
@@ -137,6 +161,14 @@ class SimpleGeneticAlgorithm:
             individual.mean_score = mean_score
 
     def find_best_individual(self, offsprings=False):
+        """loop through two most promising individuals to check for significance
+
+        Args:
+            offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
+
+        Returns:
+            bool: True if both first and second best individuals passes t-test with significance
+        """
         if self.verbose: print(f"\nFinding best individual...")
         self.population.sort_by_mean(offsprings)
         range1, range2 = (2, len(self.population.individuals)) if not offsprings else (1, len(self.population.offsprings))
@@ -151,6 +183,16 @@ class SimpleGeneticAlgorithm:
         return True
 
     def t_test(self, s1, s2, significance=0.1):
+        """performs one-sided t-test to check to variables for significant difference
+
+        Args:
+            s1 (list): list of outcomes from simulations, from presumed best individual
+            s2 (list): list of outcomes from simulations, from presumed worse individual
+            significance (float, optional): level of significance to test against. Defaults to 0.1.
+
+        Returns:
+            bool: True if significance is achieved
+        """
         significant_best = False
         s1 = np.array(s1)
         s2 = np.array(s2)
@@ -161,6 +203,11 @@ class SimpleGeneticAlgorithm:
         return significant_best
 
     def crossover(self, generation_count):
+        """creates offspring from two fittest individuals
+
+        Args:
+            generation_count (int): what generation that is creating offsprings
+        """
         p1 = self.population.individuals[0].genes
         p2 = self.population.individuals[1].genes
         shape = p1.shape
@@ -193,9 +240,15 @@ class SimpleGeneticAlgorithm:
         o2.genes = o2_genes
         o3 = Individual(generation=generation_count, offspring=True)
         o3.genes = np.divide(p1+p2, 2)
-        self.population.offsprings = [o1,o2,o3]
+        o4 = Individual(generation=generation_count, offspring=True)
+        o4.genes = np.divide(p1+3*p2, 4)
+        o5 = Individual(generation=generation_count, offspring=True)
+        o5.genes = np.divide(3*p1+p2, 4)
+        self.population.offsprings = [o1,o2,o3,o4,o5]
 
     def mutation(self):
+        """Randomly altering the genes of offsprings
+        """
         for offspring in self.population.offsprings:
             shape = offspring.genes.shape
             draw = np.random.random() 
@@ -215,6 +268,8 @@ class SimpleGeneticAlgorithm:
                 draw = np.random.random()
     
     def repair_offsprings(self):
+        """Make sure the genes of offsprings are feasible, i.e. normalize.
+        """
         for offspring in self.population.offsprings:
             norm = np.sum(offspring.genes, axis=2, keepdims=True)
             for loc in np.argwhere(norm==0):
@@ -225,17 +280,26 @@ class SimpleGeneticAlgorithm:
             offspring.genes = np.divide(offspring.genes, norm)
 
     def find_runs(self, count):
+        """Find number of runs needed before significance is needed.
+
+        Args:
+            count (int)): how many extra iterations needed to reach significant
+        """
         number_runs = self.simulations
         if count > 0:
             for _ in range(count): number_runs += int(self.simulations/2)
         self.number_of_runs.append(number_runs)
 
     def write_to_file(self):
+        """dump individuals and corresponding scores as pickle
+        """
         write_pickle(self.individuals_path+str(self.generation_count)+".pkl", self.population.individuals)
         write_pickle(self.final_score_path+str(self.generation_count)+".pkl", self.final_scores)
         self.to_pandas()
 
     def to_pandas(self):
+        """ Write summary of genetic algorithm run to csv
+        """
         generation = [self.generation_count for _ in range(len(self.population.individuals))]
         ids = [individual.ID for individual in self.population.individuals]
         mean_score = [individual.mean_score for individual in self.population.individuals]
@@ -245,28 +309,30 @@ class SimpleGeneticAlgorithm:
         else:
             gen_df.to_csv(self.overview_path, mode='a', header=False, index=False)
 
-    def generate_output_dirs(self):
-        start_of_run = datetime.now().strftime("%Y%m%d%H%M%S")
-        run_folder = f"/results/GA_{start_of_run}"
-        folder_path = os.getcwd()+run_folder
-        individuals_path = folder_path + "/individuals"
-        final_scores_path = folder_path + "/final_scores"
-        os.mkdir(folder_path)
-        os.mkdir(individuals_path)
-        os.mkdir(final_scores_path)
-        self.overview_path = folder_path + f"/generation_overview.csv"
-        self.individuals_path = folder_path + f"/individuals/individuals_"
-        self.final_score_path = folder_path + f"/final_scores/final_score_"
-
 class Population: 
-    def __init__(self, population_size, verbose):
-        self.individuals = [Individual(i) for i in range(population_size)]
+    def __init__(self, population_size, verbose, random_individuals):
+        """create population object
+
+        Args:
+            population_size (int): number of individuals to initialize population with
+            verbose (bool): specify whether or not to print
+        """
+        
+        if random_individuals:
+            self.individuals = [Individual() for _ in range(population_size)]
+        else:
+            self.individuals = [Individual(i) for i in range(population_size)]
         self.verbose = verbose
         self.least_fittest_index = 0
         self.offsprings = None
         if self.verbose: print(f"{tcolors.OKCYAN}Initial population: {self.individuals}{tcolors.ENDC}")
     
     def new_generation(self, generation_count):
+        """create new generation 
+
+        Args:
+            generation_count (int): what number of population this is
+        """
         if 10 < generation_count <= 20:
             self.individuals = self.individuals[:-2]
         elif generation_count > 20:
@@ -275,6 +341,11 @@ class Population:
         if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}")
     
     def sort_by_mean(self, offsprings=False):
+        """ sort individuals or offspring in ascending order
+
+        Args:
+            offsprings (bool, optional): True if offsprings are to be sorted. Defaults to False.
+        """
         if not offsprings:
             self.individuals = sorted(self.individuals, key=lambda x: x.mean_score)
         else:
@@ -285,6 +356,13 @@ class Individual:
     GENERATION=0
 
     def __init__(self, i=-1, generation=0, offspring=False):
+        """create individual instance
+
+        Args:
+            i (int, optional): what number of individual it is, to determine genes. Defaults to -1.
+            generation (int, optional): what generation the individual belongs to. Defaults to 0.
+            offspring (bool, optional): True if the individual is an offspring. Defaults to False.
+        """
         self.ID = self.get_id(generation, offspring)
         self.mean_score = 0
         self.genetype = i
@@ -292,6 +370,15 @@ class Individual:
         self.strategy_count = defaultdict(partial(defaultdict, partial(defaultdict, int)))
     
     def get_id(self, generation, offspring):
+        """generate id of individual
+
+        Args:
+            generation (int): what generation the individual belongs to
+            offspring (bool): True if the individual is an offspring. False otherwise
+
+        Returns:
+            str: id of individual
+        """
         if offspring and generation == Individual.GENERATION: 
             Individual.GENERATION += 1
             Individual.ID_COUNTER = 1
@@ -301,6 +388,14 @@ class Individual:
         return id
 
     def create_genes(self, i):
+        """create genes for individual
+
+        Args:
+            i (int): number in order to assign different genes to different individuals
+
+        Returns:
+            numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
+        """
         genes = np.zeros((3,4,4))
         if 0 <= i < 4:
             genes[:,:,i] = 1

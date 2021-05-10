@@ -1,0 +1,7 @@
+
+Runs 20210510 - creating 4
+    0041: death objective, 4 weights of policies
+    0042: weighted objective, 4 weights of policies
+    0043: YLL objective, 4 weights of policies
+    0044: YLL objective, 4 weights of policies, only random individuals
+    0046: weighted objective, 4 weights of policies, only random individuals
