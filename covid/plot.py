@@ -265,12 +265,13 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
         plt.grid()
         plt.show()
         
-def plot_spatial(gdf, res):
+def plot_geospatial(gdf, res, filepath):
     """[summary]
 
     Args:
         gdf ([type]): [description]
-        res_accumulated_regions ([type]): [description]
+        res ([type]): [description]
+        filepath ([type]): [description]
     """
 
     res_accumulated_regions = res.sum(axis=2)
@@ -347,7 +348,7 @@ def plot_spatial(gdf, res):
         plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
         plt.title("COVID-19 development in week: {}".format(time_step), fontsize=18, color= 'dimgray')
         plt.draw()
-        plt.savefig("plots/flows_{}.jpg".format(time_step), dpi=fig.dpi)
+        plt.savefig(filepath + "week_{}.jpg".format(time_step), dpi=fig.dpi)
 
 
 def create_gif(path_gif, path_plots):
@@ -361,6 +362,7 @@ def create_gif(path_gif, path_plots):
         convert = lambda text: int(text) if text.isdigit() else text
         alphanumeric_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
         return sorted(l, key=alphanumeric_key)
+        
     filenames = listdir(path_plots)
     filenames = sort_in_order(filenames)
     with imageio.get_writer(path_gif, mode='I', fps=4) as writer:
