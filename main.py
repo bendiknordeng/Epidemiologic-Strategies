@@ -47,7 +47,8 @@ if __name__ == '__main__':
     include_flow = True
     use_waves = True
     stochastic = True
-    plot_results = True
+    plot_results = False
+    plot_geo = True
 
 
     vaccine_policy = Policy(
@@ -115,14 +116,19 @@ if __name__ == '__main__':
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
         #plot.plot_control_measures(mdp.path, all=False)
         
-        # fpath = 'data/geospatial/municipalities_spatial_data.json'
-        # gdf = utils.generate_geopandas(population, fpath)
+        #
 
-        # # generate random data
-        # res = np.random.rand(61, 8, 356)   #weeks, #compartments, #regions
-        # res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
-        # num_weeks, num_compartments, num_regions = res.shape
-        # compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+    if plot_geo:
 
-        # plot.plot_spatial(gdf, res_accumulated_regions, compartment_labels)
+        fpath = 'data/geospatial/municipalities_spatial_data.json'
+        gdf = utils.generate_geopandas(population, fpath)
+
+        # generate random data
+        res = np.random.rand(61, 8, 356)   #weeks, #compartments, #regions
+        res_accumulated_regions = res.sum(axis=2) #weeks, #compartments
+        num_weeks, num_compartments, num_regions = res.shape
+        compartment_labels = ['S', 'E1', 'E2', 'A', 'I', 'R', 'D', 'V']
+
+        import pdb; pdb.set_trace()
     
+        plot.plot_spatial(gdf, res_accumulated_regions, compartment_labels)

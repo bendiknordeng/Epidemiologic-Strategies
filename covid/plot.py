@@ -235,14 +235,15 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
             plt.title(c_descriptions[i])
             plt.show()
 
-def plot_spatial(gdf, res_accumulated_regions, compartment_labels):
+def plot_spatial(gdf, res):
     """[summary]
 
     Args:
         gdf ([type]): [description]
         res_accumulated_regions ([type]): [description]
-        compartment_labels ([type]): [description]
     """
+
+    res_accumulated_regions = res.sum(axis=2)
 
     # extract bounds from gdf 
     west, south, east, north = gdf.total_bounds
@@ -252,11 +253,10 @@ def plot_spatial(gdf, res_accumulated_regions, compartment_labels):
 
     for time_step in tqdm(range(num_weeks)):
         
-        import pdb; pdb.set_trace()
-        # Update values to plot in gdf
-        for i in range(len(compartment_labels)):
-            gdf[compartment_labels[i]] = res_accumulated_regions[time_step, i]
-
+        # Plot values on map
+        ix_data = 4 # S, E1, E2, A, I, R, D, V
+        data_to_plot = res[time_step, ix_data,:]
+        
         # add axis for spatial plot
         fig, ax = plt.subplots(figsize=(14,14), dpi=72)
         gdf.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=3)
@@ -317,5 +317,5 @@ def plot_spatial(gdf, res_accumulated_regions, compartment_labels):
         plt.legend(prop={'size':14, 'weight':'light'}, framealpha=0.5)
         plt.title("COVID-19 development in week: {}".format(time_step), fontsize=18, color= 'dimgray')
 
-        plt.show()
         plt.savefig("plots/flows_{}.jpg".format(time_step), dpi=fig.dpi)
+        plt.clf()
