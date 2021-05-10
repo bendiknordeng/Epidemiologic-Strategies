@@ -14,7 +14,7 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    runs = 50
+    runs = 1
     day = 21
     month = 2
     year = 2020
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted']
-    weights = np.array([0, 0, 0, 0, 1, 0])
+    weights = np.array([0, 0, 0, 0, 0, 1])
     policy_number = -1
 
     # Read data and generate parameters
@@ -131,5 +131,5 @@ if __name__ == '__main__':
         plot.seir_plot_weekly_several_regions(history_age_accumulated, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
 
         gdf = utils.generate_geopandas(population, paths.municipalities_geo)
-        plot.plot_spatial(gdf, history_age_accumulated)
+        plot.plot_spatial(gdf, history_age_accumulated, paths.municipality_plots)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)
