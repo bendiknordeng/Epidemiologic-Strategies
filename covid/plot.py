@@ -242,10 +242,10 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
     """plots SEIR plots for different regions
 
     Args:
-        res (3D-array): data accumulated across all age groups. Shape: (#weeks, #compartments, #regions)
+        res (numpy.ndarray): data accumulated across all age groups. Shape: (#periods, #compartments, #regions)
         start_date (datetime): start date for plotting to begin 
         comp_labels (list(str)): list of compartment labels to plot 
-        regions (list(str)]): list of region names of the regions to plot SEIR development
+        regions (list(str)): list of region names of the regions to plot SEIR development
     """
     all_comps = {"S":0, "E1":1, "E2":2, "A":3, "I":4, "R":5, "D":6, "V":7}
     df = pd.read_csv(fpath_region_names)
@@ -271,13 +271,13 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
     plt.show()
 
 def infection_plot_weekly_several_regions(res, start_date, regions, fpath_region_names):
-    """plots SEIR plots for different regions
+    """plots infection plots for different regions
 
     Args:
-        res (3D-array): data accumulated across all age groups. Shape: (#weeks, #compartments, #regions)
+        res (numpy.ndarray): data accumulated across all age groups. Shape: (#periods, #compartments, #regions)
         start_date (datetime): start date for plotting to begin 
         comp_labels (list(str)): list of compartment labels to plot 
-        regions (list(str)]): list of region names of the regions to plot SEIR development
+        regions (list(str)): list of region names of the regions to plot infection for
     """
     df = pd.read_csv(fpath_region_names)
     region_indices = df[df['region_name'].isin(regions)].index.tolist()

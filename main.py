@@ -132,9 +132,8 @@ if __name__ == '__main__':
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
 
-        #plot seir for different regions
-        # comps_to_plot = ["E2", "A", "I"]
         regions_to_plot = ['TRONDHEIM', 'LØRENSKOG']
+        # comps_to_plot = ["E2", "A", "I"]
         # plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
         plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
 
