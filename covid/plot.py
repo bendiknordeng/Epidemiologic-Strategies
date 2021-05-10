@@ -269,6 +269,40 @@ def seir_plot_weekly_several_regions(res, start_date, comps_to_plot, regions, fp
     step = int(np.ceil(len(res)/ticks))
     plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
     plt.show()
+
+def infection_plot_weekly_several_regions(res, start_date, regions, fpath_region_names):
+    """plots SEIR plots for different regions
+
+    Args:
+        res (3D-array): data accumulated across all age groups. Shape: (#weeks, #compartments, #regions)
+        start_date (datetime): start date for plotting to begin 
+        comp_labels (list(str)): list of compartment labels to plot 
+        regions (list(str)]): list of region names of the regions to plot SEIR development
+    """
+    df = pd.read_csv(fpath_region_names)
+    region_indices = df[df['region_name'].isin(regions)].index.tolist()
+    nrows = int(np.ceil(len(regions)/4))
+    ncols = min(len(regions), 4)
+    fig, axs = plt.subplots(nrows=nrows, ncols=ncols, figsize=(5*ncols,5*nrows), sharex=True)
+    fig.suptitle("Weekly compartment values")
+    for i in range(len(regions)):
+        row = i // ncols
+        col = i % ncols
+        ax = axs[row][col] if nrows > 1 else axs[col]
+        ax.set_title(f'{regions[i].capitalize()}')
+        ax.plot(res[:, region_indices[i]], label="New infected", color="tab:red")
+        weeknumbers = [(start_date + timedelta(i*7)).isocalendar()[1] for i in range(len(res))]
+        ax.set_xlabel("Week")
+        ax.legend(loc=2)
+        ax2 = ax.twinx()
+        ax2.plot(np.cumsum(res[:, region_indices[i]]), label="Cumulative total infected", color="tab:orange")
+        ax2.legend(loc=4)
+        ax.grid()
+    ticks = min(len(res), 10)
+    step = int(np.ceil(len(res)/ticks))
+    plt.xticks(np.arange(0, len(res), step), weeknumbers[::step])
+    fig.tight_layout(pad=3.0)
+    plt.show()
         
 def plot_geospatial(gdf, res, fpath_plots):
     """[summary]

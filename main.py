@@ -126,15 +126,17 @@ if __name__ == '__main__':
         results_age = history.sum(axis=2)
         results_regions = history.sum(axis=3)
         infection_results_age = new_infections.sum(axis=1)
+        infection_results_regions = new_infections.sum(axis=2)
 
-        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
-        plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        utils.get_r_effective(mdp.path, population, config, from_data=False)
+        # plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        # utils.get_r_effective(mdp.path, population, config, from_data=False)
 
-        # plot seir for different regions
-        comps_to_plot = ["E2", "A", "I"]
-        regions_to_plot = ['OSLO', 'BÆRUM', 'LILLESTRØM', 'LØRENSKOG', "TRONDHEIM", "BERGEN", "KRISTIANSAND", "DRAMMEN", "NITTEDAL", "FROGN", "RÆLINGEN", "EIDSVOLL"]             
-        plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+        #plot seir for different regions
+        # comps_to_plot = ["E2", "A", "I"]
+        regions_to_plot = ['TRONDHEIM', 'LØRENSKOG']
+        # plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+        plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
