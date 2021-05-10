@@ -120,29 +120,13 @@ if __name__ == '__main__':
         # infection_results_age = new_infections.sum(axis=1)
         # plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         # utils.get_r_effective(mdp.path, population, config, from_data=False)
-        #plot.plot_control_measures(mdp.path, all=False)   
-
-    if plot_geo:
-        history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        history_age_accumulated = history.sum(axis=3)
-
+        # plot.plot_control_measures(mdp.path, all=False)   
         # # plot seir for different regions
         # comps_to_plot = ["E1", "E2", "A", "I", "R", "D", "V"]
         # regions_to_plot = ['OSLO', 'BÅTSFJORD']             
         # plot.seir_plot_weekly_several_regions(history_age_accumulated, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
 
-        # plot geospatial data
-        gdf = utils.generate_geopandas(population, paths.municipalities_geo)
-
-        import pandas as pd
-        max_exposed_per_region  = pd.DataFrame(history_age_accumulated[:,1,:], dtype = float).max()  # Finds max for E1
-        max_exposed_per_100k = (max_exposed_per_region / (population.population/100000)).max()
-
-
-        #import pdb; pdb.set_trace()
-
-        # plot geospatial data
-        # plot.plot_geospatial(gdf, history_age_accumulated, paths.municipality_plots, population)
-        
-        # # generate gif
+    if plot_geo:
+        history, new_infections = utils.transform_path_to_numpy(mdp.path)
+        plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, per_100k=False)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)
