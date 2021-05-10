@@ -13,20 +13,21 @@ if __name__ == '__main__':
     paths = utils.create_named_tuple('filepaths.txt')
 
     # Set initial parameters
-    runs = 40
-    day = 30
-    month = 4
+    runs = 50
+    day = 21
+    month = 2
     year = 2020
     start_date = utils.get_date(f"{year}{month:02}{day:02}")
-    horizon = 60 # number of decision_periods
+    horizon = 100 # number of decision_periods
     decision_period = 28
     initial_infected = 10
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted']
-    policy_number = 6
     ga_objectives = ["deaths", "weighted", "yll"]
+    weights = np.array([0, 0, 0, 0, 1, 0])
+    policy_number = -1
     ga_objective_number = 0
 
     # Read data and generate parameters
@@ -40,21 +41,22 @@ if __name__ == '__main__':
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data(paths.fhi_data_daily)
 
-    # Simulation settings
-    run_GA = True
-    verbose = False
+    # Run settings
+    run_GA = False
     use_response_measures = False
     include_flow = True
     use_waves = True
     stochastic = True
     plot_results = False
+    verbose = False
 
     vaccine_policy = Policy(
                     config=config,
                     policy=policies[policy_number],
                     population=population[population.columns[2:-1]].values,
                     contact_matrices=contact_matrices,
-                    age_flow_scaling=age_group_flow_scaling)
+                    age_flow_scaling=age_group_flow_scaling,
+                    GA=run_GA)
 
     epidemic_function = SEAIR(
                     commuters=commuters,
@@ -97,7 +99,7 @@ if __name__ == '__main__':
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
             mdp.init()
-            mdp.run()
+            mdp.run(weights)
             results.append(mdp.path[-1])
             utils.print_results(mdp.path[-1], population, age_labels, vaccine_policy)
         utils.get_average_results(results, population, age_labels, vaccine_policy)

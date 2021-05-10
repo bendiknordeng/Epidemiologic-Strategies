@@ -1,8 +1,8 @@
 import numpy as np
-from covid.utils import generate_weighted_contact_matrix, get_age_group_flow_scaling
+from covid.utils import generate_weighted_contact_matrix
 
 class Policy:
-    def __init__(self, config, policy, population, contact_matrices, age_flow_scaling):
+    def __init__(self, config, policy, population, contact_matrices, age_flow_scaling, GA):
         """ Defining vaccine allocation pollicy
 
         Args:
@@ -22,10 +22,11 @@ class Policy:
             "commuter_based": self._commuter_based_policy,
             "weighted": self._weighted_policy
             }
-        self.vaccine_allocation = self.policies[policy]
+        self.vaccine_allocation = self.policies['weighted'] if GA else self.policies[policy]
         self.population = population
         self.contact_matrices = contact_matrices
         self.age_flow_scaling = age_flow_scaling
+        self.GA = GA
 
     def get_decision(self, state, vaccines, weights):
         """ Retrieves a vaccine allocation
@@ -189,8 +190,12 @@ class Policy:
         Returns:
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
+        if self.GA:
+            i = {"U": 0, "D": 1, "N": 2}[state.wave_state]
+            j = state.wave_count[state.wave_state]
+            weights = weights[i][j-1]
         vaccine_allocation = np.zeros(self.population.shape)
-        weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first"]
+        weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first", "contact_based", "commuter_based"]
         M = vaccines
         if M > 0:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
