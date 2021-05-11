@@ -64,7 +64,7 @@ class SimpleGeneticAlgorithm:
             bool: True if the two best scores of the population also is significant best
         """
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
-        self.process.init()
+        if not offsprings: self.process.init()
         self.find_fitness(offsprings)
         count = 0
         significant_best = self.find_best_individual(offsprings)

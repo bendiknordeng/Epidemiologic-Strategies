@@ -57,6 +57,9 @@ class MarkovDecisionProcess:
     def reset(self):
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
         self.state = deepcopy(self.start_state)
+        # Start counting waves from 0 again
+        self.state.wave_count.clear()
+        self.state.wave_count[self.state.wave_state] += 1
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
