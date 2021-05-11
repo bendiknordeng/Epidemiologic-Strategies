@@ -39,14 +39,14 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
 
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     use_waves = True
     stochastic = True
     use_response_measures = False
     verbose = False
     plot_results = False
-    plot_geo = False
+    plot_geo = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -136,11 +136,5 @@ if __name__ == '__main__':
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        history_age_accumulated = history.sum(axis=3)
-
-        # plot geospatial data
-        gdf = utils.generate_geopandas(population, paths.municipalities_geo)
-        plot.plot_geospatial(gdf, history_age_accumulated, paths.municipality_plots)
-        
-        # generate gif
+        plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, per_100k=False)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)
