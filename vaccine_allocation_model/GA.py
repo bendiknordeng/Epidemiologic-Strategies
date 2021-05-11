@@ -315,7 +315,6 @@ class Population:
             population_size (int): number of individuals to initialize population with
             verbose (bool): specify whether or not to print
         """
-        
         if random_individuals:
             self.individuals = [Individual() for _ in range(population_size)]
         else:
