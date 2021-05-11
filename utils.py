@@ -10,7 +10,7 @@ import plot
 from scipy.stats import skewnorm
 import json
 from collections import Counter
-# import geopandas as gpd
+import geopandas as gpd
 
 
 class tcolors:
@@ -715,15 +715,10 @@ def get_avg_std(final_states, population, age_labels):
 def generate_geopandas(pop, fpath_spatial_data):
     pop['region_id'] = pop['region_id'].astype('str')
     pop = pop[['region_id', 'population', 'region_name']]
-
-    # read in geopandas
     gdf = gpd.read_file(fpath_spatial_data)
-    gdf = gdf[['kommunenummer', 'geometry']]
+    gdf = gdf[['region_id', 'geometry']]
     df = pd.DataFrame(gdf)
-
-    # merge population and transform to geopandas 
-    gdf = gpd.GeoDataFrame(df.merge(pop, right_on='region_id', left_on='kommunenummer',  suffixes=('', '_y')), geometry='geometry')
-    gdf = gdf.drop(columns=['kommunenummer'])
-    gdf = gdf.dropna() # very important in order to convert to crs
+    gdf = gpd.GeoDataFrame(df.merge(pop, right_on='region_id', left_on='region_id',  suffixes=('', '_y')), geometry='geometry')
+    gdf = gdf.dropna()
     gdf = gdf.to_crs(3857)
     return gdf
