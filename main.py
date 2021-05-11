@@ -135,5 +135,5 @@ if __name__ == '__main__':
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, per_100k=False)
+        plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, accumulated_compartment_plot=False, per_100k=True)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)

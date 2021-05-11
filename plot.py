@@ -315,9 +315,9 @@ def find_infected_limits(res, population, per_100k):
     max_E1_per_region = pd.DataFrame(res[:,E1_index,:], dtype = float).max()  # Finds max for E1
     if not per_100k:
             return max_E1_per_region.max() 
-    return (max_E1_per_region / (population.population/100000)).max()
+    return (max_E1_per_region / (population.population/1e5)).max()
 
-def plot_geospatial(fpath_geospatial, res, fpath_plots, population, per_100k):
+def plot_geospatial(fpath_geospatial, res, fpath_plots, population, accumulated_compartment_plot, per_100k):
     """plots geospatial data
     Args:
         fpath_geospatial (str): filepath to json data used to load geopandas dataframe
@@ -327,7 +327,7 @@ def plot_geospatial(fpath_geospatial, res, fpath_plots, population, per_100k):
     """
     # plot geospatial data
     gdf = utils.generate_geopandas(population, fpath_geospatial)
-    res = res.sum(axis=3) # (84, 8, 356)
+    res = res.sum(axis=3) # (#weeks, #compartments, #regions)
     res_accumulated_regions = res.sum(axis=2)
     pop_factor = population.population/100000
     
@@ -359,32 +359,36 @@ def plot_geospatial(fpath_geospatial, res, fpath_plots, population, per_100k):
         inset_ax = fig.add_axes([0.4, 0.16, 0.37, 0.27]) # l:left, b:bottom, w:width, h:height
         inset_ax.patch.set_alpha(0.5)
 
-        # lines
-        inset_ax.plot(res_accumulated_regions[:time_step, 0], label="S",  color=color_scheme['S'],  ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", color=color_scheme['E1'], ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 2], label="E2", color=color_scheme['E2'], ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 3], label="A",  color=color_scheme['A'],  ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 4], label="I",  color=color_scheme['I'],  ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 5], label="R",  color=color_scheme['R'],  ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 6], label="D",  color=color_scheme['D'],  ls='-', lw=1.5, alpha=0.8)
-        inset_ax.plot(res_accumulated_regions[:time_step, 7], label="V",  color=color_scheme['V'],  ls='-', lw=1.5, alpha=0.8)
- 
-        # circles on lines
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 0], color=color_scheme['S'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 1], color=color_scheme['E1'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 2], color=color_scheme['E2'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 3], color=color_scheme['A'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 4], color=color_scheme['I'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 5], color=color_scheme['R'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 6], color=color_scheme['D'], s=20, alpha=0.8)
-        inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 7], color=color_scheme['V'], s=20, alpha=0.8)
+        if accumulated_compartment_plot:
+            # lines
+            inset_ax.plot(res_accumulated_regions[:time_step, 0], label="S",  color=color_scheme['S'],  ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", color=color_scheme['E1'], ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 2], label="E2", color=color_scheme['E2'], ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 3], label="A",  color=color_scheme['A'],  ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 4], label="I",  color=color_scheme['I'],  ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 5], label="R",  color=color_scheme['R'],  ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 6], label="D",  color=color_scheme['D'],  ls='-', lw=1.5, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 7], label="V",  color=color_scheme['V'],  ls='-', lw=1.5, alpha=0.8)
+            # circles on lines
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 0], color=color_scheme['S'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 1], color=color_scheme['E1'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 2], color=color_scheme['E2'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 3], color=color_scheme['A'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 4], color=color_scheme['I'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 5], color=color_scheme['R'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 6], color=color_scheme['D'], s=20, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 7], color=color_scheme['V'], s=20, alpha=0.8)
+        else:
+            inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", color=color_scheme['E1'], ls='-', lw=1.5, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 1], color=color_scheme['E1'], s=20, alpha=0.8)
         
         # axes titles, label coordinates, values, font_sizes, grid, spines_colours, ticks_colours, legend, title compartment plot
         inset_ax.set_xlabel('Weeks', size=14, alpha=1, color='dimgray')
         inset_ax.tick_params(direction='in', size=10)
-        inset_ax.set_xlim(-4, horizon)
-        inset_ax.set_ylim(-24000, 5500000)
-        inset_ax.yaxis.set_major_formatter(lambda x, pos: '{0:g} M'.format(x/1e6))
+        inset_ax.set_xlim(-1, horizon)
+        inset_ax.set_ylim(-1, 5500000) if accumulated_compartment_plot else inset_ax.set_ylim(-1, res_accumulated_regions[:, 1].max() * 1.1) 
+        if accumulated_compartment_plot:
+            inset_ax.yaxis.set_major_formatter(lambda x, pos: '{0:g} M'.format(x/1e6))
         inset_ax.grid(alpha=0.4)
         inset_ax.spines['right'].set_visible(False)
         inset_ax.spines['top'].set_visible(False)
