@@ -94,7 +94,8 @@ if __name__ == '__main__':
         print("Choose objective for genetic algorithm.")
         for k, v in ga_objectives.items(): print(f"{k}: {v}")
         ga_objective_number = int(input("\nGA Objective (int): "))
-        random_individuals = bool(input("Random individual genes (bool): "))
+        random_individuals = bool(int(input("Random individual genes (bool): ")))
+        import pdb;pdb.set_trace()
         population_size = int(input("Initial population size (int): "))
         simulations = int(input("Number of simulations (int): "))
 
