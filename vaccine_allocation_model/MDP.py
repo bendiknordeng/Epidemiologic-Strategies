@@ -8,7 +8,7 @@ from copy import copy, deepcopy
 
 class MarkovDecisionProcess:
     def __init__(self, config, decision_period, population, epidemic_function, initial_state,
-                response_measure_model, use_response_measures, horizon, policy, verbose, historic_data=None):
+                response_measure_model, use_response_measures, horizon, end_date, policy, verbose, historic_data=None):
         """ A Markov decision process adminestering states, decisions and exogeneous information for an epidemic
 
         Args:
@@ -31,11 +31,11 @@ class MarkovDecisionProcess:
         self.response_measure_model = response_measure_model
         self.use_response_measures = use_response_measures
         self.horizon = horizon
+        self.end_date = end_date
         self.policy = policy
         self.verbose = verbose
         self.historic_data = historic_data
         self.initial_state = initial_state
-        self.init()
     
     def init(self):
         self.state = deepcopy(self.initial_state)
@@ -58,8 +58,7 @@ class MarkovDecisionProcess:
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
         self.state = deepcopy(self.start_state)
         # Start counting waves from 0 again
-        self.state.wave_count.clear()
-        self.state.wave_count[self.state.wave_state] += 1
+        self.state.wave_count = dict.fromkeys(self.state.wave_count, 0)
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
@@ -81,6 +80,8 @@ class MarkovDecisionProcess:
             boolean: True if stop criteria is reached
         """
         if self.simulation_period == self.horizon:
+            return True
+        if self.state.date > self.end_date:
             return True
         if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
             print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Recovered population > 70%.{tcolors.ENDC}\n")
