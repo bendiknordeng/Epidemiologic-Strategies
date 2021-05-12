@@ -11,10 +11,10 @@ from tqdm import tqdm
 if __name__ == '__main__':
     # Set initial parameters
     runs = 1
-    day = 24
-    month = 2
-    year = 2020
-    start_date = utils.get_date(f"{year}{month:02}{day:02}")
+    start_day, start_month, start_year = 24, 2, 2020
+    start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
+    end_day, end_month, end_year = 31, 12, 2021
+    end_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
     horizon = 70 # number of decision_periods
     decision_period = 28
     initial_infected = 10
@@ -39,14 +39,14 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
 
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     use_waves = True
     stochastic = True
     use_response_measures = False
     verbose = False
     plot_results = False
-    plot_geo = True
+    plot_geo = False
 
     vaccine_policy = Policy(
                     config=config,
@@ -85,31 +85,47 @@ if __name__ == '__main__':
                     response_measure_model=response_measure_model, 
                     use_response_measures=use_response_measures,
                     horizon=horizon,
+                    end_date=end_date,
                     policy=vaccine_policy,
                     historic_data=historic_data,
                     verbose=verbose)
 
     if run_GA:
-        ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
-        print("Choose objective for genetic algorithm.")
-        for k, v in ga_objectives.items(): print(f"{k}: {v}")
-        ga_objective_number = int(input("\nGA Objective (int): "))
-        random_individuals = bool(int(input("Random individual genes (bool): ")))
-        import pdb;pdb.set_trace()
-        population_size = int(input("Initial population size (int): "))
-        simulations = int(input("Number of simulations (int): "))
+        gen = 11
+        individuals_from_file = (gen, utils.read_pickle(f'results/GA_2021_05_11_161059/individuals/individuals_{gen}.pkl'))
+        # individuals_from_file = None
+        if individuals_from_file is not None:
+            objective = "yll"
+            random_individuals = False
+            population_size = len(individuals_from_file[1])
+            simulations=30
+            min_generations=gen
+        else:
+            gen = 0
+            ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
+            print("Choose objective for genetic algorithm.")
+            for k, v in ga_objectives.items(): print(f"{k}: {v}")
+            ga_objective_number = int(input("\nGA Objective (int): "))
+            objective = ga_objectives[ga_objective_number]
+            random_individuals = bool(int(input("Random individual genes (bool): ")))
+            population_size = int(input("Initial population size (int): "))
+            simulations = int(input("Number of simulations (int): "))
+            min_generations = int(input("Number of minimum generations (int): "))
 
         GA = SimpleGeneticAlgorithm(
                     simulations=simulations, 
                     population_size=population_size, 
                     process=mdp,
-                    objective=ga_objectives[ga_objective_number], 
+                    objective=objective,
+                    min_generations=min_generations,
                     random_individuals=random_individuals,
                     expected_years_remaining=expected_years_remaining,
-                    verbose=True)
+                    verbose=True,
+                    individuals_from_file=individuals_from_file)
         GA.run()
     else:
-        results = []                   
+        results = []
+        mdp.init()              
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
             mdp.reset()
