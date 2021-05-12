@@ -81,13 +81,11 @@ class MarkovDecisionProcess:
         """
         if self.simulation_period == self.horizon:
             return True
-        if self.state.date > self.end_date:
-            return True
         if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
-            print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Recovered population > 70%.{tcolors.ENDC}\n")
+            if self.verbose: print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Recovered population > 70%.{tcolors.ENDC}\n")
             return True
         if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
-            print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Infected population is zero.{tcolors.ENDC}\n")
+            if self.verbose: print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Infected population is zero.{tcolors.ENDC}\n")
             return True
         return False
 
