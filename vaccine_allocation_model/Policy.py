@@ -196,7 +196,7 @@ class Policy:
             return self._no_vaccines()
         if self.GA:
             i = {"U": 0, "D": 1, "N": 2}[state.wave_state]
-            j = state.wave_count[state.wave_state]
+            j = max(state.wave_count[state.wave_state], 3) # make sure strategy is kept within count 3
             weights = weights[i][j-1]
             weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first"]
         else: 

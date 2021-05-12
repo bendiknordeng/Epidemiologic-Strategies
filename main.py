@@ -6,17 +6,18 @@ from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
 from vaccine_allocation_model.Policy import Policy
 from vaccine_allocation_model.SEAIR import SEAIR
 import numpy as np
+from pandas import Timedelta
 from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
     runs = 1
+    decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
     end_day, end_month, end_year = 31, 12, 2021
-    end_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
-    horizon = 70 # number of decision_periods
-    decision_period = 28
+    end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
+    horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
     initial_infected = 10
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
@@ -92,8 +93,8 @@ if __name__ == '__main__':
 
     if run_GA:
         gen = 11
-        individuals_from_file = (gen, utils.read_pickle(f'results/GA_2021_05_11_161059/individuals/individuals_{gen}.pkl'))
-        # individuals_from_file = None
+        # individuals_from_file = (gen, utils.read_pickle(f'results/GA_2021_05_11_161059/individuals/individuals_{gen}.pkl'))
+        individuals_from_file = None
         if individuals_from_file is not None:
             objective = "yll"
             random_individuals = False
