@@ -339,8 +339,8 @@ class SimpleGeneticAlgorithm:
         out = f"Time: {datetime.now().strftime('%d.%m.%Y (%H:%M:%S)')}\n"
         out += f"Objective: {self.objective_name}\n"
         out += f"Number of simulations: {self.simulations}\n"
-        process_string = str(self.process).replace('\n', ',')
-        out += f"MDP params: {process_string}\n"
+        process_string = str(self.process).replace('\n', ', ')
+        out += f"MDP params: ({process_string})\n"
         out += f"Initial population size: {len(self.population.individuals)}\n"
         out += f"Random individual genes: {self.random_individuals}\n"
         out += f"Minimum number of generations: {self.min_generations}"
@@ -349,7 +349,7 @@ class SimpleGeneticAlgorithm:
     def __repr__(self):
         out = f"Objective: {self.objective_name}\n"
         out += f"Number of simulations: {self.simulations}\n"
-        process_string = str(self.process).replace('\n', ',')
+        process_string = str(self.process).replace('\n', ', ')
         out += f"MDP params: {process_string}\n"
         out += f"Initial population size: {len(self.population.individuals)}\n"
         out += f"Random individual genes: {self.random_individuals}\n"
