@@ -102,7 +102,8 @@ class Policy:
                 demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
                 infection_density = state.I.sum(axis=1)/total_infection
                 regional_allocation = M * infection_density
-                vaccine_allocation = demand * regional_allocation.reshape(-1,1)/demand.sum(axis=1).reshape(-1,1)
+                total_regional_demand = demand.sum(axis=1).reshape(-1,1)
+                vaccine_allocation = demand * regional_allocation.reshape(-1,1)/np.where(total_regional_demand==0, np.inf, total_regional_demand) 
                 decision = np.minimum(demand, vaccine_allocation).clip(min=0)
                 return decision
         return vaccine_allocation
@@ -196,7 +197,7 @@ class Policy:
             return self._no_vaccines()
         if self.GA:
             i = {"U": 0, "D": 1, "N": 2}[state.wave_state]
-            j = max(state.wave_count[state.wave_state], 3) # make sure strategy is kept within count 3
+            j = max(state.wave_count[state.wave_state], 2) # make sure strategy is kept within count 3
             weights = weights[i][j-1]
             weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first"]
         else: 

@@ -10,7 +10,7 @@ import plot
 from scipy.stats import skewnorm
 import json
 from collections import Counter
-import geopandas as gpd
+# import geopandas as gpd
 
 
 class tcolors:
