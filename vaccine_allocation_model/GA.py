@@ -79,7 +79,7 @@ class SimpleGeneticAlgorithm:
         while not significant_best and count <= 2:
             if self.verbose: print("Running more simulations...")
             self.find_fitness(offsprings, from_start=False)
-            significant_best = self.find_best_individual(offsprings)
+            significant_best = self.find_best_individual(offsprings, from_start=False)
             count += 1
         self.find_runs(count)
 
@@ -146,14 +146,14 @@ class SimpleGeneticAlgorithm:
         """
         if from_start: 
             self.process.init()
-            population = self.population.offsprings if offsprings else self.population.individuals
+            pop = self.population.offsprings if offsprings else self.population.individuals
         else:
-            population = self.population.offsprings[:5] if offsprings else self.population.individuals[:5]
+            pop = self.population.offsprings[:5] if offsprings else self.population.individuals[:5]
             if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}")
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
-        for i, individual in enumerate(population):
+        for i, individual in enumerate(pop):
             ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
             if self.verbose: print(f"\nFinding score for {'offspring' if offsprings else 'individual'} in {ordinal(i+1)} place: {individual.ID}")
             for j in tqdm(range(runs), ascii=True):
@@ -169,7 +169,7 @@ class SimpleGeneticAlgorithm:
             if self.verbose: print(f"Mean score: {mean_score:.2f}")
             individual.mean_score = mean_score
 
-    def find_best_individual(self, offsprings=False):
+    def find_best_individual(self, offsprings=False, from_start=True):
         """ Loop through two most promising individuals to check for significance
 
         Args:
@@ -178,34 +178,36 @@ class SimpleGeneticAlgorithm:
         Returns:
             bool: True if both first and second best individuals passes t-test with significance
         """
-        individuals = self.population.offsprings if offsprings else self.population.individuals
+        if from_start:
+            pop = self.population.offsprings if offsprings else self.population.individuals
+        else:
+            pop = self.population.offsprings[:5] if offsprings else self.population.individuals[:5]
+        pop = sorted(pop, key=lambda x: x.mean_score)
         if self.verbose: print(f"\nFinding best individual...")
-        self.population.sort_by_mean(offsprings)
-        range1, range2 = (1 if offsprings else 2, len(individuals))
+        range1, range2 = (1 if offsprings else 2, len(pop))
         for i in range(range1): # test two best
-            first = individuals[i]
+            first = pop[i]
             for j in range(i+1, range2):
-                second = individuals[j]
-                s1, s2 = self.final_scores[first.ID], self.final_scores[second.ID]
-                if not self.t_test(s1, s2):
+                second = pop[j]
+                if not self.t_test(first, second):
                     if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
                     return False
         return True
 
-    def t_test(self, s1, s2, significance=0.1):
+    def t_test(self, first, second, significance=0.1):
         """ Performs one-sided t-test to check to variables for significant difference
 
         Args:
-            s1 (list): list of outcomes from simulations, from presumed best individual
-            s2 (list): list of outcomes from simulations, from presumed worse individual
+            first (Individual): presumed best individual
+            second (Individual): presumed worse individual
             significance (float, optional): level of significance to test against. Defaults to 0.1.
 
         Returns:
             bool: True if significance is achieved
         """
         significant_best = False
-        s1 = np.array(s1)
-        s2 = np.array(s2)
+        s1 = np.array(self.final_scores[first.ID])
+        s2 = np.array(self.final_scores[second.ID])
         if not (s1==s2).all():
             z = s1 - s2
             p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
@@ -391,18 +393,7 @@ class Population:
         elif generation_count > 20:
             self.individuals = self.individuals[:-1]
         self.individuals.append(self.offsprings[0])
-        if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}")
-    
-    def sort_by_mean(self, offsprings=False):
-        """ Sort individuals or offspring in ascending order
-
-        Args:
-            offsprings (bool, optional): True if offsprings are to be sorted. Defaults to False.
-        """
-        if not offsprings:
-            self.individuals = sorted(self.individuals, key=lambda x: x.mean_score)
-        else:
-            self.offsprings = sorted(self.offsprings, key=lambda x: x.mean_score)    
+        if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}") 
 
 class Individual:
     ID_COUNTER=1
