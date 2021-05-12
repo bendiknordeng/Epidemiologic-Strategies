@@ -211,46 +211,53 @@ class SimpleGeneticAlgorithm:
         Args:
             generation_count (int): what generation that is creating offsprings
         """
-        parent1 = self.population.individuals[0]
-        parent2 = self.population.individuals[1]
-        if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
-        p1 = parent1.genes
-        p2 = parent2.genes
-        shape = p1.shape
-        o1_genes = np.zeros(shape)
-        o2_genes = np.zeros(shape)
-        c_row = np.random.randint(0, high=shape[1])
-        c_col = np.random.randint(0, high=shape[2])
-        vertical_cross = np.random.random() <= 0.5
-        if vertical_cross:
-            o1_genes[:, :, :c_col] = p1[:, :, :c_col]
-            o1_genes[:, :c_row, c_col] = p1[:, :c_row, c_col]
-            o1_genes[:, c_row:, c_col] = p2[:, c_row:, c_col]
-            o1_genes[:, :, c_col+1:] = p2[:, :, c_col+1:]
-            o2_genes[:, :, :c_col] = p2[:, :, :c_col]
-            o2_genes[:, :c_row, c_col] = p2[:, :c_row, c_col]
-            o2_genes[:, c_row:, c_col] = p1[:, c_row:, c_col]
-            o2_genes[:, :, c_col+1:] = p1[:, :, c_col+1:]
-        else:
-            o1_genes[:, :c_row, :] = p1[:, :c_row, :]
-            o1_genes[:, c_row, :c_col] = p1[:, c_row, :c_col]
-            o1_genes[:, c_row, c_col:] = p2[:, c_row, c_col:]
-            o1_genes[:, c_row+1:, :] = p2[:, c_row+1:, :]
-            o2_genes[:, :c_row, :] = p2[:, :c_row, :]
-            o2_genes[:, c_row, :c_col] = p2[:, c_row, :c_col]
-            o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
-            o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
-        o1 = Individual(generation=generation_count, offspring=True)
-        o1.genes = o1_genes
-        o2 = Individual(generation=generation_count, offspring=True)
-        o2.genes = o2_genes
-        o3 = Individual(generation=generation_count, offspring=True)
-        o3.genes = np.divide(p1+p2, 2)
-        o4 = Individual(generation=generation_count, offspring=True)
-        o4.genes = np.divide(p1+3*p2, 4)
-        o5 = Individual(generation=generation_count, offspring=True)
-        o5.genes = np.divide(3*p1+p2, 4)
-        self.population.offsprings = [o1,o2,o3,o4,o5]
+        for i in range(2):
+            for j in range(i+1,3):
+                import pdb;pdb.set_trace()
+                parent1 = self.population.individuals[i]
+                parent2 = self.population.individuals[j]
+                if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
+                p1 = self.population.individuals[0].genes
+                p2 = self.population.individuals[1].genes
+                shape = p1.shape
+                o1_genes = np.zeros(shape)
+                o2_genes = np.zeros(shape)
+                c_row = np.random.randint(0, high=shape[1])
+                c_col = np.random.randint(0, high=shape[2])
+                vertical_cross = np.random.random() <= 0.5
+                if vertical_cross:
+                    o1_genes[:, :, :c_col] = p1[:, :, :c_col]
+                    o1_genes[:, :c_row, c_col] = p1[:, :c_row, c_col]
+                    o1_genes[:, c_row:, c_col] = p2[:, c_row:, c_col]
+                    o1_genes[:, :, c_col+1:] = p2[:, :, c_col+1:]
+                    o2_genes[:, :, :c_col] = p2[:, :, :c_col]
+                    o2_genes[:, :c_row, c_col] = p2[:, :c_row, c_col]
+                    o2_genes[:, c_row:, c_col] = p1[:, c_row:, c_col]
+                    o2_genes[:, :, c_col+1:] = p1[:, :, c_col+1:]
+                else:
+                    o1_genes[:, :c_row, :] = p1[:, :c_row, :]
+                    o1_genes[:, c_row, :c_col] = p1[:, c_row, :c_col]
+                    o1_genes[:, c_row, c_col:] = p2[:, c_row, c_col:]
+                    o1_genes[:, c_row+1:, :] = p2[:, c_row+1:, :]
+                    o2_genes[:, :c_row, :] = p2[:, :c_row, :]
+                    o2_genes[:, c_row, :c_col] = p2[:, c_row, :c_col]
+                    o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
+                    o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
+                o1 = Individual(generation=generation_count, offspring=True)
+                o1.genes = o1_genes
+                o2 = Individual(generation=generation_count, offspring=True)
+                o2.genes = o2_genes
+                o3 = Individual(generation=generation_count, offspring=True)
+                o3.genes = np.divide(p1+p2, 2)
+                o4 = Individual(generation=generation_count, offspring=True)
+                o4.genes = np.divide(p1+3*p2, 4)
+                o5 = Individual(generation=generation_count, offspring=True)
+                o5.genes = np.divide(3*p1+p2, 4)
+                if i==0 and j==1: 
+                    self.population.offsprings = [o1,o2,o3,o4,o5]
+                else: 
+                    for offspring in [o1,o2,o3,o4,o5]: 
+                        self.population.offsprings.append(offspring)
 
     def mutation(self):
         """ Randomly altering the genes of offsprings """
