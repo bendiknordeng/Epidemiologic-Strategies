@@ -7,6 +7,7 @@ from datetime import datetime
 from tqdm import tqdm
 from collections import defaultdict
 from functools import partial
+from datetime import datetime
 
 class SimpleGeneticAlgorithm:
     def __init__(self, simulations, population_size, process, objective, min_generations, 
@@ -34,7 +35,9 @@ class SimpleGeneticAlgorithm:
         self.best_scores = np.inf
         self.generations_since_new_best = 0
         self.expected_years_remaining = expected_years_remaining
+        self.objective_name = objective
         self.objective = self._set_objective(objective)
+        self.random_individuals = random_individuals
         self.min_generations = min_generations
         self.number_of_runs = []
         self._generate_output_dirs()
@@ -311,6 +314,9 @@ class SimpleGeneticAlgorithm:
         self.overview_path = folder_path + f"/generation_overview.csv"
         self.individuals_path = folder_path + f"/individuals/individuals_"
         self.final_score_path = folder_path + f"/final_scores/final_score_"
+        with open(folder_path + "/run_info.txt", "w") as file:
+            file.write(str(self))
+            file.close()
 
     def write_to_file(self):
         """ Dump individuals and corresponding scores as pickle """
@@ -328,6 +334,27 @@ class SimpleGeneticAlgorithm:
             gen_df.to_csv(self.overview_path, header=True, index=False)
         else:
             gen_df.to_csv(self.overview_path, mode='a', header=False, index=False)
+
+    def __str__(self):
+        out = f"Time: {datetime.now().strftime('%d.%m.%Y (%H:%M:%S)')}\n"
+        out += f"Objective: {self.objective_name}\n"
+        out += f"Number of simulations: {self.simulations}\n"
+        process_string = str(self.process).replace('\n', ',')
+        out += f"MDP params: {process_string}\n"
+        out += f"Initial population size: {len(self.population.individuals)}\n"
+        out += f"Random individual genes: {self.random_individuals}\n"
+        out += f"Minimum number of generations: {self.min_generations}"
+        return out
+    
+    def __repr__(self):
+        out = f"Objective: {self.objective_name}\n"
+        out += f"Number of simulations: {self.simulations}\n"
+        process_string = str(self.process).replace('\n', ',')
+        out += f"MDP params: {process_string}\n"
+        out += f"Initial population size: {len(self.population.individuals)}\n"
+        out += f"Random individual genes: {self.random_individuals}\n"
+        out += f"Minimum number of generations: {self.min_generations}"
+        return out
 
 class Population: 
     def __init__(self, population_size, verbose, random_individuals, individuals_from_file=None):

@@ -210,9 +210,9 @@ class MarkovDecisionProcess:
         return previous_cw, previous_alphas, previous_flow_scale
 
     def __str__(self):
+        status = f"{tcolors.BOLD}MarkovDecisionProcess object.{tcolors.ENDC}\n"
         status = f"Horizon: {self.horizon}\n"
         status += f"Decision period: {self.decision_period}\n"
-        status += f"Simulation period: {self.simulation_period}\n"
         status += f"Policy: {self.policy}\n"
         return status
 
@@ -220,6 +220,5 @@ class MarkovDecisionProcess:
         status = f"{tcolors.BOLD}MarkovDecisionProcess object.{tcolors.ENDC}\n"
         status += f"Horizon: {self.horizon}\n"
         status += f"Decision period: {self.decision_period}\n"
-        status += f"Simulation period: {self.simulation_period}\n"
         status += f"Policy: {self.policy}\n"
         return status
