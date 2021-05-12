@@ -81,6 +81,7 @@ class SimpleGeneticAlgorithm:
             self.find_fitness(offsprings, from_start=False)
             significant_best = self.find_best_individual(offsprings, from_start=False)
             count += 1
+        
         self.find_runs(count)
 
         if self.verbose:
@@ -146,12 +147,12 @@ class SimpleGeneticAlgorithm:
             offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
             from_start (bool, optional): if fitness is to be estimated from scratch. Defaults to True.
         """
+        pop = self.population.offsprings if offsprings else self.population.individuals
         if from_start: 
             self.process.init()
-            pop = self.population.offsprings if offsprings else self.population.individuals
         else:
-            pop = self.population.offsprings[:5] if offsprings else self.population.individuals[:5]
-            if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}")
+            pop = pop[:5]
+            if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
@@ -180,12 +181,9 @@ class SimpleGeneticAlgorithm:
         Returns:
             bool: True if both first and second best individuals passes t-test with significance
         """
-        if from_start:
-            pop = self.population.offsprings if offsprings else self.population.individuals
-        else:
-            pop = self.population.offsprings[:5] if offsprings else self.population.individuals[:5]
-        pop = sorted(pop, key=lambda x: x.mean_score)
-        if self.verbose: print(f"\nFinding best individual...")
+        pop = self.population.offsprings if offsprings else self.population.individuals
+        pop = self.population.sort_by_mean(pop, offsprings, from_start)
+        if self.verbose: print(f"\nFinding best {'offspring' if offsprings else 'individual'}...")
         range1, range2 = (1 if offsprings else 2, len(pop))
         for i in range(range1): # test two best
             first = pop[i]
@@ -396,6 +394,22 @@ class Population:
             self.individuals = self.individuals[:-1]
         self.individuals.append(self.offsprings[0])
         if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}") 
+
+    def sort_by_mean(self, pop, offsprings, from_start):
+        if from_start:
+            if offsprings:
+                self.offsprings = sorted(pop, key=lambda x: x.mean_score)
+                return self.offsprings
+            else:
+                self.individuals = sorted(pop, key=lambda x: x.mean_score)
+                return self.individuals
+        else:
+            if offsprings:
+                self.offsprings[:5] = sorted(pop[:5], key=lambda x: x.mean_score)
+                return self.offsprings[:5]
+            else:
+                self.individuals[:5] = sorted(pop[:5], key=lambda x: x.mean_score)
+                return self.individuals[:5]
 
 class Individual:
     ID_COUNTER=1

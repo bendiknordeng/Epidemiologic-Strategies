@@ -92,9 +92,9 @@ if __name__ == '__main__':
                     verbose=verbose)
 
     if run_GA:
-        gen = 17
-        individuals_from_file = (gen, utils.read_pickle(f'results/GA_2021_05_11_161059/individuals/individuals_{gen}.pkl'))
-        #individuals_from_file = None
+        # gen = 17
+        # individuals_from_file = (gen, utils.read_pickle(f'results/GA_2021_05_11_161059/individuals/individuals_{gen}.pkl'))
+        individuals_from_file = None
         if individuals_from_file is not None:
             objective = "weighted"
             random_individuals = False
