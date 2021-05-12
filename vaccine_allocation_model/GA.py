@@ -127,10 +127,12 @@ class SimpleGeneticAlgorithm:
                     new_best = self.find_best_individual(offsprings=True)
                     count += 1
                 if new_best:
+                    if self.verbose: print(f"{tcolors.OKGREEN}New all-time best: {candidate}{tcolors.ENDC}")
                     self.best_individual = candidate
                     self.best_scores = self.final_scores[candidate.ID]
                     self.generations_since_new_best = 0
                 else:
+                    if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
                     self.generations_since_new_best += 1
                     if self.generations_since_new_best > 2:
                         print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
