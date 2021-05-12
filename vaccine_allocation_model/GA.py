@@ -93,7 +93,7 @@ class SimpleGeneticAlgorithm:
             else:
                 if offsprings:
                     print(f"{tcolors.FAIL}Significant best {'offspring' if offsprings else 'individual'} not found.{tcolors.ENDC}")
-                    print(f"{tcolors.OKBLUE}{self.population.offsprings[0]} added to population.{tcolors.ENDC}")
+                    print(f"\n{tcolors.OKGREEN}{self.population.offsprings[0]} added to population.{tcolors.ENDC}")
                 else:
                     print(f"{tcolors.FAIL}Significant best {'offspring' if offsprings else 'individual'} not found.{tcolors.ENDC}")
 
