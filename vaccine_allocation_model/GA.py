@@ -213,12 +213,11 @@ class SimpleGeneticAlgorithm:
         """
         for i in range(2):
             for j in range(i+1,3):
-                import pdb;pdb.set_trace()
                 parent1 = self.population.individuals[i]
                 parent2 = self.population.individuals[j]
                 if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
-                p1 = self.population.individuals[0].genes
-                p2 = self.population.individuals[1].genes
+                p1 = parent1.genes
+                p2 = parent2.genes
                 shape = p1.shape
                 o1_genes = np.zeros(shape)
                 o2_genes = np.zeros(shape)
