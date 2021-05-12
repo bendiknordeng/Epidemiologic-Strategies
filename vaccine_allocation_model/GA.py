@@ -212,8 +212,7 @@ class SimpleGeneticAlgorithm:
             generation_count (int): what generation that is creating offsprings
         """
         for i in range(2):
-            for j in range(i+1,3):
-                import pdb;pdb.set_trace()
+            for j in range(i+1, 3):
                 parent1 = self.population.individuals[i]
                 parent2 = self.population.individuals[j]
                 if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
@@ -256,8 +255,7 @@ class SimpleGeneticAlgorithm:
                 if i==0 and j==1: 
                     self.population.offsprings = [o1,o2,o3,o4,o5]
                 else: 
-                    for offspring in [o1,o2,o3,o4,o5]: 
-                        self.population.offsprings.append(offspring)
+                    self.population.offsprings += [o1,o2,o3,o4,o5]
 
     def mutation(self):
         """ Randomly altering the genes of offsprings """
