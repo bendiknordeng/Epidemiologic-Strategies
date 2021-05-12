@@ -144,7 +144,7 @@ class SimpleGeneticAlgorithm:
             offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
             from_start (bool, optional): if fitness is to be estimated from scratch. Defaults to True.
         """
-        self.process.init()
+        if from_start: self.process.init()
         population = self.population.individuals if not offsprings else self.population.offsprings
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
