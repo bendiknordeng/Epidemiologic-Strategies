@@ -15,7 +15,7 @@ if __name__ == '__main__':
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
-    end_day, end_month, end_year = 31, 12, 2021
+    end_day, end_month, end_year = 31, 8, 2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
     initial_infected = 10

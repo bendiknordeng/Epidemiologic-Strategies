@@ -144,14 +144,18 @@ class SimpleGeneticAlgorithm:
             offsprings (bool, optional): if population to be run is offsprings of a generation. Defaults to False.
             from_start (bool, optional): if fitness is to be estimated from scratch. Defaults to True.
         """
-        if from_start: self.process.init()
-        population = self.population.individuals if not offsprings else self.population.offsprings
+        if from_start: 
+            self.process.init()
+            population = self.population.offsprings if offsprings else self.population.individuals
+        else:
+            population = self.population.offsprings[:5] if offsprings else self.population.individuals[:5]
+            if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}")
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
         for i, individual in enumerate(population):
             ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
-            if self.verbose: print(f"\nFinding score for individual in {ordinal(i+1)} place: {individual.ID}")
+            if self.verbose: print(f"\nFinding score for {'offspring' if offsprings else 'individual'} in {ordinal(i+1)} place: {individual.ID}")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
                 self.process.reset()
@@ -445,7 +449,7 @@ class Individual:
         Returns:
             numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
         """
-        genes = np.zeros((3,4,4))
+        genes = np.zeros((3,3,4))
         if 0 <= i < 4:
             genes[:,:,i] = 1
         elif 4 <= i < 7:
@@ -468,7 +472,7 @@ class Individual:
             norm = np.sum(weights)
             genes[:, :] = np.divide(weights, norm)
         else:
-            genes = np.random.randint(low=0, high=100, size=(3,4,4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            genes = np.random.randint(low=0, high=100, size=(3,3,4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
