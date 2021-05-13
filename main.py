@@ -92,37 +92,17 @@ if __name__ == '__main__':
                     verbose=verbose)
 
     if run_GA:
-        gen = 17
-        # individuals_from_file = (gen, utils.read_pickle(f'results/GA_2021_05_11_161059/individuals/individuals_{gen}.pkl'))
-        individuals_from_file = None
-        if individuals_from_file is not None:
-            objective = "weighted"
-            random_individuals = False
-            population_size = len(individuals_from_file[1])
-            simulations=30
-            min_generations=gen
-        else:
-            gen = 0
-            ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
-            print("Choose objective for genetic algorithm.")
-            for k, v in ga_objectives.items(): print(f"{k}: {v}")
-            ga_objective_number = int(input("\nGA Objective (int): "))
-            objective = ga_objectives[ga_objective_number]
-            random_individuals = bool(int(input("Random individual genes (bool): ")))
-            population_size = int(input("Initial population size (int): "))
-            simulations = int(input("Number of simulations (int): "))
-            min_generations = int(input("Number of minimum generations (int): "))
-
+        params = utils.get_GA_params()
         GA = SimpleGeneticAlgorithm(
-                    simulations=simulations, 
-                    population_size=population_size, 
-                    process=mdp,
-                    objective=objective,
-                    min_generations=min_generations,
-                    random_individuals=random_individuals,
-                    expected_years_remaining=expected_years_remaining,
-                    verbose=True,
-                    individuals_from_file=individuals_from_file)
+                simulations=params["simulations"], 
+                population_size=params["population_size"], 
+                process=mdp,
+                objective=params["objective"],
+                min_generations=params["min_generations"],
+                random_individuals=params["random_individuals"],
+                expected_years_remaining=expected_years_remaining,
+                verbose=True,
+                individuals_from_file=params["individuals_from_file"])
         GA.run()
     else:
         results = []

@@ -8,6 +8,7 @@ from tqdm import tqdm
 from collections import defaultdict
 from functools import partial
 from datetime import datetime
+import json
 
 class SimpleGeneticAlgorithm:
     def __init__(self, simulations, population_size, process, objective, min_generations, 
@@ -318,9 +319,9 @@ class SimpleGeneticAlgorithm:
         self.overview_path = folder_path + f"/generation_overview.csv"
         self.individuals_path = folder_path + f"/individuals/individuals_"
         self.final_score_path = folder_path + f"/final_scores/final_score_"
-        with open(folder_path + "/run_info.txt", "w") as file:
-            file.write(str(self))
-            file.close()
+
+        with open(folder_path + "/run_params.json", "w") as file:
+            json.dump(self.__repr__(), file, indent=4)
 
     def write_to_file(self):
         """ Dump individuals and corresponding scores as pickle """
@@ -345,19 +346,20 @@ class SimpleGeneticAlgorithm:
         out += f"Number of simulations: {self.simulations}\n"
         process_string = str(self.process).replace('\n', ', ')
         out += f"MDP params: ({process_string})\n"
-        out += f"Initial population size: {len(self.population.individuals)}\n"
+        out += f"Population size: {len(self.population.individuals)}\n"
         out += f"Random individual genes: {self.random_individuals}\n"
         out += f"Minimum number of generations: {self.min_generations}"
         return out
     
     def __repr__(self):
-        out = f"Objective: {self.objective_name}\n"
-        out += f"Number of simulations: {self.simulations}\n"
-        process_string = str(self.process).replace('\n', ', ')
-        out += f"MDP params: {process_string}\n"
-        out += f"Initial population size: {len(self.population.individuals)}\n"
-        out += f"Random individual genes: {self.random_individuals}\n"
-        out += f"Minimum number of generations: {self.min_generations}"
+        out = {}
+        out["objective"] = self.objective_name
+        out["simulations"] = self.simulations
+        mdp = self.process
+        out["process"] = {"horizon": mdp.horizon, "decision_period": mdp.decision_period, "policy": str(mdp.policy)}
+        out["population_size"] = len(self.population.individuals)
+        out["random_individuals"] = self.random_individuals
+        out["min_generations"] = self.min_generations
         return out
 
 class Population: 

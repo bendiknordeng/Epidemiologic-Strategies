@@ -12,7 +12,6 @@ import json
 from collections import Counter
 # import geopandas as gpd
 
-
 class tcolors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
@@ -437,6 +436,11 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
         df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
 
+def load_json(path):
+    with open(path) as file:
+        data = json.load(file)
+    return data
+
 def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
     """generates a wave timeline and a wave state timeline over the simulation horizon
 
@@ -450,8 +454,7 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
         wave_state_timeline (list(str)): characters indicating the wave state for each week of the simulation horizon
 
     """
-    with open('data/waves/wave_parameters.json') as file:
-        data = json.load(file)
+    data = load_json(paths.wave_parameters)
     transition_mat = pd.read_csv(paths.wave_transition, index_col=0).T.to_dict()
     decision_period_days = int(decision_period/periods_per_day)
     wave_timeline = np.zeros(horizon)
@@ -722,3 +725,39 @@ def generate_geopandas(pop, fpath_spatial_data):
     gdf = gdf.dropna()
     gdf = gdf.to_crs(3857)
     return gdf
+
+def get_GA_params():
+    run_from_file = bool(int(input("Run from file (bool): ")))
+    if run_from_file:
+        dir_path = "results/"
+        files = os.listdir(dir_path)
+        runs = dict(zip(range(1,len(files)+1),files))
+        print("Available runs:")
+        for k, v in runs.items(): print(f"{k}: {v}")
+        file_nr = int(input("File (int): "))
+        while True:
+            try:
+                gen = int(input("Run from generation: "))
+                individuals_from_file = (gen, read_pickle(f'results/{runs[file_nr]}/individuals/individuals_{gen}.pkl'))
+                params = load_json(f'results/{runs[file_nr]}/run_params.json')
+            except:
+                print(f"{tcolors.FAIL}Generation not available{tcolors.ENDC}")
+                continue
+            break
+        params["individuals_from_file"] = individuals_from_file
+        print(f"{tcolors.OKGREEN}Running {runs[file_nr]} from generation {gen}{tcolors.ENDC}")
+    else:
+        params = {}
+        params["gen"] = 0
+        ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
+        print("Choose objective for genetic algorithm.")
+        for k, v in ga_objectives.items(): print(f"{k}: {v}")
+        ga_objective_number = int(input("\nGA Objective (int): "))
+        params["objective"] = ga_objectives[ga_objective_number]
+        params["random_individuals"] = bool(int(input("Random individual genes (bool): ")))
+        params["population_size"] = int(input("Initial population size (int): "))
+        params["simulations"] = int(input("Number of simulations (int): "))
+        params["min_generations"] = int(input("Number of minimum generations (int): "))
+        params["individuals_from_file"] = None
+
+    return params
