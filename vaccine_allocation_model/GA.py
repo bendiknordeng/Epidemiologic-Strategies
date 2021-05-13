@@ -81,9 +81,7 @@ class SimpleGeneticAlgorithm:
             self.find_fitness(offsprings, from_start=False)
             significant_best = self.find_best_individual(offsprings, from_start=False)
             count += 1
-        
         self.find_runs(count)
-
         if self.verbose:
             if significant_best:
                 print(f"{tcolors.OKGREEN}Significant best {'offspring' if offsprings else 'individual'} found{tcolors.ENDC}")
@@ -106,31 +104,31 @@ class SimpleGeneticAlgorithm:
         Returns:
             bool: True if new all-time best individual is found
         """
-        if self.generation_count > self.min_generations:
+        if self.generation_count >= self.min_generations:
             candidate = self.population.individuals[0]
             if self.best_individual is None:
+                print(f"{tcolors.OKGREEN}Setting all-time best individual: {candidate}{tcolors.ENDC}")
                 self.best_individual = candidate
-                self.best_scores = self.final_scores[candidate.ID]
             else:
                 if candidate == self.best_individual:
+                    print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
                     self.generations_since_new_best += 1
                     if self.generations_since_new_best > 2 and self.generation_count > 20:
                         print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
                         return True
                     return False
-                if self.verbose: print(f"Testing best of generation {self.generation_count} against all-time high")
+                if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
                 self.population.offsprings = [candidate, self.best_individual]
                 self.find_fitness(offsprings=True)
-                new_best = self.find_best_individual(offsprings=True)
+                new_best = self.find_best_individual(offsprings=True, convergence_test=True)
                 count = 0
                 while not new_best and count <= 5:
                     self.find_fitness(offsprings=True, from_start=False)
-                    new_best = self.find_best_individual(offsprings=True)
+                    new_best = self.find_best_individual(offsprings=True, convergence_test=True)
                     count += 1
                 if new_best:
                     if self.verbose: print(f"{tcolors.OKGREEN}New all-time best: {candidate}{tcolors.ENDC}")
                     self.best_individual = candidate
-                    self.best_scores = self.final_scores[candidate.ID]
                     self.generations_since_new_best = 0
                 else:
                     if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
@@ -156,8 +154,8 @@ class SimpleGeneticAlgorithm:
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
+        ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
         for i, individual in enumerate(pop):
-            ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
             if self.verbose: print(f"\nFinding score for {'offspring' if offsprings else 'individual'} in {ordinal(i+1)} place: {individual.ID}")
             for j in tqdm(range(runs), ascii=True):
                 np.random.seed(seeds[j])
@@ -172,7 +170,7 @@ class SimpleGeneticAlgorithm:
             if self.verbose: print(f"Mean score: {mean_score:.2f}")
             individual.mean_score = mean_score
 
-    def find_best_individual(self, offsprings=False, from_start=True):
+    def find_best_individual(self, offsprings=False, from_start=True, convergence_test=False):
         """ Loop through two most promising individuals to check for significance
 
         Args:
@@ -182,19 +180,19 @@ class SimpleGeneticAlgorithm:
             bool: True if both first and second best individuals passes t-test with significance
         """
         pop = self.population.offsprings if offsprings else self.population.individuals
-        pop = self.population.sort_by_mean(pop, offsprings, from_start)
+        if not convergence_test: pop = self.population.sort_by_mean(pop, offsprings, from_start)
         if self.verbose: print(f"\nFinding best {'offspring' if offsprings else 'individual'}...")
         range1, range2 = (1 if offsprings else 2, len(pop))
         for i in range(range1): # test two best
             first = pop[i]
             for j in range(i+1, range2):
                 second = pop[j]
-                if not self.t_test(first, second):
+                if not self.t_test(first, second, significance=0.05 if convergence_test else 0.5):
                     if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
                     return False
         return True
 
-    def t_test(self, first, second, significance=0.1):
+    def t_test(self, first, second, significance):
         """ Performs one-sided t-test to check to variables for significant difference
 
         Args:
