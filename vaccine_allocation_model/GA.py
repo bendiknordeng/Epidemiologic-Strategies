@@ -33,7 +33,6 @@ class SimpleGeneticAlgorithm:
             Individual.GENERATION = individuals_from_file[0]
         self.final_scores = defaultdict(list)
         self.best_individual = None
-        self.best_scores = np.inf
         self.generations_since_new_best = 0
         self.expected_years_remaining = expected_years_remaining
         self.objective_name = objective
@@ -115,7 +114,7 @@ class SimpleGeneticAlgorithm:
                     print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
                     self.generations_since_new_best += 1
                     if self.generations_since_new_best > 2 and self.generation_count > 20:
-                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
+                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.final_scores[self.best_individual.ID])}{tcolors.ENDC}")
                         return True
                     return False
                 if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
@@ -135,7 +134,7 @@ class SimpleGeneticAlgorithm:
                     if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
                     self.generations_since_new_best += 1
                     if self.generations_since_new_best > 2:
-                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.best_scores)}{tcolors.ENDC}")
+                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.final_scores[self.best_individual.ID])}{tcolors.ENDC}")
                         return True
         return False
 
