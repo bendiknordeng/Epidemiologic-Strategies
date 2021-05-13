@@ -308,7 +308,7 @@ class SimpleGeneticAlgorithm:
         self.number_of_runs.append(number_runs)
 
     def _generate_output_dirs(self):
-        start_of_run = datetime.now().strftime("%Y_%m_%d_%H%M%S")
+        start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         run_folder = f"/results/GA_{start_of_run}"
         folder_path = os.getcwd()+run_folder
         individuals_path = folder_path + "/individuals"

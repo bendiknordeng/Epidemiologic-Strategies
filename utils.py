@@ -726,20 +726,25 @@ def generate_geopandas(pop, fpath_spatial_data):
     gdf = gdf.to_crs(3857)
     return gdf
 
+def sort_filenames_by_date(files):
+    dates = tuple(map(lambda x: x.split("_")[1:], files))
+    return sorted(tuple(map(lambda x: datetime(*map(int,x)), dates)))
+
 def get_GA_params():
     run_from_file = bool(int(input("Run from file (bool): ")))
     if run_from_file:
         dir_path = "results/"
         files = os.listdir(dir_path)
-        runs = dict(zip(range(1,len(files)+1),files))
+        dates = sort_filenames_by_date(files)
+        runs = dict(zip(range(1,len(files)+1),dates))
         print("Available runs:")
-        for k, v in runs.items(): print(f"{k}: {v}")
+        for k, v in runs.items(): print(f"{k}: {v.strftime('%Y/%m/%d %H:%M:%S')}")
         file_nr = int(input("File (int): "))
         while True:
             try:
                 gen = int(input("Run from generation: "))
-                individuals_from_file = (gen, read_pickle(f'results/{runs[file_nr]}/individuals/individuals_{gen}.pkl'))
-                params = load_json(f'results/{runs[file_nr]}/run_params.json')
+                individuals_from_file = (gen, read_pickle(f'results/{files[file_nr-1]}/individuals/individuals_{gen}.pkl'))
+                params = load_json(f'results/{runs[file_nr-1]}/run_params.json')
             except:
                 print(f"{tcolors.FAIL}Generation not available{tcolors.ENDC}")
                 continue
