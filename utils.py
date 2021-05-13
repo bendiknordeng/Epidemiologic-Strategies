@@ -740,11 +740,12 @@ def get_GA_params():
         print("Available runs:")
         for k, v in runs.items(): print(f"{k}: {v.strftime('%Y/%m/%d %H:%M:%S')}")
         file_nr = int(input("File (int): "))
+        run = f"GA_{runs[file_nr].strftime('%Y_%m_%d_%H_%M_%S')}"
         while True:
             try:
                 gen = int(input("Run from generation: "))
-                individuals_from_file = (gen, read_pickle(f'results/{files[file_nr-1]}/individuals/individuals_{gen}.pkl'))
-                params = load_json(f'results/{runs[file_nr-1]}/run_params.json')
+                individuals_from_file = (gen, read_pickle(f'results/{run}/individuals/individuals_{gen}.pkl'))
+                params = load_json(f'results/{run}/run_params.json')
             except:
                 print(f"{tcolors.FAIL}Generation not available{tcolors.ENDC}")
                 continue
@@ -764,5 +765,4 @@ def get_GA_params():
         params["simulations"] = int(input("Number of simulations (int): "))
         params["min_generations"] = int(input("Number of minimum generations (int): "))
         params["individuals_from_file"] = None
-
     return params
