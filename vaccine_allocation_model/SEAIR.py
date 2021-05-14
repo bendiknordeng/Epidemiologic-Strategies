@@ -103,8 +103,12 @@ class SEAIR:
             working_hours = timestep < (self.periods_per_day * 5) and timestep % self.periods_per_day == 2
             if self.include_flow and working_hours:
                 # Define current transmission of infection with commuters
-                lam_j = np.clip(beta * (r_e * E2 + r_a * A + I)/visitors, 0, 1)
-                commuter_cases = S/N * np.array([np.matmul(commuters * age_flow_scaling[a], lam_j[:,a]) for a in range(len(age_flow_scaling))]).T
+                infectious_commuters = np.matmul(commuters.T, (r_e * E2 + r_a * A + I)/N)
+                infectious_commuters = np.array([infectious_commuters[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
+                lam_j = np.clip(beta * infectious_commuters/visitors, 0, 1)
+                lam_j = np.matmul(lam_j, self.contact_matrices[2]) # only use work matrix
+                lam_j = np.array([lam_j[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
+                commuter_cases = S/N * np.matmul(commuters, lam_j)
                 if self.stochastic:
                     commuter_cases = np.random.poisson(commuter_cases)
 
@@ -113,7 +117,7 @@ class SEAIR:
             contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
-
+            
             # Get transition values
             new_E1  = np.clip(contact_cases + commuter_cases, None, S)
             new_E2  = E1 * sigma * p

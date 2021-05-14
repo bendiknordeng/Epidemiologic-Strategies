@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 1
+    runs = 10
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -23,7 +23,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted']
-    policy_number = -1
+    policy_number = -4
     weights = np.array([0, 0, 0, 0, 0, 1])
 
     # Read data and generate parameters
@@ -40,13 +40,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
 
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     use_waves = True
     stochastic = True
     use_response_measures = False
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
 
     vaccine_policy = Policy(
