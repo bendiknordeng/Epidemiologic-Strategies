@@ -9,6 +9,7 @@ from collections import defaultdict
 from functools import partial
 from datetime import datetime
 import json
+from itertools import combinations
 
 class SimpleGeneticAlgorithm:
     def __init__(self, simulations, population_size, process, objective, min_generations, 
@@ -60,7 +61,7 @@ class SimpleGeneticAlgorithm:
             self.mutation()
             self.repair_offsprings()
             self.run_population(offsprings=True)
-            self.population.new_generation(self.generation_count)
+            self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
 
     def run_population(self, offsprings=False):
@@ -108,13 +109,15 @@ class SimpleGeneticAlgorithm:
             candidate = self.population.individuals[0]
             if self.best_individual is None:
                 print(f"{tcolors.OKGREEN}Setting all-time best individual: {candidate}{tcolors.ENDC}")
+                write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                 self.best_individual = candidate
             else:
                 if candidate == self.best_individual:
                     print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
                     self.generations_since_new_best += 1
-                    if self.generations_since_new_best > 2 and self.generation_count > 20:
-                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.final_scores[self.best_individual.ID])}{tcolors.ENDC}")
+                    if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
+                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
+                        write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                         return True
                     return False
                 if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
@@ -129,12 +132,14 @@ class SimpleGeneticAlgorithm:
                 if new_best:
                     if self.verbose: print(f"{tcolors.OKGREEN}New all-time best: {candidate}{tcolors.ENDC}")
                     self.best_individual = candidate
+                    write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                     self.generations_since_new_best = 0
                 else:
                     if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
                     self.generations_since_new_best += 1
-                    if self.generations_since_new_best > 2:
-                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}, score: {np.mean(self.final_scores[self.best_individual.ID])}{tcolors.ENDC}")
+                    if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
+                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
+                        write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                         return True
         return False
 
@@ -153,7 +158,7 @@ class SimpleGeneticAlgorithm:
             if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
-        seeds = [np.random.randint(0, 1e+6) for _ in range(runs)]
+        seeds = [np.random.randint(100, 1e+6) for _ in range(runs)]
         ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
         for i, individual in enumerate(pop):
             if self.verbose: print(f"\nFinding score for {'offspring' if offsprings else 'individual'} in {ordinal(i+1)} place: {individual.ID}")
@@ -291,7 +296,7 @@ class SimpleGeneticAlgorithm:
             for loc in np.argwhere(norm==0):
                 i=loc[0]
                 j=loc[1]
-                offspring.genes[i,j,:] = np.array([1,0,0,0])
+                offspring.genes[i,j,:] = np.array([1,0,0,0,0,0])
             norm = np.sum(offspring.genes, axis=2, keepdims=True)
             offspring.genes = np.divide(offspring.genes, norm)
 
@@ -312,12 +317,15 @@ class SimpleGeneticAlgorithm:
         folder_path = os.getcwd()+run_folder
         individuals_path = folder_path + "/individuals"
         final_scores_path = folder_path + "/final_scores"
+        best_individuals_path = folder_path + "/best_individuals"
         os.mkdir(folder_path)
         os.mkdir(individuals_path)
         os.mkdir(final_scores_path)
+        os.mkdir(best_individuals_path)
         self.overview_path = folder_path + f"/generation_overview.csv"
-        self.individuals_path = folder_path + f"/individuals/individuals_"
-        self.final_score_path = folder_path + f"/final_scores/final_score_"
+        self.individuals_path = individuals_path + f"/individuals_"
+        self.final_score_path = final_scores_path + f"/final_score_"
+        self.best_individual_path = best_individuals_path + f"/best_individual_"
 
         with open(folder_path + "/run_params.json", "w") as file:
             json.dump(self.__repr__(), file, indent=4)
@@ -381,15 +389,15 @@ class Population:
         self.offsprings = None
         if self.verbose: print(f"{tcolors.OKCYAN}Initial population: {self.individuals}{tcolors.ENDC}")
     
-    def new_generation(self, generation_count):
+    def new_generation(self, generation_count, min_generations):
         """ Create new generation 
 
         Args:
             generation_count (int): what number of population this is
         """
-        if 10 < generation_count <= 20:
+        if min_generations//2 < generation_count <= min_generations:
             self.individuals = self.individuals[:-2]
-        elif generation_count > 20:
+        elif generation_count > min_generations:
             self.individuals = self.individuals[:-1]
         self.individuals.append(self.offsprings[0])
         if self.verbose: print(f"{tcolors.OKCYAN}New generation: {self.individuals}{tcolors.ENDC}") 
@@ -455,30 +463,39 @@ class Individual:
         Returns:
             numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
         """
-        genes = np.zeros((3,3,4))
-        if 0 <= i < 4:
+        genes = np.zeros((3,3,6))
+        if i < 6:
             genes[:,:,i] = 1
-        elif 4 <= i < 7:
-            j = (i+1)%4
-            k = (i+3)%4 if i==6 else (i+2)%4
-            genes[:, :, j] = 0.5
-            genes[:, :, k] = 0.5
-        elif i==7:
-            genes[:, :, 1] = 0.33
-            genes[:, :, 2] = 0.33
-            genes[:, :, 3] = 0.34
-        elif i==8:
-            for j in range(4):
-                genes[:, :, j] = 0.25
-        elif 9 <= i < 10: # Set one weight vector randomly, make for each timestep
-            weights = np.zeros(4)
-            for j in range(4):
+        elif i < 16:
+            c = list(combinations(np.arange(5)+1, 2))
+            genes[:, :, c[i-6][0]] = 1/2
+            genes[:, :, c[i-6][1]] = 1/2
+        elif i < 26:
+            c = list(combinations(np.arange(5)+1, 3))
+            genes[:, :, c[i-16][0]] = 1/3
+            genes[:, :, c[i-16][1]] = 1/3
+            genes[:, :, c[i-16][2]] = 1/3
+        elif i < 31:
+            c = list(combinations(np.arange(5)+1, 4))
+            genes[:, :, c[i-31][0]] = 1/4
+            genes[:, :, c[i-31][1]] = 1/4
+            genes[:, :, c[i-31][2]] = 1/4
+            genes[:, :, c[i-31][3]] = 1/4
+        elif i==31:
+            for j in range(1,6):
+                genes[:, :, j] = 1/5
+        elif i==32:
+            for j in range(6):
+                genes[:, :, j] = 1/6
+        elif i==33: # Set one weight vector randomly, make for each timestep
+            weights = np.zeros(6)
+            for j in range(6):
                 high = 100 if j > 0 else 50
                 weights[j] = np.random.randint(low=0, high=high) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
             norm = np.sum(weights)
             genes[:, :] = np.divide(weights, norm)
         else:
-            genes = np.random.randint(low=0, high=100, size=(3,3,4)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            genes = np.random.randint(low=0, high=100, size=(3,3,6)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
