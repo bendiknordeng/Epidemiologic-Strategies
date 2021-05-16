@@ -11,19 +11,19 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 1
+    runs = 10
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
     end_day, end_month, end_year = 31, 8, 2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
-    initial_infected = 10
+    initial_infected = 50
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted']
-    policy_number = -1
+    policy_number = -4
     weights = np.array([0, 0, 0, 0, 0, 1])
 
     # Read data and generate parameters
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     stochastic = True
     use_response_measures = False
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
 
     vaccine_policy = Policy(
@@ -122,7 +122,7 @@ if __name__ == '__main__':
         results_regions = history.sum(axis=3)
         infection_results_age = new_infections.sum(axis=1)
         infection_results_regions = new_infections.sum(axis=2)
-        regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG']
+        regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG', 'STEINKJER']
         comps_to_plot = ["E2", "A", "I"]
 
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)

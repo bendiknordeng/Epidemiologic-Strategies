@@ -74,7 +74,7 @@ def generate_commuter_matrix(age_flow_scaling):
     df = pd.read_csv(paths.municipalities_commuters)
     commuters = df.pivot(columns='to', index='from', values='n').fillna(0).values
     visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
-    visitors[np.where(visitors == 0)] = 1
+    visitors[np.where(visitors == 0)] = np.inf
     return visitors, commuters
 
 def write_pickle(filepath, object):
