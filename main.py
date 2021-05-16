@@ -11,14 +11,14 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 10
+    runs = 50
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
-    end_day, end_month, end_year = 31, 8, 2021
+    end_day, end_month, end_year = 3, , 2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
-    initial_infected = 50
+    initial_infected = 100
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
@@ -46,7 +46,7 @@ if __name__ == '__main__':
     stochastic = True
     use_response_measures = False
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
 
     vaccine_policy = Policy(
@@ -106,9 +106,9 @@ if __name__ == '__main__':
         GA.run()
     else:
         results = []
-        mdp.init()              
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
+            mdp.init()              
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
