@@ -114,10 +114,10 @@ class SimpleGeneticAlgorithm:
             else:
                 if candidate == self.best_individual:
                     print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
+                    write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                     self.generations_since_new_best += 1
                     if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
                         print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
-                        write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                         return True
                     return False
                 if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
@@ -136,11 +136,13 @@ class SimpleGeneticAlgorithm:
                     self.generations_since_new_best = 0
                 else:
                     if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
+                    write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                     self.generations_since_new_best += 1
                     if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
                         print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
-                        write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                         return True
+        else:
+            write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.population.individuals[0])
         return False
 
     def find_fitness(self, offsprings=False, from_start=True):
