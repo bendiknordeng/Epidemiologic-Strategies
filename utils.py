@@ -759,7 +759,7 @@ def get_GA_params():
     else:
         params = {}
         params["gen"] = 0
-        ga_objectives = {1: "deaths", 2: "weighted", 3: "yll"}
+        ga_objectives = {1: "deaths", 2: "infected", 3: "weighted", 4: "yll"}
         print("Choose objective for genetic algorithm.")
         for k, v in ga_objectives.items(): print(f"{k}: {v}")
         ga_objective_number = int(input("\nGA Objective (int): "))

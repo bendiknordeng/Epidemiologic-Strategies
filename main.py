@@ -23,7 +23,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted', 'fhi_policy']
-    policy_number = -2
+    policy_number = -3
     weights = np.array([0, 0, 0, 1, 0, 0])
 
     # Read data and generate parameters
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
 
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     use_waves = True
     stochastic = True
@@ -106,9 +106,9 @@ if __name__ == '__main__':
         GA.run()
     else:
         results = []
+        mdp.init()
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
-            mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
