@@ -22,9 +22,9 @@ if __name__ == '__main__':
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
-                'commuter_based', 'weighted']
-    policy_number = -4
-    weights = np.array([0, 0, 0, 0, 0, 1])
+                'commuter_based', 'weighted', 'fhi_policy']
+    policy_number = -2
+    weights = np.array([0, 0, 0, 1, 0, 0])
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -108,7 +108,7 @@ if __name__ == '__main__':
         results = []
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
-            mdp.init()              
+            mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)

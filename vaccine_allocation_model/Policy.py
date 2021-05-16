@@ -1,3 +1,4 @@
+import pandas as pd
 import numpy as np
 from utils import generate_weighted_contact_matrix
 
@@ -20,13 +21,15 @@ class Policy:
             "oldest_first": self._oldest_first_policy,
             "contact_based": self._contact_based_policy,
             "commuter_based": self._commuter_based_policy,
-            "weighted": self._weighted_policy
+            "weighted": self._weighted_policy,
+            "fhi_policy": self._fhi_policy,
             }
         self.vaccine_allocation = self.policies['weighted'] if GA else self.policies[policy]
         self.population = population
         self.contact_matrices = contact_matrices
         self.age_flow_scaling = age_flow_scaling
         self.GA = GA
+        self.fhi_vaccine_plan = None
 
     def get_decision(self, state, vaccines, weights):
         """ Retrieves a vaccine allocation
@@ -43,7 +46,7 @@ class Policy:
             return self._no_vaccines()
         return self.vaccine_allocation(state, vaccines, weights)
 
-    def _random_policy(self, state, vaccines):
+    def _random_policy(self, state, M, *args):
         """ Define allocation of vaccines based on a random distribution
 
         Returns
@@ -52,7 +55,6 @@ class Policy:
         n_regions, n_age_groups = self.population.shape
         vaccine_allocation = np.zeros((n_regions, n_age_groups))
         demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
-        M = vaccines
         while M > 0:
             possible_regions = np.nonzero(demand > 0)[0]
             region = np.random.choice(possible_regions)
@@ -73,7 +75,7 @@ class Policy:
         """
         return np.zeros(self.population.shape)
 
-    def _susceptible_based_policy(self, state, vaccines, *args):
+    def _susceptible_based_policy(self, state, M, *args):
         """ Define allocation of vaccines based on number of susceptibles in each region
 
         Returns
@@ -81,14 +83,13 @@ class Policy:
         """
         vaccine_allocation = np.zeros(self.population.shape)
         demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
-        M = vaccines
         if M > 0:
             vaccine_allocation = M * demand/np.sum(demand)
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             return decision
         return vaccine_allocation
 
-    def _infection_based_policy(self, state, vaccines, *args):
+    def _infection_based_policy(self, state, M, *args):
         """ Define allocation of vaccines based on number of infected in each region
 
         Returns
@@ -96,7 +97,6 @@ class Policy:
         """
         vaccine_allocation = np.zeros(self.population.shape)
         total_infection = np.sum(state.I)
-        M = vaccines
         if M > 0:
             if total_infection > 0:
                 demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
@@ -108,14 +108,13 @@ class Policy:
                 return decision
         return vaccine_allocation
 
-    def _oldest_first_policy(self, state, vaccines, *args):
+    def _oldest_first_policy(self, state, M, *args):
         """ Define allocation of vaccines based on age, prioritizes the oldest non-vaccinated group
 
         Returns
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
         vaccine_allocation = np.zeros(self.population.shape)
-        M = vaccines
         if M > 0:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             for age_group in range(self.population.shape[1]-1,0,-1):
@@ -133,7 +132,7 @@ class Policy:
             return decision
         return vaccine_allocation
 
-    def _contact_based_policy(self, state, vaccines, *args):
+    def _contact_based_policy(self, state, M, *args):
         """ Define allocation of vaccines based on amount of contact, prioritize age group with most contact
 
         Returns
@@ -143,7 +142,6 @@ class Policy:
         contact_sum = C.sum(axis=1)
         priority = sorted(zip(range(len(contact_sum)), contact_sum), key=lambda x: x[1], reverse=True)
         vaccine_allocation = np.zeros(self.population.shape)
-        M = vaccines
         if M > 0:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             for age_group in tuple(zip(*priority))[0]:
@@ -161,7 +159,7 @@ class Policy:
             return decision
         return vaccine_allocation
 
-    def _commuter_based_policy(self, state, vaccines, *args):   
+    def _commuter_based_policy(self, state, M, *args):   
         """ Define allocation of vaccines based on amount of contact, prioritize age group with most contact
 
         Returns
@@ -169,7 +167,6 @@ class Policy:
         """
         priority = sorted(zip(range(len(self.age_flow_scaling)), self.age_flow_scaling), key=lambda x: x[1], reverse=True)
         vaccine_allocation = np.zeros(self.population.shape)
-        M = vaccines
         if M > 0:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             for age_group in tuple(zip(*priority))[0]:
@@ -187,7 +184,7 @@ class Policy:
             return decision
         return vaccine_allocation
 
-    def _weighted_policy(self, state, vaccines, weights):
+    def _weighted_policy(self, state, M, weights):
         """ Define allocation of vaccines based on a weighting of other policies
 
         Returns:
@@ -201,7 +198,6 @@ class Policy:
             weights = weights[i][j-1]
         weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first", "contact_based", "commuter_based"]
         vaccine_allocation = np.zeros(self.population.shape)
-        M = vaccines
         if M > 0:
             demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             vaccines_per_policy = M * weights
@@ -209,6 +205,29 @@ class Policy:
                 vaccine_allocation += self.policies[policy](state, vaccines_per_policy[i])
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             return decision
+        return vaccine_allocation
+
+    def _fhi_policy(self, state, M, *args):
+        vaccine_allocation = np.zeros(self.population.shape)
+        if M > 0:
+            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+            if np.sum(self.fhi_vaccine_plan['n_people']) > 0:
+                while M > 0:
+                    for p in range(len(self.fhi_vaccine_plan)):
+                        priority = self.fhi_vaccine_plan.iloc[p]
+                        vaccinations = priority[1]
+                        age_group_ixs = np.where(priority[2:].values > 0)[0]
+                        vaccinations_per_age_group = vaccinations/len(age_group_ixs)
+                        vaccines_per_age_group = M/len(age_group_ixs)
+                        allocation = np.minimum(vaccinations_per_age_group, vaccines_per_age_group)
+                        age_group_pop = demand[:,age_group_ixs].sum(axis=0)
+                        vaccine_allocation[:,age_group_ixs] += allocation * demand[:,age_group_ixs]/age_group_pop
+                        priority[1] -= np.sum(allocation)
+                        M -= np.sum(allocation)
+                        if M == 0: break
+                    self.fhi_vaccine_plan = self.fhi_vaccine_plan[self.fhi_vaccine_plan.n_people > 0]
+                decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+                return decision
         return vaccine_allocation
 
     def __str__(self):

@@ -64,6 +64,7 @@ class MarkovDecisionProcess:
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
                                                                         self.config.periods_per_day, self.start_wave_timeline, 
                                                                         self.start_wave_state_timeline, self.simulation_period)
+        self.policy.fhi_vaccine_plan = pd.read_csv("data/fhi_vaccine_plan.csv")
 
     def run(self, weighted_policy_weights=None):
         """ Updates states from current time_step until horizon is reached"""
