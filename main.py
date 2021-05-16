@@ -18,7 +18,7 @@ if __name__ == '__main__':
     end_day, end_month, end_year = 31, 8, 2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
-    initial_infected = 10
+    initial_infected = 50
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
@@ -122,7 +122,7 @@ if __name__ == '__main__':
         results_regions = history.sum(axis=3)
         infection_results_age = new_infections.sum(axis=1)
         infection_results_regions = new_infections.sum(axis=2)
-        regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG']
+        regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG', 'STEINKJER']
         comps_to_plot = ["E2", "A", "I"]
 
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
