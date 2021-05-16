@@ -223,11 +223,11 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
     matrices = C.copy()
     c_descriptions = ['Home', 'School', 'Work', 'Public', 'Combined']   
     sns.set(font_scale=1.2)
-    c_combined =  np.sum(np.array([np.array(C[i])*weights[i] for i in range(len(C))]), axis=0)
+    c_combined =  utils.generate_weighted_contact_matrix(C, weights)
     matrices.append(c_combined)
     for i in range(len(matrices)):
         plt.figure(figsize = (10,7))
-        sns.heatmap(np.round(matrices[i],2), annot=True, vmax=1, vmin=0, cmap="Reds", xticklabels=age_labels, yticklabels=age_labels)
+        sns.heatmap(np.round(matrices[i],2), annot=True, vmax=1, vmin=0, cmap="Spectral_r", xticklabels=age_labels, yticklabels=age_labels)
         plt.tick_params(axis='both', which='major', labelsize=10, labelbottom=False, bottom=False, top=False, labeltop=True)
         plt.yticks(rotation=0)
         if fpath:

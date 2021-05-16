@@ -199,12 +199,7 @@ def generate_contact_matrices(bins, labels, population, country=None):
     df.contact_age_0 = pd.cut(df['contact_age_0'], bins=bins+[110], labels=labels, include_lowest=True)
     df.contact_age_1 = pd.cut(df['contact_age_1'], bins=bins+[110], labels=labels, include_lowest=True)
     df_mat = pd.DataFrame(df[df.columns[:-2]].groupby(['contact_age_0', 'contact_age_1']).sum()).reset_index()
-    N_survey_0 = df.contact_age_0.value_counts()[labels]
-    pop_0 = [N_survey_0[l[1].contact_age_0] for l in df_mat.iterrows()]
-    df_mat['pop_0'] = pop_0
-    for col in df_mat.columns[2:-1]:
-        df_mat[col] = df_mat[col]/(df_mat.pop_0)
-
+    N_j = df.contact_age_1.value_counts()[labels]
     N_eu = pd.read_csv(paths.europe_data)
     N_eu.age = pd.cut(N_eu['age'], bins=bins+[110], labels=labels, include_lowest=True)
     N_eu = N_eu.groupby('age').sum()['population']
@@ -212,19 +207,28 @@ def generate_contact_matrices(bins, labels, population, country=None):
     N_norway = population[population.columns[2:-1]].sum()
     N_norway_tot = np.sum(N_norway)
 
-    matrices = []
+    contact_matrices = []
     for col in ['home', 'school', 'work', 'public']:
-        matrix = pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1')
-        corrected_matrix = np.zeros((matrix.shape))
+        M_ij = (pd.pivot_table(df_mat, values=col, index='contact_age_0', columns='contact_age_1').values)
+
+        # Density scale transformation
+        F_ij = M_ij / N_j.values.reshape(-1,1)
+
+        # Density correction
+        corrected_matrix = np.zeros((F_ij.shape))
         for i, a_i in enumerate(labels):
             for j, a_j in enumerate(labels):
-                corrected_matrix[i][j] = matrix[a_i][a_j] * (N_eu_tot * N_norway[a_j])/(N_eu[a_j] * N_norway_tot) # Density correction
-        symmetric_matrix = np.zeros((matrix.shape))
+                corrected_matrix[i][j] = F_ij[i][j] * (N_eu_tot * N_norway[a_j])/(N_eu[a_j] * N_norway_tot)
+
+        # Symmetry
+        symmetric_matrix = np.zeros((corrected_matrix.shape))
         for i, a_i in enumerate(labels):
             for j, a_j in enumerate(labels):
-                symmetric_matrix[i][j] = 1/(N_norway[a_i]+N_norway[a_j]) * (corrected_matrix[i][j] * N_norway[a_i] + corrected_matrix[j][i] * N_norway[a_j]) # Symmetry
-        matrices.append(symmetric_matrix)
-    return matrices
+                symmetric_matrix[i][j] = (corrected_matrix[i][j] * N_norway[a_i] + corrected_matrix[j][i] * N_norway[a_j])/(N_norway[a_i]+N_norway[a_j])
+        
+        contact_matrices.append(symmetric_matrix)
+    
+    return contact_matrices
 
 def generate_weighted_contact_matrix(C, contact_weights):
         """ Scales the contact matrices with weights, and return the weighted contact matrix used in modelling
