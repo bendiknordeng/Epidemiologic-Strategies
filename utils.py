@@ -10,7 +10,7 @@ import plot
 from scipy.stats import skewnorm
 import json
 from collections import Counter
-import geopandas as gpd
+# import geopandas as gpd
 
 class tcolors:
     HEADER = '\033[95m'
@@ -721,6 +721,7 @@ def get_avg_std(final_states, population, age_labels):
 
 def generate_geopandas(pop, fpath_spatial_data):
     pop['region_id'] = pop['region_id'].astype('str')
+    pop['region_id'] = pop['region_id'].apply(lambda x: '{0:0>4}'.format(x))
     pop = pop[['region_id', 'population', 'region_name']]
     gdf = gpd.read_file(fpath_spatial_data)
     gdf = gdf[['region_id', 'geometry']]
