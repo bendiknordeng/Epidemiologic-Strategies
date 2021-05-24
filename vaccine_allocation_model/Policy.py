@@ -196,10 +196,10 @@ class Policy:
             i = {"U": 0, "D": 1, "N": 2}[state.wave_state]
             j = min(state.wave_count[state.wave_state], 2) # make sure strategy is kept within count 3
             weights = weights[i][j-1]
-        weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first", "contact_based", "commuter_based"]
+        weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first", "contact_based"]
         vaccine_allocation = np.zeros(self.population.shape)
         if M > 0:
-            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+            demand = state.S.copy() - (1-self.config.efficacy) * state.V.copy()
             vaccines_per_policy = M * weights
             for i, policy in enumerate(weighted_policies):
                 vaccine_allocation += self.policies[policy](state, vaccines_per_policy[i])
