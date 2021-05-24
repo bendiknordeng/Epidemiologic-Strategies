@@ -67,8 +67,7 @@ class SEAIR:
         total_new_infected = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         total_new_deaths = np.zeros(shape=(decision_period, n_regions, n_age_groups))
         
-        # Probabilities
-        beta = R_eff/self.recovery_period
+        # Probabilities        
         r_e = self.presymptomatic_infectiousness
         r_a = self.asymptomatic_infectiousness
         p = self.proportion_symptomatic_infections
@@ -80,6 +79,19 @@ class SEAIR:
         alpha = 1/(self.presymptomatic_period * self.periods_per_day)
         omega = 1/(self.postsymptomatic_period * self.periods_per_day)
         gamma = 1/(self.recovery_period * self.periods_per_day)
+
+        # beta = R_eff/self.recovery_period
+
+        beta = R_eff / (p/omega - r_a * ((alpha*p*sigma*omega - alpha*sigma*omega) / (gamma*alpha*sigma*omega)) + p*r_e/alpha)
+        beta = 2.8  * beta
+        print(f'R effective: {R_eff}')
+        print(f'Beta: {beta}')
+
+        
+        # import pdb;pdb.set_trace()
+        
+        sum_commuter_cases = 0
+        sum_contact_cases = np.zeros(shape=S.shape)
 
         # Run simulation
         for i in range(decision_period):
@@ -111,13 +123,15 @@ class SEAIR:
                 commuter_cases = S/N * np.matmul(commuters, lam_j)
                 if self.stochastic:
                     commuter_cases = np.random.poisson(commuter_cases)
-
+                    sum_commuter_cases += commuter_cases
+        
             # Define current transmission of infection without commuters
             lam_i = np.clip(beta * (alphas[0] * r_e * E2 + alphas[1] * r_a * A + alphas[2] * I), 0, 1)
             contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
-            
+                sum_contact_cases += contact_cases
+
             # Get transition values
             new_E1  = np.clip(contact_cases + commuter_cases, None, S)
             new_E2  = E1 * sigma * p
@@ -139,5 +153,8 @@ class SEAIR:
             # Save number of new infected and dead
             total_new_infected[i] = new_I
             total_new_deaths[i] = new_D
+
+        # print(f'Commuter cases: {sum_commuter_cases.sum()}')
+        # print(f'Contact cases: {sum_contact_cases.sum()}')
 
         return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)

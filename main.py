@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 50
+    runs = 1
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -40,13 +40,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
 
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     use_waves = True
     stochastic = True
     use_response_measures = False
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
 
     vaccine_policy = Policy(
@@ -127,12 +127,20 @@ if __name__ == '__main__':
 
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
         plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        utils.get_r_effective(mdp.path, population, config, from_data=False)
-        plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
-        plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
+        #utils.get_r_effective(mdp.path, population, config, from_data=False)
+        #plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+        #plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, accumulated_compartment_plot=False, per_100k=False)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)
         plot.plot_commuters(population, paths.municipalities_geo, paths.municipalities_commuters)
+    
+    """
+    import pdb; pdb.set_trace()
+    
+    import pandas as pd
+    w = history.sum(axis=1).sum(axis=1).sum(axis=1)
+    df = pd.DataFrame(w, columns = ['I'])
+    """
