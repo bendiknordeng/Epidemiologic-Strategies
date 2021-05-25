@@ -250,11 +250,9 @@ def get_age_group_flow_scaling(bins, labels, population):
     return age_group_commuter_percent/age_group_commuter_percent.sum()
 
 def get_age_group_fatality_prob(bins, labels):
-    df = pd.read_csv(paths.deaths_by_age)
-    df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
-    infected = df.groupby('age').sum()['cases'].to_numpy()
-    dead = df.groupby('age').sum()['deaths'].to_numpy()
-    return dead/infected * (1.9/3.6) # Our world data on hospital beds per 1000 (California/Norway)
+    df = pd.read_csv("data/age_groups/deaths_by_age.csv")
+    df['age_group'] = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    return df.groupby('age_group').mean()['ifr'].to_numpy()/100
 
 def get_historic_data():
     historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
