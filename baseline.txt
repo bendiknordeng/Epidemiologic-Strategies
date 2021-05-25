@@ -10,7 +10,7 @@
 "proportion_symptomatic_infections": 0.6,
 "asymptomatic_infectiousness": 0.1,
 "age_bins": [0, 17, 44, 54, 64, 74, 84],
-"initial_contact_weights": [0.45, 0.32, 0.80, 0.43],
+"initial_contact_weights": [0.31, 0.24, 0.16, 0.29],
 "initial_alphas": [1, 1, 1],
 "initial_flow_scale": 1
 }

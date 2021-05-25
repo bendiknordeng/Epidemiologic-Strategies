@@ -9,11 +9,13 @@ from matplotlib import dates as mdates
 from scipy.interpolate import interp1d
 from matplotlib import ticker
 from matplotlib.colors import ListedColormap
-# import contextily as ctx
 from tqdm import tqdm
 import imageio
 from os import listdir
 import re
+#import contextily as ctx
+#import geopandas as gpd
+#from shapely.geometry import Point, LineString
 
 color_scheme = {
     "S": '#0000ff',
@@ -345,6 +347,7 @@ def plot_geospatial(fpath_geospatial, res, fpath_plots, population, accumulated_
         ix_data = 4 # S, E1, E2, A, I, R, D, V
         data_to_plot = res[time_step, ix_data,:] * pop_factor if per_100k else res[time_step, ix_data,:]
         fig, ax = plt.subplots(figsize=(14,14), dpi=72)
+        # import pdb;pdb.set_trace()
         gdf.plot(ax=ax, facecolor='none', edgecolor='gray', alpha=0.5, linewidth=0.5, zorder=2)
         gdf.plot(ax=ax, column=data_to_plot, cmap='Reds', zorder=3,  legend=True, vmin=0, vmax=v_max, legend_kwds={'shrink': 0.95})
         
@@ -379,8 +382,8 @@ def plot_geospatial(fpath_geospatial, res, fpath_plots, population, accumulated_
             inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 6], color=color_scheme['D'], s=20, alpha=0.8)
             inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 7], color=color_scheme['V'], s=20, alpha=0.8)
         else:
-            inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", color=color_scheme['E1'], ls='-', lw=1.5, alpha=0.8)
-            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 1], color=color_scheme['E1'], s=20, alpha=0.8)
+            inset_ax.plot(res_accumulated_regions[:time_step, 1], label="E1", color='red', ls='-', lw=1.5, alpha=0.8)
+            inset_ax.scatter((time_step-1), res_accumulated_regions[time_step - 1, 1], color='red', s=20, alpha=0.8)
         
         # axes titles, label coordinates, values, font_sizes, grid, spines_colours, ticks_colours, legend, title compartment plot
         inset_ax.set_xlabel('Weeks', size=14, alpha=1, color='dimgray')
@@ -422,3 +425,48 @@ def create_gif(fpath_gif, fpath_plots):
         for filename in tqdm(filenames):
             image = imageio.imread(fpath_plots + '{}'.format(filename))
             writer.append_data(image)
+
+def plot_commuters(population, fpath_muncipalities_geo, fpath_commuters):
+    """ generate plot of all commuter connections between municipalities
+    """
+    pd.options.mode.chained_assignment = None  # default='warn'
+    # load and clean geospatial data
+    gdf = utils.generate_geopandas(population, fpath_muncipalities_geo)
+    gdf['center'] = gdf.centroid
+    gdf['region_id'] = gdf['region_id'].astype('str')
+    gdf['region_id'] = gdf['region_id'].apply(lambda x: '{0:0>4}'.format(x))
+    
+    # load and clean commuter data
+    df = pd.read_csv(fpath_commuters)
+    df['from'] = df['from'].str.replace(r'\D', '', regex=True)
+    df['to'] = df['to'].str.replace(r'\D', '', regex=True)
+
+    # merge data 
+    df2 = df.merge(gdf, how='left', left_on='from', right_on='region_id')
+    df2 = df2[['from', 'to', 'n', 'center']]
+    df2 = df2.rename(columns={'center': 'from_geo'})
+    df2 = df2.merge(gdf, how='left', left_on='to', right_on='region_id')
+    df2 = df2[['from', 'to', 'n', 'from_geo', 'center']]
+    df2 = df2.rename(columns={'center': 'to_geo'})
+    
+    # generate linestrings
+    df2['line'] = None
+    l = []
+    for index, row in df2.iterrows():
+        if df2['to_geo'][index].is_empty or  df2['from_geo'][index].is_empty :
+            l.append(False)
+        else:
+            l.append(True)
+    df2 = df2[l]
+    for index, row in df2.iterrows():
+        df2['line'][index] = LineString([df2['from_geo'][index], df2['to_geo'][index]])
+    gdf2 = gpd.GeoDataFrame(df2, geometry=df2['line'])
+
+    # plot
+    fig, ax1 = plt.subplots(figsize=(20, 20))
+    gdf.plot(ax=ax1, color='lightgrey')
+    gdf2.plot(ax=ax1, color='black', linewidth=0.01)
+    gdf['center'].plot(ax=ax1, color='red', markersize=8)
+    plt.draw()
+    plt.savefig("plots/commuter_network.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.close()

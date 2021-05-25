@@ -276,7 +276,7 @@ class SimpleGeneticAlgorithm:
         for offspring in self.population.offsprings:
             shape = offspring.genes.shape
             draw = np.random.random() 
-            while draw > 0.1:
+            if draw > 0.1:
                 i1 = np.random.randint(0, high=shape[0])
                 j1 = np.random.randint(0, high=shape[1])
                 k1 = np.random.randint(0, high=shape[2])
@@ -289,7 +289,6 @@ class SimpleGeneticAlgorithm:
                 value = offspring.genes[i1, j1, k1]
                 offspring.genes[i1, j1, k1] = offspring.genes[i2, j2, k2]
                 offspring.genes[i2, j2, k2] = value
-                draw = np.random.random()
     
     def repair_offsprings(self):
         """ Make sure the genes of offsprings are feasible, i.e. normalize. """

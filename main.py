@@ -23,7 +23,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'commuter_based', 'weighted', 'fhi_policy']
-    policy_number = -3
+    policy_number = -2
     weights = np.array([0, 0, 0, 1, 0, 0])
 
     # Read data and generate parameters
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     commuters = utils.generate_commuter_matrix(age_group_flow_scaling)
     response_measure_model = utils.load_response_measure_models()
     historic_data = utils.get_historic_data()
-
+    
     # Run settings
     run_GA = True
     include_flow = True
@@ -106,9 +106,9 @@ if __name__ == '__main__':
         GA.run()
     else:
         results = []
-        mdp.init()
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
+            mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
@@ -133,5 +133,6 @@ if __name__ == '__main__':
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, accumulated_compartment_plot=False, per_100k=True)
+        plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, accumulated_compartment_plot=False, per_100k=False)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)
+        plot.plot_commuters(population, paths.municipalities_geo, paths.municipalities_commuters)
