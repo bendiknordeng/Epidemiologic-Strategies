@@ -297,8 +297,8 @@ class SimpleGeneticAlgorithm:
             for loc in np.argwhere(norm==0):
                 i=loc[0]
                 j=loc[1]
-                offspring.genes[i,j,:] = np.array([1,0,0,0,0,0])
-            norm = np.sum(offspring.genes, axis=2, keepdims=True)
+                offspring.genes[i,j,:] = np.array([1,0,0,0,0])
+                norm = np.sum(offspring.genes, axis=2, keepdims=True)
             offspring.genes = np.divide(offspring.genes, norm)
 
     def find_runs(self, count):
@@ -384,7 +384,7 @@ class Population:
             if random_individuals:
                 self.individuals = [Individual() for _ in range(population_size)]
             else:
-                self.individuals = [Individual(i) for i in range(population_size)]
+                self.individuals = [Individual(i) for i in range(1,population_size+1)]
         self.verbose = verbose
         self.least_fittest_index = 0
         self.offsprings = None
@@ -464,39 +464,33 @@ class Individual:
         Returns:
             numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
         """
-        genes = np.zeros((3,3,6))
-        if i < 6:
+        genes = np.zeros((3,3,5))
+        if i < 5:
             genes[:,:,i] = 1
-        elif i < 16:
-            c = list(combinations(np.arange(5)+1, 2))
-            genes[:, :, c[i-6][0]] = 1/2
-            genes[:, :, c[i-6][1]] = 1/2
-        elif i < 26:
-            c = list(combinations(np.arange(5)+1, 3))
-            genes[:, :, c[i-16][0]] = 1/3
-            genes[:, :, c[i-16][1]] = 1/3
-            genes[:, :, c[i-16][2]] = 1/3
-        elif i < 31:
-            c = list(combinations(np.arange(5)+1, 4))
-            genes[:, :, c[i-31][0]] = 1/4
-            genes[:, :, c[i-31][1]] = 1/4
-            genes[:, :, c[i-31][2]] = 1/4
-            genes[:, :, c[i-31][3]] = 1/4
-        elif i==31:
-            for j in range(1,6):
+        elif i < 11:
+            comb = list(combinations(np.arange(4)+1, 2))
+            genes[:, :, comb[i-5][0]] = 1/2
+            genes[:, :, comb[i-5][1]] = 1/2
+        elif i < 15:
+            comb = list(combinations(np.arange(4)+1, 3))
+            genes[:, :, comb[i-11][0]] = 1/3
+            genes[:, :, comb[i-11][1]] = 1/3
+            genes[:, :, comb[i-11][2]] = 1/3
+        elif i==15:
+            for j in range(1,5):
+                genes[:, :, j] = 1/4
+        elif i==16:
+            for j in range(5):
                 genes[:, :, j] = 1/5
-        elif i==32:
-            for j in range(6):
-                genes[:, :, j] = 1/6
-        elif i==33: # Set one weight vector randomly, make for each timestep
-            weights = np.zeros(6)
-            for j in range(6):
+        elif i==17: # Set one weight vector randomly, make for each timestep
+            weights = np.zeros(5)
+            for j in range(5):
                 high = 100 if j > 0 else 50
                 weights[j] = np.random.randint(low=0, high=high) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
             norm = np.sum(weights)
             genes[:, :] = np.divide(weights, norm)
         else:
-            genes = np.random.randint(low=0, high=100, size=(3,3,6)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            genes = np.random.randint(low=0, high=100, size=(3,3,5)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
