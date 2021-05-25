@@ -227,7 +227,7 @@ def plot_heatmaps(C, weights, age_labels, fpath=""):
     matrices.append(c_combined)
     for i in range(len(matrices)):
         plt.figure(figsize = (10,7))
-        sns.heatmap(np.round(matrices[i],2), annot=True, vmax=1, vmin=0, cmap="Spectral_r", xticklabels=age_labels, yticklabels=age_labels)
+        sns.heatmap(np.round(matrices[i],2), annot=True, cmap="Blues", xticklabels=age_labels, yticklabels=age_labels)
         plt.tick_params(axis='both', which='major', labelsize=10, labelbottom=False, bottom=False, top=False, labeltop=True)
         plt.yticks(rotation=0)
         if fpath:

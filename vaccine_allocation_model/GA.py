@@ -110,7 +110,6 @@ class SimpleGeneticAlgorithm:
             candidate = self.population.individuals[0]
             if self.best_individual is None:
                 print(f"{tcolors.OKGREEN}Setting all-time best individual: {candidate}{tcolors.ENDC}")
-                write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                 self.best_individual = candidate
             else:
                 if candidate == self.best_individual:
@@ -133,7 +132,6 @@ class SimpleGeneticAlgorithm:
                 if new_best:
                     if self.verbose: print(f"{tcolors.OKGREEN}New all-time best: {candidate}{tcolors.ENDC}")
                     self.best_individual = candidate
-                    write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                     self.generations_since_new_best = 0
                 else:
                     if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
@@ -144,6 +142,7 @@ class SimpleGeneticAlgorithm:
                         return True
         else:
             write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.population.individuals[0])
+        write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
         return False
 
     def find_fitness(self, offsprings=False, from_start=True):
