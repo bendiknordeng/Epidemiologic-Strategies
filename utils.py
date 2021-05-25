@@ -250,11 +250,9 @@ def get_age_group_flow_scaling(bins, labels, population):
     return age_group_commuter_percent/age_group_commuter_percent.sum()
 
 def get_age_group_fatality_prob(bins, labels):
-    df = pd.read_csv(paths.deaths_by_age)
-    df.age = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
-    infected = df.groupby('age').sum()['cases'].to_numpy()
-    dead = df.groupby('age').sum()['deaths'].to_numpy()
-    return dead/infected * (1.9/3.6) # Our world data on hospital beds per 1000 (California/Norway)
+    df = pd.read_csv("data/age_groups/deaths_by_age.csv")
+    df['age_group'] = pd.cut(df['age'], bins=bins+[110], labels=labels, include_lowest=True)
+    return df.groupby('age_group').mean()['ifr'].to_numpy()/100
 
 def get_historic_data():
     historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
@@ -429,16 +427,17 @@ def get_average_results(final_states, population, age_labels, policy, save_to_fi
     result += f"{np.sum(average_dead):>12,.0f} ({100 * np.sum(average_dead)/total_pop:>5.2f}%) SD: {total_std_dead:>9.2f}"
     print(result)
     
+    data = np.array([age_labels, np.round(average_infected), np.round(average_vaccinated), np.round(average_dead), age_total]).T
+    df = pd.DataFrame(columns=columns, data=data)
+    for col in columns[1:]:
+        df[col] = df[col].astype(float)
+        df[col] = df[col].astype(int)
+    total = df[df.columns[1:]].sum()
+    total["Age group"] = "All"
+    df = df.append(total, ignore_index=True)
     if save_to_file:
-        data = np.array([age_labels, np.round(average_infected), np.round(average_vaccinated), np.round(average_dead), age_total]).T
-        df = pd.DataFrame(columns=columns, data=data)
-        for col in columns[1:]:
-            df[col] = df[col].astype(float)
-            df[col] = df[col].astype(int)
-        total = df[df.columns[1:]].sum()
-        total["Age group"] = "All"
-        df = df.append(total, ignore_index=True)
         df.to_csv(f"results/final_results_{policy}.csv", index=False)
+    return df
 
 def load_json(path):
     with open(path) as file:

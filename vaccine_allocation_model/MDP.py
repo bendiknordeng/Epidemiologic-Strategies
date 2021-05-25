@@ -52,7 +52,7 @@ class MarkovDecisionProcess:
         self.start_simulation_period = self.simulation_period
         self.start_wave_timeline = self.wave_timeline
         self.start_wave_state_timeline = self.wave_state_timeline
-        print(f"\n{tcolors.BOLD}Starting state:\n{self.start_state}{tcolors.ENDC}")
+        if self.verbose: print(f"\n{tcolors.BOLD}Starting state:\n{self.start_state}{tcolors.ENDC}")
 
     def reset(self):
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
