@@ -42,8 +42,6 @@ class SimpleGeneticAlgorithm:
         self.min_generations = min_generations
         self.number_of_runs = []
         self._generate_output_dirs()
-        self.heat = 1
-        self.cooling_factor = np.exp(np.log(0.5)/max(1,min_generations)) # half heat when reached half of min generations
         self.verbose = verbose
 
     def _set_objective(self, objective):
@@ -66,7 +64,6 @@ class SimpleGeneticAlgorithm:
             self.run_population(offsprings=True)
             self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
-            self.heat *= self.cooling_factor
 
     def run_population(self, offsprings=False):
         """ For current population, simulate
@@ -226,17 +223,7 @@ class SimpleGeneticAlgorithm:
         Args:
             generation_count (int): what generation that is creating offsprings
         """
-        candidates = self.population.individuals
-        draw = np.random.random()
-        roulette_wheel_selection = draw < self.heat
-        if self.verbose: print(f"{tcolors.BOLD}Heat: {self.heat}, random draw: {draw}\n{'Roulette wheel selection' if roulette_wheel_selection else 'Three best selected'}{tcolors.ENDC}")
-        if roulette_wheel_selection:
-            scores = tuple(map(lambda x: 1/x.mean_score, candidates))
-            scores /= sum(scores)
-            selected = np.random.choice(candidates, 3, replace=False, p=scores)
-            parent_combinations = list(combinations(selected, 2))
-        else:
-            parent_combinations = list(combinations(candidates[:3], 2))
+        parent_combinations = list(combinations(self.population.individuals[:3], 2))
         for i in range(3):
             parent1 = parent_combinations[i][0]
             parent2 = parent_combinations[i][1]

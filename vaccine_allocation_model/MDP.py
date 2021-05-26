@@ -3,7 +3,7 @@ from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
 import time
-from utils import get_wave_timeline, tcolors
+from utils import get_wave_timeline, get_historic_wave_timeline, tcolors
 from copy import copy, deepcopy
 
 class MarkovDecisionProcess:
@@ -59,8 +59,7 @@ class MarkovDecisionProcess:
     def reset(self):
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
         self.state = deepcopy(self.start_state)
-        # Start counting waves from 0 again
-        self.state.wave_count = dict.fromkeys(self.state.wave_count, 0)
+        self.state.wave_count = dict.fromkeys(self.state.wave_count, 0) # Start counting waves from 0 again
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
