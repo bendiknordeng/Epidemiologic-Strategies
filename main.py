@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 100
+    runs = 10
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     initial_vaccines_available = 0
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
-                'commuter_based', 'weighted', 'fhi_policy']
+                'weighted', 'fhi_policy']
     policy_number = -2
     weights = np.array([0, 0, 0, 1, 0, 0])
 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     use_waves = True
     stochastic = True
@@ -106,9 +106,9 @@ if __name__ == '__main__':
         GA.run()
     else:
         results = []
+        mdp.init()
         for i in tqdm(range(runs)):
             np.random.seed(i*10)
-            mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)

@@ -42,6 +42,8 @@ class SimpleGeneticAlgorithm:
         self.min_generations = min_generations
         self.number_of_runs = []
         self._generate_output_dirs()
+        self.heat = 1
+        self.cooling_factor = np.exp(np.log(0.5)/max(1,min_generations)) # half heat when reached half of min generations
         self.verbose = verbose
 
     def _set_objective(self, objective):
@@ -64,6 +66,7 @@ class SimpleGeneticAlgorithm:
             self.run_population(offsprings=True)
             self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
+            self.heat *= self.cooling_factor
 
     def run_population(self, offsprings=False):
         """ For current population, simulate
@@ -106,42 +109,39 @@ class SimpleGeneticAlgorithm:
         Returns:
             bool: True if new all-time best individual is found
         """
-        if self.generation_count >= self.min_generations:
-            candidate = self.population.individuals[0]
-            if self.best_individual is None:
-                print(f"{tcolors.OKGREEN}Setting all-time best individual: {candidate}{tcolors.ENDC}")
-                self.best_individual = candidate
-            else:
-                if candidate == self.best_individual:
-                    print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
-                    write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
-                    self.generations_since_new_best += 1
-                    if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
-                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
-                        return True
-                    return False
-                if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
-                self.population.offsprings = [candidate, self.best_individual]
-                self.find_fitness(offsprings=True)
-                new_best = self.find_best_individual(offsprings=True, convergence_test=True)
-                count = 0
-                while not new_best and count <= 5:
-                    self.find_fitness(offsprings=True, from_start=False)
-                    new_best = self.find_best_individual(offsprings=True, convergence_test=True)
-                    count += 1
-                if new_best:
-                    if self.verbose: print(f"{tcolors.OKGREEN}New all-time best: {candidate}{tcolors.ENDC}")
-                    self.best_individual = candidate
-                    self.generations_since_new_best = 0
-                else:
-                    if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
-                    write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
-                    self.generations_since_new_best += 1
-                    if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
-                        print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
-                        return True
+        candidate = self.population.individuals[0]
+        if self.best_individual is None:
+            print(f"{tcolors.OKGREEN}Setting all-time best individual: {candidate}{tcolors.ENDC}")
+            self.best_individual = candidate
         else:
-            write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.population.individuals[0])
+            if candidate == self.best_individual:
+                print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
+                write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
+                self.generations_since_new_best += 1
+                if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
+                    return True
+                return False
+            if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
+            self.population.offsprings = [candidate, self.best_individual]
+            self.find_fitness(offsprings=True)
+            new_best = self.find_best_individual(offsprings=True, convergence_test=True)
+            count = 0
+            while not new_best and count <= 5:
+                self.find_fitness(offsprings=True, from_start=False)
+                new_best = self.find_best_individual(offsprings=True, convergence_test=True)
+                count += 1
+            if new_best:
+                if self.verbose: print(f"{tcolors.OKGREEN}New all-time best: {candidate}{tcolors.ENDC}")
+                self.best_individual = candidate
+                self.generations_since_new_best = 0
+            else:
+                if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
+                write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
+                self.generations_since_new_best += 1
+                if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
+                    print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
+                    return True
         write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
         return False
 
@@ -155,6 +155,7 @@ class SimpleGeneticAlgorithm:
         pop = self.population.offsprings if offsprings else self.population.individuals
         if from_start: 
             self.process.init()
+            if self.verbose: print(f"{tcolors.BOLD}Initial state:\n{tcolors.ENDC}{self.process.state}")
         else:
             pop = pop[:5]
             if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
@@ -225,16 +226,28 @@ class SimpleGeneticAlgorithm:
         Args:
             generation_count (int): what generation that is creating offsprings
         """
-        for i in range(2):
-            for j in range(i+1, 3):
-                parent1 = self.population.individuals[i]
-                parent2 = self.population.individuals[j]
-                if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
-                p1 = parent1.genes
-                p2 = parent2.genes
-                shape = p1.shape
-                o1_genes = np.zeros(shape)
-                o2_genes = np.zeros(shape)
+        candidates = self.population.individuals
+        draw = np.random.random()
+        roulette_wheel_selection = draw < self.heat
+        if self.verbose: print(f"{tcolors.BOLD}Heat: {self.heat}, random draw: {draw}\n{'Roulette wheel selection' if roulette_wheel_selection else 'Three best selected'}{tcolors.ENDC}")
+        if roulette_wheel_selection:
+            scores = tuple(map(lambda x: 1/x.mean_score, candidates))
+            scores /= sum(scores)
+            selected = np.random.choice(candidates, 3, replace=False, p=scores)
+            parent_combinations = list(combinations(selected, 2))
+        else:
+            parent_combinations = list(combinations(candidates[:3], 2))
+        for i in range(3):
+            parent1 = parent_combinations[i][0]
+            parent2 = parent_combinations[i][1]
+            if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
+            p1 = parent1.genes
+            p2 = parent2.genes
+            shape = p1.shape
+            o1_genes = np.zeros(shape)
+            o2_genes = np.zeros(shape)
+            unique_child = False
+            while not unique_child: # don't make copy of parents
                 c_row = np.random.randint(0, high=shape[1])
                 c_col = np.random.randint(0, high=shape[2])
                 vertical_cross = np.random.random() <= 0.5
@@ -256,20 +269,21 @@ class SimpleGeneticAlgorithm:
                     o2_genes[:, c_row, :c_col] = p2[:, c_row, :c_col]
                     o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
                     o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
-                o1 = Individual(generation=generation_count, offspring=True)
-                o1.genes = o1_genes
-                o2 = Individual(generation=generation_count, offspring=True)
-                o2.genes = o2_genes
-                o3 = Individual(generation=generation_count, offspring=True)
-                o3.genes = np.divide(p1+p2, 2)
-                o4 = Individual(generation=generation_count, offspring=True)
-                o4.genes = np.divide(p1+3*p2, 4)
-                o5 = Individual(generation=generation_count, offspring=True)
-                o5.genes = np.divide(3*p1+p2, 4)
-                if i==0 and j==1: 
-                    self.population.offsprings = [o1,o2,o3,o4,o5]
-                else: 
-                    self.population.offsprings += [o1,o2,o3,o4,o5]
+                unique_child = not ((p1 == o1_genes).all() or (p1 == o2_genes).all() or (p2 == o1_genes).all() or (p2 == o2_genes).all())
+            o1 = Individual(generation=generation_count, offspring=True)
+            o1.genes = o1_genes
+            o2 = Individual(generation=generation_count, offspring=True)
+            o2.genes = o2_genes
+            o3 = Individual(generation=generation_count, offspring=True)
+            o3.genes = np.divide(p1+p2, 2)
+            o4 = Individual(generation=generation_count, offspring=True)
+            o4.genes = np.divide(p1+3*p2, 4)
+            o5 = Individual(generation=generation_count, offspring=True)
+            o5.genes = np.divide(3*p1+p2, 4)
+            if i==0: 
+                self.population.offsprings = [o1,o2,o3,o4,o5]
+            else: 
+                self.population.offsprings += [o1,o2,o3,o4,o5]
 
     def mutation(self):
         """ Randomly altering the genes of offsprings """
@@ -465,13 +479,13 @@ class Individual:
             numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
         """
         genes = np.zeros((3,3,5))
-        if i < 5:
+        if 0 <= i < 5:
             genes[:,:,i] = 1
-        elif i < 11:
+        elif 5 <= i < 11:
             comb = list(combinations(np.arange(4)+1, 2))
             genes[:, :, comb[i-5][0]] = 1/2
             genes[:, :, comb[i-5][1]] = 1/2
-        elif i < 15:
+        elif 11 <= i < 15:
             comb = list(combinations(np.arange(4)+1, 3))
             genes[:, :, comb[i-11][0]] = 1/3
             genes[:, :, comb[i-11][1]] = 1/3
