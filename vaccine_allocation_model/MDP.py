@@ -3,7 +3,7 @@ from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
 import time
-from utils import get_wave_timeline, get_historic_wave_timeline, tcolors
+from utils import get_wave_timeline, tcolors
 from copy import copy, deepcopy
 
 class MarkovDecisionProcess:
@@ -47,8 +47,8 @@ class MarkovDecisionProcess:
             initial_run = self.update_state()
             self.path.append(self.state)
             self.simulation_period += 1
-        #if self.reached_stop_criteria():
-        #    self.init()
+        if self.reached_stop_criteria():
+            self.init()
         self.start_state = self.state
         self.start_path = self.path
         self.start_simulation_period = self.simulation_period
@@ -62,9 +62,9 @@ class MarkovDecisionProcess:
         self.state.wave_count = dict.fromkeys(self.state.wave_count, 0) # Start counting waves from 0 again
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
-        self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon*2, self.decision_period, 
+        self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
                                                                         self.config.periods_per_day, self.start_wave_timeline, 
-                                                                        self.start_wave_state_timeline, self.simulation_period)
+                                                                        self.start_wave_state_timeline, self.simulation_period)                                                                    
         self.policy.fhi_vaccine_plan = pd.read_csv("data/fhi_vaccine_plan.csv")
 
     def run(self, weighted_policy_weights=None):
