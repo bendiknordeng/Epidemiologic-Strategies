@@ -10,7 +10,7 @@ import plot
 from scipy.stats import skewnorm
 import json
 from collections import Counter
-from copy import deepcopy
+import epyestim
 # import geopandas as gpd
 
 class tcolors:
@@ -39,29 +39,6 @@ def create_named_tuple(name, filepath):
     return namedtuple(name, dictionary.keys())(**dictionary)
 
 paths = create_named_tuple('paths', 'filepaths.txt')
-
-def generate_dummy_od_matrix(num_time_steps, num_regions):
-    """ generate an OD-matrix used for illustrative purposes only
-
-    Parameters
-        num_regions: int indicating number of regions e.g 356
-        num_time_steps: int indicating number of time periods e.g 28
-    Returns
-        An OD-matrix with dimensions (num_time_steps, num_regions, num_regions) with 0.8 on its diagonal and 0.1 on cells next to diagonal 
-    """
-    a = []
-    for m in range(num_time_steps):
-        l = [[0 for x in range(num_regions)] for x in range(num_regions)] 
-        for i in range(0, num_regions):
-            for j in range(0, num_regions):
-                if i == j:
-                    l[i][j] = 0.8
-                elif j == i+1:
-                    l[i][j] = 0.1
-                elif j == i-1:
-                    l[i][j] = 0.1
-        a.append(l)
-    return np.array(a)
 
 def generate_commuter_matrix(age_flow_scaling):
     """ generate an OD-matrix used for illustrative purposes only
@@ -98,66 +75,6 @@ def read_pickle(filepath):
     """
     with open(filepath,'rb') as f:
         return pkl.load(f)
-
-def transform_history_to_df(time_step, history, population, column_names):
-    """ transforms a 3D array that is the result from SEIR modelling to a pandas dataframe
-
-    Parameters
-        time_step: integer used to indicate the current time step in the simulation
-        history: numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
-        population: DataFrame with region_id, region_names, age_group_population and total population (quantity)
-        coloumn_names: string that represents the column names e.g 'SEIRHQ'. 
-    Returns
-        df: dataframe with columns:  'timestep', 'region_id', 'region_name', 'region_population', 'S', 'E', I','R', 'V', 'E_per_100k'
-    """
-    A = history.transpose(0,2,3,1)
-    (periods, regions, age_groups, compartments) = A.shape 
-    B = A.reshape(-1, compartments)
-    df = pd.DataFrame(B, columns=list(column_names))
-    df['date'] = [get_date("20200221", int(time_step)) for time_step in np.floor_divide(df.index.values, regions*age_groups) + time_step//4]
-    df['time_step'] = np.floor_divide(df.index.values, regions*age_groups)*4 + time_step
-    df['age_group'] = np.tile(np.array(population.columns[2:-1]), periods*regions)
-    df['region_id'] = np.array([[[r]*age_groups for r in population.region_id] for _ in range(periods)]).reshape(-1)
-    df['region_name'] = np.array([[[r]*age_groups for r in population.region] for _ in range(periods)]).reshape(-1)
-    df['region_population'] = np.array([[[r]*age_groups for r in population.population] for _ in range(periods)]).reshape(-1)
-    df['E1_per_100k'] = 1e5*df.E1/df.region_population
-    return df[['date', 'time_step', 'region_id', 'region_name', 'age_group', 'region_population'] + list(column_names) + ['E1_per_100k']]
-
-def transform_df_to_history(df, column_names, n_regions, n_age_groups):
-    """ transforms a dataframe to numpy.ndarray
-    
-    Parameters
-        df:  dataframe 
-        column_names: string indicating the column names of the data that will be transformed e.g 'SEIRHQ'. 
-    Returns
-         numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
-    """
-
-    df = df[list(column_names)]
-    l = []
-    for i in range(0, len(df), n_age_groups):
-        l.append(df.iloc[i:i+5,:].sum())
-    compressed_df = pd.DataFrame(l)
-
-    l = []
-    for i in range(0, len(compressed_df), n_regions):
-        l.append(np.transpose(compressed_df.iloc[i:i+356].to_numpy()))
-
-    return np.array(l)
-
-def transform_historical_df_to_history(df):
-    """ transforms a dataframe to numpy.ndarray
-    
-    Parameters
-        df:  dataframe of real historical covid data for Norway's municipalities
-    Returns
-         numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
-    """
-    # Add leading zero for municipality id
-    df['kommune_no'] = df['kommune_no'].apply(lambda x: '{0:0>4}'.format(x)) 
-    df = df[['kommune_no', 'cases']]
-    df = df.rename(columns={'cases': 'I'})
-    return transform_df_to_history(df, 'I')
 
 def generate_custom_population(bins, labels):
     """ generates age divided population
@@ -259,42 +176,6 @@ def get_historic_data():
     historic_data = pd.read_csv(paths.fhi_data_daily)  # set to None if not used
     historic_data.date = pd.to_datetime(historic_data.date)
     return historic_data
-
-def write_history(write_weekly, history, population, time_step, results_weekly, results_history, labels):
-    """ write history array to csv
-
-    Parameters
-        write_weekly: Bool, if the results should be written on weekly basis
-        history: numpy.ndarray with shape (number of time steps, number of compartments, number of regions)
-        population: pd.DataFrame with columns region_id, region_name, population (quantity)
-        time_step: Int, indicating the time step of the simulation
-        results_weekly: Bool, indicating if weekly results exists. Stored data is removed if True.
-        results_history: Bool, indicating if results exists. Stored data is removed if True.
-        compartments:
-    """
-    if write_weekly:
-        weekly_new_infected = history[:,-1].sum(axis=0)
-        last_day = np.expand_dims(history[-1], axis=0)
-        last_day[:,-1] = weekly_new_infected
-        latest_df = transform_history_to_df(time_step, last_day, population, labels)
-        if os.path.exists(results_weekly):
-            if time_step == 0: # block to remove old csv file if new run is executed 
-                os.remove(results_weekly)
-                latest_df.to_csv(results_weekly, index=False)
-            else:
-                latest_df.to_csv(results_weekly, mode='a', header=False, index=False)
-        else:
-            latest_df.to_csv(results_weekly, index=False)
-    else:
-        daily_df = transform_history_to_df(time_step, history, population, labels)
-        if os.path.exists(results_history):
-            if time_step == 0: # block to remove old csv file if new run is executed
-                os.remove(results_history)
-                daily_df.to_csv(results_history, index=False)
-            else:
-                daily_df.to_csv(results_history, mode='a', header=False, index=False)
-        else:
-            daily_df.to_csv(results_history, index=False)
     
 def generate_weekly_data(fpath_fhi_data_daily, fpath_fhi_data_weekly):
     """ aggregates daily data to weekly data and saves it
@@ -500,14 +381,7 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
             break
         wave_state_count.append(current_state)
     
-    indices = [i for i in range(1,len(wave_state_timeline)) if (wave_state_timeline[i] != wave_state_timeline[i-1]
-                                                                and wave_state_timeline[i] != 'N' 
-                                                                and i <= len(wave_state_timeline)-2)]
-    observer_state_timeline = deepcopy(wave_state_timeline)
-    for i in indices:
-        observer_state_timeline[i] = 'N'
-        observer_state_timeline[i+1]  = 'N'
-    return wave_timeline, observer_state_timeline
+    return wave_timeline, wave_state_timeline
 
 def get_historic_wave_timeline(horizon):
     df = pd.read_csv(paths.world_r_eff,
@@ -520,166 +394,6 @@ def get_historic_wave_timeline(horizon):
     dates = [d0 + pd.Timedelta(i, "W") for i in range(horizon)]
     df_norway_weekly = df_norway[df_norway.date.isin(dates)]
     return df_norway_weekly.R.values
-
-def get_posteriors(new_infected, gamma, r_t_range, sigma=0.15):
-    """ function to calculate posteriors
-
-    Parameters
-        new_infected: pandas.core.series.Series with new infected per day with date and new_infected as columns
-        gamma: 1/recovery period e.g 1/7
-        r_t_range: np.array with range R_t can be in
-        sigma: Gaussian noise to the prior distribution. represent standard deviation of Gaussian distribution.
-    Returns
-        posteriors: 
-        log_likelihood:
-
-    """
-    # (1) Calculate Lambda
-    lam = new_infected[:-1].values * np.exp(gamma * (r_t_range[:, None] - 1))
-    
-    # (2) Calculate each day's likelihood
-    likelihoods = pd.DataFrame(
-        data = sps.poisson.pmf(new_infected[1:].values, lam),
-        index = r_t_range,
-        columns = new_infected.index[1:])
-    
-    # (3) Create the Gaussian Matrix
-    process_matrix = sps.norm(loc=r_t_range,
-                              scale=sigma
-                             ).pdf(r_t_range[:, None]) 
-
-    # (3a) Normalize all rows to sum to 1
-    process_matrix /= process_matrix.sum(axis=0)
-    
-    # (4) Calculate the initial prior
-    prior0 = np.ones_like(r_t_range)/len(r_t_range)
-    prior0 /= prior0.sum()
-
-    # Create a DataFrame that will hold our posteriors for each day. Insert our prior as the first posterior.
-    posteriors = pd.DataFrame(index=r_t_range, columns=new_infected.index, data={new_infected.index[0]: prior0})
-
-    # (5) Iteratively apply Bayes' rule
-    for previous_day, current_day in zip(new_infected.index[:-1], new_infected.index[1:]):
-
-        #(5a) Calculate the new prior
-        current_prior = process_matrix @ posteriors[previous_day]
-        
-        #(5b) Calculate the numerator of Bayes' Rule: P(k|R_t)P(R_t)
-        numerator = likelihoods[current_day] * current_prior
-        
-        #(5c) Calcluate the denominator of Bayes' Rule P(k)
-        denominator = np.sum(numerator)
-        
-        # Execute full Bayes' Rule
-        posteriors[current_day] = numerator/denominator
-
-    return posteriors
-
-def smooth_data(data, window_size=7):
-    """ returns smoothed values of a pandas.core.series.Series
-
-    Parameters
-        data: pandas.core.series.Series, with date and daily new infected
-    Returns
-        smoothed: pandas.core.series.Series,  with date and smoothed daily new infected
-
-    """
-    smoothed = data.rolling(window_size,
-        win_type='gaussian',
-        min_periods=1,
-        center=True).mean(std=3).round()
-    return smoothed
-
-def moving_average(x, w):
-    return np.convolve(x, np.ones(w), 'valid') / w
-
-def highest_density_interval(posteriors, percentile=.9):
-    """ finds intervall for the posteriors
-
-    Parameters
-        posteriors: pandas.core.frame.DataFrame with posteriors values
-        percentile: percentile to find the R_t values for
-    Returns
-        pandas.core.frame.DataFrame
-    """
-    if(isinstance(posteriors, pd.DataFrame)):
-        return pd.DataFrame([highest_density_interval(posteriors[col], percentile=percentile) for col in posteriors], index=posteriors.columns)
-    cumsum = np.cumsum(posteriors.values)
-
-    # N x N matrix of total probability mass for each low, high
-    total_p = cumsum - cumsum[:, None]
-    
-    # Return all indices with total_p > p
-    lows, highs = (total_p > percentile).nonzero()
-    
-    # Find the smallest range (highest density)
-    try:
-        best = (highs - lows).argmin()
-        low = posteriors.index[lows[best]]
-        high = posteriors.index[highs[best]]
-    except:
-        low = 0
-        high = 0
-    
-    return pd.Series([low, high], index=[f'Low_{percentile*100:.0f}', f'High_{percentile*100:.0f}'])
-
-def get_r_effective(path, population, config, from_data=False):
-    """plots R effective
-
-    Args:
-        path ([type]): [description]
-        population ([type]): [description]
-        config ([type]): [description]
-        from_data (bool, optional): Indicating if R effective should be plotted for historical Norwegian data. Defaults to False.
-    """
-    # Read in data
-    if from_data:
-        states = pd.read_csv(paths.fhi_data_daily,
-                            usecols=['date', 'region', 'I_new'],
-                            parse_dates=['date'],
-                            index_col=['region', 'date'],
-                            squeeze=True).sort_index()
-        states = states.astype('float64')
-    else:
-        regions = np.tile(np.append(population.region_name.to_numpy(), 'NORWAY'), len(path)).T
-        I_new = np.array([s.new_infected.sum(axis=1) for s in path])
-        total_I_new = I_new.sum(axis=1)
-        I_new = np.hstack((I_new,total_I_new.reshape(-1,1)))
-        dates = np.array([s.date for s in path]).repeat(I_new.shape[1]).T
-        I_new = I_new.reshape(-1).T
-        states = pd.DataFrame(data=np.array([regions, dates, I_new]).T, columns=['region','date','I_new'])
-        states = states.set_index(['region','date']).sort_values(['region','date'])
-        states = states.squeeze().astype('float64')
-
-    # define region and redefine first level in Series
-    state_name = 'NORWAY'
-    cases = states.xs(state_name).rename(f"{state_name} cases")
-
-    # gets the original and smoothed data 
-    smoothed = smooth_data(cases)
-
-    # Need the increment to start with one to calculate posteriors
-    idx_start = np.searchsorted(smoothed, 1)
-    smoothed = smoothed.iloc[idx_start:]
-
-    # define parameters to calculate posteriors
-    R_T_MAX = 10
-    r_t_range = np.linspace(0, R_T_MAX, R_T_MAX*100+1)
-    gamma = 1/(config.presymptomatic_period + config.postsymptomatic_period)
-    if from_data: gamma = gamma/config.periods_per_day
-    # calculate posteriors 
-    posteriors = get_posteriors(smoothed, gamma, r_t_range, sigma=.15)
-
-    # finds the posterior intervals
-    hdis = highest_density_interval(posteriors, percentile=0.9)
-    most_likely = posteriors.idxmax().rename('ML')
-    result = pd.concat([most_likely, hdis], axis=1)
-
-    # plot R_t development
-    if len(result > 5):
-        plot.plot_rt(result[4:])
-    else:
-        plot.plot_rt(result)
 
 def get_expected_yll(age_bins, age_labels):
     """ Retrieves the expected years remaining for each age group
@@ -711,7 +425,7 @@ def calculate_yll(expected_years_remaining, deaths_per_age_group):
 def load_response_measure_models():
     models = {}
     scalers = {}
-    for model_name in ['home', 'school', 'work', 'public', 'alpha', 'movement']:
+    for model_name in ['home', 'school', 'work', 'public', 'movement']:
         models[model_name] = pkl.load(open(f"models/{model_name}_measure_model.sav", 'rb'))
         scalers[model_name] = pkl.load(open(f"models/{model_name}_measure_scaler.sav", 'rb'))
     return models, scalers
@@ -742,6 +456,17 @@ def generate_geopandas(pop, fpath_spatial_data):
 def sort_filenames_by_date(files):
     dates = tuple(map(lambda x: x.split("_")[1:], files))
     return sorted(tuple(map(lambda x: datetime(*map(int,x)), dates)))
+
+def get_R_t(daily_cases):
+    R_t = epyestim.estimate_r.estimate_r(
+                                infections_ts = pd.Series(daily_cases),
+                                gt_distribution = np.array([0,0,0,0,0,1]),
+                                a_prior = 3,
+                                b_prior = 1,
+                                window_size = 7)
+    for q in [0.025, 0.5, 0.975]:
+        R_t[f'Q{q}'] = epyestim.estimate_r.gamma_quantiles(q, R_t['a_posterior'], R_t['b_posterior'])
+    return R_t
 
 def get_GA_params():
     run_from_file = bool(int(input("Run from file (bool): ")))

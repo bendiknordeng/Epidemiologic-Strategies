@@ -13,27 +13,18 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-<<<<<<< HEAD
     runs = 10
-=======
-    runs = 1
->>>>>>> 2f1c6d8e8bbb15830d141fd286d14055acb807a4
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
     end_day, end_month, end_year = 31, 7, 2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
-    initial_infected = 10
-    initial_vaccines_available = 0
+    initial_infected = 50
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-<<<<<<< HEAD
-    policy_number = 1
-=======
-    policy_number = 2
->>>>>>> 2f1c6d8e8bbb15830d141fd286d14055acb807a4
+    policy_number = -2
     weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
@@ -52,9 +43,9 @@ if __name__ == '__main__':
     # Run settings
     run_GA = False
     include_flow = True
-    use_wave_factor = True
     stochastic = True
-    use_response_measures = False
+    use_wave_factor = False
+    use_response_measures = True
     verbose = False
     plot_results = True
     plot_geo = False
@@ -81,7 +72,6 @@ if __name__ == '__main__':
 
     initial_state = State.generate_initial_state(
                     num_initial_infected=initial_infected,
-                    vaccines_available=initial_vaccines_available,
                     contact_weights=config.initial_contact_weights,
                     flow_scale=config.initial_flow_scale,
                     population=population,
@@ -116,19 +106,22 @@ if __name__ == '__main__':
         GA.run()
     else:
         results = []
-        paths = []
+        run_paths = []
         r_effs = []
-        seeds = np.arange(runs)
+        #seeds = np.arange(runs)
         for i in tqdm(range(runs)):
-            np.random.seed(seeds[i])
+            #np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
-            paths.append(mdp.path)
+            run_paths.append(mdp.path)
             r_effs.append(mdp.wave_timeline)
             utils.print_results(mdp.state, population, age_labels, vaccine_policy)
+            print("\n",mdp.state.trend_count,"\n")
+
         avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
+        
         if write_simulations_to_file:
             start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
             run_folder = f"/results/{runs}_simulations_{policies[policy_number]}_{start_of_run}"
@@ -138,7 +131,7 @@ if __name__ == '__main__':
             mdp_reffs_path = folder_path + "/mdp_reffs.pkl"
             os.mkdir(folder_path)
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
-            utils.write_pickle(mdp_paths_path, paths)
+            utils.write_pickle(mdp_paths_path, run_paths)
             utils.write_pickle(mdp_reffs_path, r_effs)
 
     if plot_results:
@@ -151,12 +144,13 @@ if __name__ == '__main__':
         regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG', 'STEINKJER']
         comps_to_plot = ["E2", "A", "I"]
 
-        #plot.plot_control_measures(mdp.path, all=False)
-        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        if use_response_measures:
+            plot.plot_control_measures(mdp.path, all=False)
+        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=False)
         #plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
-        utils.get_r_effective(mdp.path, population, config, from_data=False)
-        #plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
-        #plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
+        plot.plot_R_t(epidemic_function.daily_cases)
+        plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+        plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)

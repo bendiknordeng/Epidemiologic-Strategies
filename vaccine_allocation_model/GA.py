@@ -166,9 +166,6 @@ class SimpleGeneticAlgorithm:
                 np.random.seed(seeds[j])
                 self.process.reset()
                 self.process.run(weighted_policy_weights=individual.genes)
-                for wave_state, count in self.process.state.strategy_count.items():
-                    for wave_count, count in count.items():
-                        individual.strategy_count[self.generation_count][wave_state][wave_count] += count
                 score = self.objective(self.process)
                 self.final_scores[individual.ID].append(score)
             mean_score = np.mean(self.final_scores[individual.ID])
@@ -463,7 +460,7 @@ class Individual:
             i (int): number in order to assign different genes to different individuals
 
         Returns:
-            numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
+            numpy.ndarray: shape #trend_states, #times_per_state, #number of weights
         """
         genes = np.zeros((3,3,5))
         if 0 <= i < 5:
@@ -487,11 +484,11 @@ class Individual:
             weights = np.zeros(5)
             for j in range(5):
                 high = 100 if j > 0 else 50
-                weights[j] = np.random.randint(low=0, high=high) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+                weights[j] = np.random.randint(low=0, high=high) # nr trend_states, max nr of occurrences (trendcounts), nr of weights (policies)
             norm = np.sum(weights)
             genes[:, :] = np.divide(weights, norm)
         else:
-            genes = np.random.randint(low=0, high=100, size=(3,3,5)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            genes = np.random.randint(low=0, high=100, size=(3,3,5)) # nr trend_states, max nr of occurrences (trendcounts), nr of weights (policies)
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes

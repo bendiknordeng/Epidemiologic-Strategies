@@ -46,8 +46,8 @@ def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=Fal
     ax1.set_ylabel('Infected')
     if include_R:
         ax2 = ax1.twinx()
-        lines.append(ax2.plot(R_eff[:len(res)], color='k', linestyle='dashdot', label="R_eff")[0])
-        ax2.set_ylabel('R effective')
+        lines.append(ax2.plot(R_eff[:len(res)], color='k', linestyle='dashdot', label="Wave factor")[0])
+        ax2.set_ylabel('Wave factor')
 
     ticks = min(len(res), 20)
     step = int(np.ceil(len(res)/ticks))
@@ -158,61 +158,6 @@ def plot_control_measures(path, all=False):
         plt.grid()
         plt.show()
 
-def smoothed_development(original, smoothed, title):
-    original.plot(title=title, c='k', linestyle=':', alpha=.5, label='Actual', legend=True, figsize=(500/72, 300/72))
-    ax = smoothed.plot(label='Smoothed', legend=True, c="r")
-    ax.get_figure().set_facecolor('w')
-    plt.show()
-
-def posteriors(posteriors, title):
-    ax = posteriors.plot(title=title, legend=False, lw=1, c='k',alpha=.3, xlim=(0.4,6))
-    ax.set_xlabel('$R_t$');
-    plt.show()
-
-def plot_rt(result):
-    """ plot R_t development
-    """
-    fig, ax = plt.subplots(figsize=(600/72,400/72))
-    ax.set_title('Real-time $R_t$')
-
-    # Colors
-    ABOVE = [1,0,0]
-    MIDDLE = [1,1,1]
-    BELOW = [0,0,0]
-    cmap = ListedColormap(np.r_[np.linspace(BELOW, MIDDLE, 25), np.linspace(MIDDLE, ABOVE, 25)])
-    color_mapped = lambda y: np.clip(y, .5, 1.5)-.5
-    index = result['ML'].index.get_level_values('date')
-    values = result['ML'].values
-    
-    # Plot dots and line
-    ax.plot(index, values, c='k', zorder=1, alpha=.25)
-    ax.scatter(index, values, s=30, lw=.5, c=cmap(color_mapped(values)), zorder=2)
-
-    # Aesthetically, extrapolate credible interval by 1 day either side
-    lowfn = interp1d(date2num(index), result['Low_90'].values, bounds_error=False, fill_value='extrapolate')
-    highfn = interp1d(date2num(index), result['High_90'].values, bounds_error=False, fill_value='extrapolate')
-    extended = pd.date_range(start=index[0], end=index[-1]+pd.Timedelta(days=1))
-    
-    ax.fill_between(extended, lowfn(date2num(extended)), highfn(date2num(extended)), color='k', alpha=.1, lw=0, zorder=3)
-    ax.axhline(1.0, c='k', lw=1, label='$R_t=1.0$', alpha=.25)
-
-    locator = mdates.AutoDateLocator()
-    ax.xaxis.set_major_locator(locator)
-    ax.xaxis.set_major_formatter(mdates.AutoDateFormatter(locator))
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
-    ax.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
-    ax.yaxis.tick_right()
-    ax.spines['left'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.margins(0)
-    ax.grid(which='major', axis='y', c='k', alpha=.1, zorder=-2)
-    ax.margins(0)
-    ax.set_ylim(-1, 5.0)
-    ax.set_xlim(result.index.get_level_values('date')[0] - pd.Timedelta(days=2) , result.index.get_level_values('date')[-1]+pd.Timedelta(days=2),)
-    fig.set_facecolor('w')
-    fig.autofmt_xdate()
-    plt.show()
 
 def plot_heatmaps(C, weights, age_labels, fpath=""):
     """ Plots heatmaps for contact matrices
@@ -319,6 +264,23 @@ def find_infected_limits(res, population, per_100k):
     if not per_100k:
             return max_E1_per_region.max() 
     return (max_E1_per_region / (population.population/1e5)).max()
+
+def plot_R_t(daily_cases):
+    R_t = utils.get_R_t(daily_cases)
+    fig, ax = plt.subplots(1,1, figsize=(10, 5))
+    R_t.loc[:,'Q0.5'].plot(ax=ax, color='black', label=r"$R_t$")
+    ax.fill_between(R_t.index, 
+                    R_t['Q0.025'], 
+                    R_t['Q0.975'], 
+                    color='grey', alpha=0.2)
+    ax.plot((0, len(daily_cases)), (1,1), linestyle="dashed")
+    ax.set_xlabel("Days")
+    ax.set_ylabel(r"$R_t$")
+    ax.set_xlim(14)
+    ax.set_ylim([0.2, 2])
+    ax.legend()
+    plt.grid()
+    plt.show()
 
 def plot_geospatial(fpath_geospatial, res, fpath_plots, population, accumulated_compartment_plot, per_100k):
     """plots geospatial data

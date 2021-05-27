@@ -41,13 +41,15 @@ class MarkovDecisionProcess:
         self.state = deepcopy(self.initial_state)
         self.path = [self.state]
         self.simulation_period = 0
+        self.epidemic_function.daily_cases = []
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
         initial_run = True
         while initial_run:
             initial_run = self.update_state()
             self.path.append(self.state)
             self.simulation_period += 1
-        if self.reached_stop_criteria():
+        if self.reached_stop_criteria() or np.sum(self.state.total_infected) < 5e4:
+            print(self.state)
             self.init()
         self.start_state = self.state
         self.start_path = self.path
@@ -59,7 +61,8 @@ class MarkovDecisionProcess:
     def reset(self):
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
         self.state = deepcopy(self.start_state)
-        self.state.wave_count = dict.fromkeys(self.state.wave_count, 0) # Start counting waves from 0 again
+        self.state.trend_count = dict.fromkeys(self.state.trend_count, 0)
+        self.epidemic_function.reset(self.state.time_step//self.config.periods_per_day)
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
@@ -86,6 +89,7 @@ class MarkovDecisionProcess:
         if np.sum(self.state.R) / np.sum(self.population.population) > 0.7: # stop if recovered population is 70 % of total population
             if self.verbose: print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Recovered population > 70%.{tcolors.ENDC}\n")
             return True
+        
         if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
             if self.verbose: print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Infected population is zero.{tcolors.ENDC}\n")
             return True
@@ -95,7 +99,7 @@ class MarkovDecisionProcess:
         """ Retrieves the exogenous information for the current decision period
 
         Returns:
-            dict: exogeneous information regarding 'vaccine_supply', 'R', 'wave_state', 'contact_weights', 'alphas' and 'flow_scale'
+            dict: exogeneous information regarding 'vaccine_supply', 'wave_factor', 'wave_state', 'contact_weights', 'alphas' and 'flow_scale'
         """
         today = pd.Timestamp(self.state.date)
         end_of_decision_period = pd.Timestamp(self.state.date+timedelta(self.decision_period//self.config.periods_per_day))
@@ -110,8 +114,7 @@ class MarkovDecisionProcess:
         else:
             contact_weights, flow_scale = self.config.initial_contact_weights, self.config.initial_flow_scale
         return {'vaccine_supply': vaccine_supply,
-                'R': self.wave_timeline[self.simulation_period],
-                'wave_state': self.wave_state_timeline[self.simulation_period],
+                'wave_factor': self.wave_timeline[self.simulation_period],
                 'contact_weights': contact_weights,
                 'flow_scale': flow_scale}
 
@@ -139,7 +142,7 @@ class MarkovDecisionProcess:
             (numpy.ndarray): new contact weights 
             (numpy.ndarray): new mobility scales
         """
-        if len(self.path) > 3:
+        if len(self.path) > 2:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
             cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()
@@ -159,11 +162,12 @@ class MarkovDecisionProcess:
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] + x * (1-initial_cw[0])/3,
+                'home': lambda x: initial_cw[0] + x * (1-initial_cw[0])/10,
                 'school': lambda x: initial_cw[1] - x * initial_cw[1]/3,
                 'work': lambda x: initial_cw[2] - x * initial_cw[2]/3,
                 'public': lambda x: initial_cw[3] - x * initial_cw[3]/4
             }
+            
             new_cw = []
             for category in ['home', 'school', 'work', 'public']:
                 input = scalers[category].transform(features.reshape(1,-1))
@@ -172,7 +176,7 @@ class MarkovDecisionProcess:
 
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/3
+            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/2
 
             if self.verbose:
                 print("Per 100k:")
