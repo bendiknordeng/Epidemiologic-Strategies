@@ -105,7 +105,7 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
     plt.show()
 
 def plot_control_measures(path, all=False):
-    new_infected = utils.smooth_data(pd.Series(np.array([np.sum(s.new_infected) for s in path]).T)).values
+    new_infected = [np.sum(s.new_infected) for s in path]
     if all:
         c_weights_home = [s.contact_weights[0] for s in path]
         c_weights_school = [s.contact_weights[1] for s in path]

@@ -3,7 +3,7 @@ from utils import generate_weighted_contact_matrix
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
-                death_rates, config, include_flow, stochastic, use_waves):
+                death_rates, config, include_flow, stochastic, use_wave_factor):
         """ Compartmental simulation model 
 
         Args:
@@ -15,7 +15,7 @@ class SEAIR:
             config (namedtuple): case specific data
             include_flow (boolean): True if simulation should include flow
             stochastic (boolean): True if commuting and contact infection should be stochastic
-            use_waves (boolean): True if wave logic should be modeled
+            use_wave_factor (boolean): True if wave factor logic should be modeled
         """
         self.R0 = config.R0
         self.periods_per_day = config.periods_per_day
@@ -35,7 +35,7 @@ class SEAIR:
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
         self.stochastic = stochastic
         self.include_flow = include_flow
-        self.use_waves = use_waves
+        self.use_wave_factor = use_wave_factor
 
     def simulate(self, state, decision, decision_period, information):
         """Simulates the development of an epidemic as modelled by current parameters
@@ -54,11 +54,10 @@ class SEAIR:
         age_flow_scaling = np.array(self.age_group_flow_scaling)
 
         # Get information data
-        if self.use_waves:
+        if self.use_wave_factor:
             R_eff = information['R'] * self.periods_per_day
         else:
             R_eff = self.R0 * self.periods_per_day
-        alphas = information['alphas']
         C = generate_weighted_contact_matrix(self.contact_matrices, information['contact_weights'])
         visitors = self.commuters[0]
         commuters = self.commuters[1] * information['flow_scale']
@@ -100,25 +99,24 @@ class SEAIR:
             # Calculate beta
             N_infectious = np.sum([E2, A, I])
             beta = R_eff * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
-            beta_C = beta * C
-            beta_C_W = beta * self.contact_matrices[2]
+
             # Calculate new infected from commuting
             commuter_cases = 0
             working_hours = timestep < (self.periods_per_day * 5) and timestep % self.periods_per_day == 2
             if self.include_flow and working_hours:
                 # Define current transmission of infection with commuters
-                infectious_commuters = np.matmul(commuters.T, (E2 + A + I)/N)
+                infectious_commuters = np.matmul(commuters.T, beta * (E2 + A + I)/N)
                 infectious_commuters = np.array([infectious_commuters[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
                 lam_j = np.clip(infectious_commuters/visitors, 0, 1)
-                lam_j = np.matmul(lam_j, beta_C_W) # only use work matrix
+                lam_j = np.matmul(lam_j, self.contact_matrices[2]) # only use work matrix
                 lam_j = np.array([lam_j[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
                 commuter_cases = S/N * np.matmul(commuters, lam_j)
                 if self.stochastic:
                     commuter_cases = np.random.poisson(commuter_cases)
 
             # Define current transmission of infection without commuters
-            lam_i = np.clip(np.matmul(E2 + A + I, beta_C), 0, 1)
-            contact_cases = S/N * lam_i
+            lam_i = np.clip(beta * (E2 + A + I), 0, 1)
+            contact_cases = S/N * np.matmul(lam_i, C)
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
             

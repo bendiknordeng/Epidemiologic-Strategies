@@ -483,13 +483,13 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
 
     while True:
         n_wave = Counter(wave_state_count)[current_state]-1
-        params = data['duration'][current_state][str(1 + (n_wave%3))]
+        params = data['duration'][current_state][str(1 + n_wave%6)]
         duration = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
         duration = min(max(duration, params['min']), params['max']) // decision_period_days
         if not from_start: duration -= len_current_state
         try:
             for week in range(i, i+int(duration)):
-                params = data['R'][current_state][str(1 + (n_wave%3))]
+                params = data['R'][current_state][str(1 + n_wave%6)]
                 factor = skewnorm.rvs(params['skew'], loc=params['mean'], scale=params['std'])
                 factor = min(max(factor, params['min']), params['max'])
                 wave_timeline[week] = factor

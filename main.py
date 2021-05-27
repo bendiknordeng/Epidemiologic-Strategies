@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 200
+    runs = 1
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -25,7 +25,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 0
+    policy_number = 1
     weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
@@ -44,13 +44,13 @@ if __name__ == '__main__':
     # Run settings
     run_GA = False
     include_flow = True
-    use_waves = True
+    use_wave_factor = True
     stochastic = True
     use_response_measures = False
     verbose = False
     plot_results = True
     plot_geo = False
-    write_simulations_to_file = True
+    write_simulations_to_file = False
 
     vaccine_policy = Policy(
                     config=config,
@@ -69,13 +69,12 @@ if __name__ == '__main__':
                     config=config,
                     include_flow=include_flow,
                     stochastic=stochastic,
-                    use_waves=use_waves)
+                    use_wave_factor=use_wave_factor)
 
     initial_state = State.generate_initial_state(
                     num_initial_infected=initial_infected,
                     vaccines_available=initial_vaccines_available,
                     contact_weights=config.initial_contact_weights,
-                    alphas=config.initial_alphas,
                     flow_scale=config.initial_flow_scale,
                     population=population,
                     start_date=start_date)
@@ -144,8 +143,9 @@ if __name__ == '__main__':
         regions_to_plot = ['OSLO', 'TRONDHEIM', 'LØRENSKOG', 'STEINKJER']
         comps_to_plot = ["E2", "A", "I"]
 
+        #plot.plot_control_measures(mdp.path, all=False)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
-        plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        #plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         utils.get_r_effective(mdp.path, population, config, from_data=False)
         #plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
         #plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
