@@ -8,10 +8,12 @@ from vaccine_allocation_model.SEAIR import SEAIR
 import numpy as np
 from pandas import Timedelta
 from tqdm import tqdm
+from datetime import datetime
+import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 1
+    runs = 10
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -48,6 +50,7 @@ if __name__ == '__main__':
     verbose = False
     plot_results = True
     plot_geo = False
+    write_simulations_to_file = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -106,13 +109,28 @@ if __name__ == '__main__':
         GA.run()
     else:
         results = []
+        paths = []
+        r_effs = []
         for i in tqdm(range(runs)):
             mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
+            paths.append(mdp.path)
+            r_effs.append(mdp.wave_timeline)
             utils.print_results(mdp.state, population, age_labels, vaccine_policy)
-        utils.get_average_results(results, population, age_labels, vaccine_policy)
+        avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
+        if write_simulations_to_file:
+            start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+            run_folder = f"/results/{runs}_simulations_{policies[policy_number]}_{start_of_run}"
+            folder_path = os.getcwd() + run_folder
+            start_date_population_age_labels_path = folder_path + "/start_date_population_age_labels.pkl"
+            mdp_paths_path = folder_path + "/mdp_paths.pkl"
+            mdp_reffs_path = folder_path + "/mdp_reffs.pkl"
+            os.mkdir(folder_path)
+            utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
+            utils.write_pickle(mdp_paths_path, paths)
+            utils.write_pickle(mdp_reffs_path, r_effs)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)

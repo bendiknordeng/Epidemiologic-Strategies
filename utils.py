@@ -10,6 +10,7 @@ import plot
 from scipy.stats import skewnorm
 import json
 from collections import Counter
+from copy import deepcopy
 # import geopandas as gpd
 
 class tcolors:
@@ -498,7 +499,15 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
         except:
             break
         wave_state_count.append(current_state)
-    return wave_timeline, wave_state_timeline
+    
+    indices = [i for i in range(1,len(wave_state_timeline)) if (wave_state_timeline[i] != wave_state_timeline[i-1]
+                                                                and wave_state_timeline[i] != 'N' 
+                                                                and i <= len(wave_state_timeline)-2)]
+    observer_state_timeline = deepcopy(wave_state_timeline)
+    for i in indices:
+        observer_state_timeline[i] = 'N'
+        observer_state_timeline[i+1]  = 'N'
+    return wave_timeline, observer_state_timeline
 
 def get_historic_wave_timeline(horizon):
     df = pd.read_csv(paths.world_r_eff,

@@ -99,7 +99,7 @@ class SEAIR:
 
             # Calculate beta
             N_infectious = np.sum([E2, A, I])
-            beta = R_eff * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
+            beta = R_eff * (np.sum(N)/np.sum(S)) * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
 
             # Calculate new infected from commuting
             commuter_cases = 0
