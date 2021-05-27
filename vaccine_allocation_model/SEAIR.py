@@ -99,25 +99,26 @@ class SEAIR:
 
             # Calculate beta
             N_infectious = np.sum([E2, A, I])
-            beta = R_eff * (np.sum(N)/np.sum(S)) * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
-
+            beta = R_eff * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
+            beta_C = beta * C
+            beta_C_W = beta * self.contact_matrices[2]
             # Calculate new infected from commuting
             commuter_cases = 0
             working_hours = timestep < (self.periods_per_day * 5) and timestep % self.periods_per_day == 2
             if self.include_flow and working_hours:
                 # Define current transmission of infection with commuters
-                infectious_commuters = np.matmul(commuters.T, beta * (E2 + A + I)/N)
+                infectious_commuters = np.matmul(commuters.T, (E2 + A + I)/N)
                 infectious_commuters = np.array([infectious_commuters[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
                 lam_j = np.clip(infectious_commuters/visitors, 0, 1)
-                lam_j = np.matmul(lam_j, self.contact_matrices[2]) # only use work matrix
+                lam_j = np.matmul(lam_j, beta_C_W) # only use work matrix
                 lam_j = np.array([lam_j[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
                 commuter_cases = S/N * np.matmul(commuters, lam_j)
                 if self.stochastic:
                     commuter_cases = np.random.poisson(commuter_cases)
 
             # Define current transmission of infection without commuters
-            lam_i = np.clip(beta * (alphas[0] * E2 + alphas[1] * A + alphas[2] * I), 0, 1)
-            contact_cases = S/N * np.matmul(lam_i, C)
+            lam_i = np.clip(np.matmul(E2 + A + I, beta_C), 0, 1)
+            contact_cases = S/N * lam_i
             if self.stochastic:
                 contact_cases = np.random.poisson(contact_cases)
             
