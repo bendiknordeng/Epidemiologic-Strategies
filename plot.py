@@ -471,3 +471,22 @@ def plot_commuters(population, fpath_muncipalities_geo, fpath_commuters):
     plt.draw()
     plt.savefig("plots/commuter_network.jpg", dpi=fig.dpi, bbox_inches = 'tight')
     plt.close()
+
+def plot_r_numbers(ch_time_varying_r):
+    """Plot R numbers from epyestim
+
+    Args:
+        ch_time_varying_r ([type]): [description]
+    """
+    fig, ax = plt.subplots(1,1, figsize=(12, 4))
+    ch_time_varying_r.loc[:,'Q0.5'].plot(ax=ax, color='red')
+    ax.fill_between(ch_time_varying_r.index, 
+                        ch_time_varying_r['Q0.025'], 
+                        ch_time_varying_r['Q0.975'], 
+                        color='red', alpha=0.2)
+    ax.set_xlabel('date')
+    ax.set_ylabel('R(t) with 95%-CI')
+    ax.set_ylim([0,3])
+    ax.axhline(y=1)
+    ax.set_title('Estimate of time-varying effective reproduction number for Switzerland')
+    plt.show()
