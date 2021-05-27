@@ -147,10 +147,10 @@ if __name__ == '__main__':
         if use_response_measures:
             plot.plot_control_measures(mdp.path, all=False)
         plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=False)
-        #plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         plot.plot_R_t(epidemic_function.daily_cases)
-        plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
-        plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)
+        #plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
+        #plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)
+        #plot.infection_plot_weekly_several_regions(infection_results_regions, start_date, regions_to_plot, paths.municipalities_names)#
 
     if plot_geo:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
