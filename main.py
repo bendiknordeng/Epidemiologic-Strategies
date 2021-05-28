@@ -24,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = -2
+    policy_number = 1
     weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
@@ -44,8 +44,8 @@ if __name__ == '__main__':
     run_GA = False
     include_flow = True
     stochastic = True
-    use_wave_factor = False
-    use_response_measures = True
+    use_wave_factor = True
+    use_response_measures = False
     verbose = False
     plot_results = True
     plot_geo = False
