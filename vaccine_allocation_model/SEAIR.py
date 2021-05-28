@@ -1,9 +1,10 @@
 import numpy as np
-from utils import generate_weighted_contact_matrix
+from utils import generate_weighted_contact_matrix, get_R_t
+import pandas as pd
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
-                death_rates, config, include_flow, stochastic, use_waves):
+                death_rates, config, include_flow, stochastic, use_wave_factor):
         """ Compartmental simulation model 
 
         Args:
@@ -15,7 +16,7 @@ class SEAIR:
             config (namedtuple): case specific data
             include_flow (boolean): True if simulation should include flow
             stochastic (boolean): True if commuting and contact infection should be stochastic
-            use_waves (boolean): True if wave logic should be modeled
+            use_wave_factor (boolean): True if wave factor logic should be modeled
         """
         self.R0 = config.R0
         self.periods_per_day = config.periods_per_day
@@ -35,7 +36,11 @@ class SEAIR:
         self.recovery_period = self.presymptomatic_period + self.postsymptomatic_period
         self.stochastic = stochastic
         self.include_flow = include_flow
-        self.use_waves = use_waves
+        self.use_wave_factor = use_wave_factor
+        self.daily_cases = []
+
+    def reset(self, timestep):
+        self.daily_cases = self.daily_cases[:timestep]
 
     def simulate(self, state, decision, decision_period, information):
         """Simulates the development of an epidemic as modelled by current parameters
@@ -54,11 +59,10 @@ class SEAIR:
         age_flow_scaling = np.array(self.age_group_flow_scaling)
 
         # Get information data
-        if self.use_waves:
-            R_eff = information['R'] * self.periods_per_day
+        if self.use_wave_factor:
+            wave_factor = information['wave_factor'] * self.periods_per_day
         else:
-            R_eff = self.R0 * self.periods_per_day
-        alphas = information['alphas']
+            wave_factor = self.R0 * self.periods_per_day
         C = generate_weighted_contact_matrix(self.contact_matrices, information['contact_weights'])
         visitors = self.commuters[0]
         commuters = self.commuters[1] * information['flow_scale']
@@ -99,7 +103,7 @@ class SEAIR:
 
             # Calculate beta
             N_infectious = np.sum([E2, A, I])
-            beta = R_eff * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
+            beta = wave_factor * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
 
             # Calculate new infected from commuting
             commuter_cases = 0
@@ -143,4 +147,12 @@ class SEAIR:
             total_new_infected[i] = new_I
             total_new_deaths[i] = new_D
 
-        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0)
+            if timestep != 0 and timestep % self.periods_per_day == 0:
+                self.daily_cases.append(np.sum(total_new_infected[timestep-self.periods_per_day:timestep]))
+        
+        trend = None
+        if information['vaccine_supply'] > 0:
+            R_t = get_R_t(self.daily_cases).tail(14)
+            trend = "U" if (R_t['Q0.5'] > 1).all() else "D" if (R_t['Q0.5'] < 1).all() else "N"
+
+        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0), trend

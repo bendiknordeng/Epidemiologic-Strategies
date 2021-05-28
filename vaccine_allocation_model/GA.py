@@ -166,9 +166,6 @@ class SimpleGeneticAlgorithm:
                 np.random.seed(seeds[j])
                 self.process.reset()
                 self.process.run(weighted_policy_weights=individual.genes)
-                for wave_state, count in self.process.state.strategy_count.items():
-                    for wave_count, count in count.items():
-                        individual.strategy_count[self.generation_count][wave_state][wave_count] += count
                 score = self.objective(self.process)
                 self.final_scores[individual.ID].append(score)
             mean_score = np.mean(self.final_scores[individual.ID])
@@ -234,7 +231,8 @@ class SimpleGeneticAlgorithm:
             o1_genes = np.zeros(shape)
             o2_genes = np.zeros(shape)
             unique_child = False
-            while not unique_child: # don't make copy of parents
+            count = 0
+            while not unique_child and count < 5: # don't make copy of parents
                 c_row = np.random.randint(0, high=shape[1])
                 c_col = np.random.randint(0, high=shape[2])
                 vertical_cross = np.random.random() <= 0.5
@@ -257,6 +255,7 @@ class SimpleGeneticAlgorithm:
                     o2_genes[:, c_row, c_col:] = p1[:, c_row, c_col:]
                     o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
                 unique_child = not ((p1 == o1_genes).all() or (p1 == o2_genes).all() or (p2 == o1_genes).all() or (p2 == o2_genes).all())
+                count += 1
             o1 = Individual(generation=generation_count, offspring=True)
             o1.genes = o1_genes
             o2 = Individual(generation=generation_count, offspring=True)
@@ -463,7 +462,7 @@ class Individual:
             i (int): number in order to assign different genes to different individuals
 
         Returns:
-            numpy.ndarray: shape #wave_states, #times_per_state, #number of weights
+            numpy.ndarray: shape #trend_states, #times_per_state, #number of weights
         """
         genes = np.zeros((3,3,5))
         if 0 <= i < 5:
@@ -487,11 +486,11 @@ class Individual:
             weights = np.zeros(5)
             for j in range(5):
                 high = 100 if j > 0 else 50
-                weights[j] = np.random.randint(low=0, high=high) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+                weights[j] = np.random.randint(low=0, high=high) # nr trend_states, max nr of occurrences (trendcounts), nr of weights (policies)
             norm = np.sum(weights)
             genes[:, :] = np.divide(weights, norm)
         else:
-            genes = np.random.randint(low=0, high=100, size=(3,3,5)) # nr wave_states, max nr of occurrences (wavecounts), nr of weights (policies)
+            genes = np.random.randint(low=0, high=100, size=(3,3,5)) # nr trend_states, max nr of occurrences (trendcounts), nr of weights (policies)
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
