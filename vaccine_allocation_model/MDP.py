@@ -41,14 +41,14 @@ class MarkovDecisionProcess:
         self.state = deepcopy(self.initial_state)
         self.simulation_period = 0
         self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
-        path = [self.initial_state]
+        path = [self.initial_state] 
         initial_run = True
         while initial_run:
             initial_run = self.update_state()
             path.append(self.state)
             self.simulation_period += 1
-        if self.reached_stop_criteria():
-            self.init()
+#        if self.reached_stop_criteria():
+#            self.init()
         self.start_state = self.state
         self.start_path = path
         self.start_simulation_period = self.simulation_period
