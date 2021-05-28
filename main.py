@@ -17,7 +17,7 @@ if __name__ == '__main__':
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
-    end_day, end_month, end_year = 31, 7, 2021
+    end_day, end_month, end_year = 1, 1, 2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
     initial_infected = 50
@@ -117,8 +117,7 @@ if __name__ == '__main__':
             results.append(mdp.state)
             run_paths.append(mdp.path)
             r_effs.append(mdp.wave_timeline)
-            utils.print_results(mdp.state, population, age_labels, vaccine_policy)
-            print("\n",mdp.state.trend_count,"\n")
+            #utils.print_results(mdp.state, population, age_labels, vaccine_policy)
 
         avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
         
@@ -157,3 +156,5 @@ if __name__ == '__main__':
         plot.plot_geospatial(paths.municipalities_geo, history, paths.municipality_plots, population, accumulated_compartment_plot=False, per_100k=False)
         plot.create_gif(paths.municipality_gif, paths.municipality_plots)
         plot.plot_commuters(population, paths.municipalities_geo, paths.municipalities_commuters)
+        plot.plot_norway_map(population, paths.municipalities_geo)
+        plot.plot_population()

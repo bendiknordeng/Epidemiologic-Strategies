@@ -431,5 +431,42 @@ def plot_commuters(population, fpath_muncipalities_geo, fpath_commuters):
     gdf2.plot(ax=ax1, color='black', linewidth=0.01)
     gdf['center'].plot(ax=ax1, color='red', markersize=8)
     plt.draw()
-    plt.savefig("plots/commuter_network.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.savefig("plots/commuters.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.close()
+
+def plot_population():
+    """ Generate demographics histogram for different age groups
+    """
+    df = pd.read_csv('data/age_groups/age_divided_population.csv')
+    df = df[['age', 'population']]
+    df = df.groupby('age').sum().reset_index()
+    plt.style.use('seaborn')
+    csfont = {'fontname':'Times New Roman'}
+    bins = [0, 18, 45, 55, 65, 75, 85, 100]
+    _, ax = plt.subplots(figsize=(18,6), dpi=80)
+    plt.hist(df.age, histtype='bar', weights=df.population, bins=bins, edgecolor='black')  
+    plt.xlabel('Age', **csfont, fontsize=16)
+    plt.ylabel('Population', **csfont, fontsize=14)
+    plt.xticks(**csfont, fontsize=12, ticks=bins)
+    plt.yticks(**csfont, fontsize=12)
+    ax.yaxis.set_major_formatter(lambda x, pos: '{0:g} M'.format(x/1e6))
+    plt.xlim(0)
+    plt.draw()
+    plt.savefig("plots/population.jpg", bbox_inches = 'tight')
+    plt.close()
+
+def plot_norway_map(population, fpath_muncipalities_geo):
+    """ plots Norway map without data
+    """
+    fig, ax = plt.subplots(figsize=(28,28), dpi=60)
+    gdf = utils.generate_geopandas(population, fpath_muncipalities_geo)
+    gdf.plot(ax=ax, facecolor='white', edgecolor='black', alpha=0.5, linewidth=0.5, zorder=2)
+    ctx.add_basemap(ax, zoom='auto', crs=3857, source=ctx.providers.Stamen.TonerLite, alpha=0.6, attribution="")
+    ax.set_axis_off()
+    west, south, east, north = gdf.total_bounds
+    ax.set_xlim(west, east)
+    ax.set_ylim(south, north)
+    ax.axis('off')
+    plt.draw()
+    plt.savefig("plots/norway.jpg", dpi=fig.dpi, bbox_inches = 'tight')
     plt.close()
