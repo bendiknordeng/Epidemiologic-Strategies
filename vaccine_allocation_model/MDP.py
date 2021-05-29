@@ -64,7 +64,7 @@ class MarkovDecisionProcess:
             self.start_wave_state_timeline = self.wave_state_timeline
         if self.verbose: print(f"\n{tcolors.BOLD}Starting state:\n{self.start_state}{tcolors.ENDC}")
 
-    def reset(self, measures_run=True):
+    def reset(self, reset_measures=True):
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
         self.measures_timeline_generated = False
         self.state = deepcopy(self.start_state)
@@ -73,7 +73,7 @@ class MarkovDecisionProcess:
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
         self.policy.fhi_vaccine_plan = pd.read_csv("data/fhi_vaccine_plan.csv")
-        if self.use_response_measures and measures_run:
+        if self.use_response_measures and reset_measures:
             self._reset_measures_timeline()
             self.measures_timeline_generated = True
         if self.use_wave_factor:
@@ -199,7 +199,7 @@ class MarkovDecisionProcess:
 
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/3
+            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/5
 
             if self.verbose:
                 print("Per 100k:")
@@ -230,7 +230,7 @@ class MarkovDecisionProcess:
             self.measures_timeline["flow_scale"].append(self.state.flow_scale)
             self.path.append(self.state)
             self.simulation_period += 1
-        self.reset(measures_run=False)
+        self.reset(reset_measures=False)
         self.policy.vaccine_allocation = current_policy
         
     def __str__(self):

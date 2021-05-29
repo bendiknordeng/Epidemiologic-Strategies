@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 1
+    runs = 10
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -53,11 +53,10 @@ if __name__ == '__main__':
 
     vaccine_policy = Policy(
                     config=config,
-                    policy=policies[policy_number],
+                    policy='weighted' if run_GA else policies[policy_number],
                     population=population[population.columns[2:-1]].values,
                     contact_matrices=contact_matrices,
-                    age_flow_scaling=age_group_flow_scaling,
-                    GA=run_GA)
+                    age_flow_scaling=age_group_flow_scaling)
 
     epidemic_function = SEAIR(
                     commuters=commuters,

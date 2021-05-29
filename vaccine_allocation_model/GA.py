@@ -159,17 +159,25 @@ class SimpleGeneticAlgorithm:
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(100, 1e+6) for _ in range(runs)]
-        ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
-        for i, individual in enumerate(pop):
-            if self.verbose: print(f"\nFinding score for {'offspring' if offsprings else 'individual'} in {ordinal(i+1)} place: {individual.ID}")
-            for j in tqdm(range(runs), ascii=True):
-                np.random.seed(seeds[j])
-                self.process.reset()
-                self.process.run(weighted_policy_weights=individual.genes)
+        for run in range(runs):
+            np.random.seed(seeds[run])
+            self.process.reset()
+            if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run} ({'offsprings' if offsprings else 'individuals'}){tcolors.ENDC}")
+            for individual in pop:
+                self.process.reset(reset_measures=False)
+                state = self.process.state
+                trend = {"U": 0, "D": 1, "N": 2}[state.trend]
+                trend_count = min(state.trend_count[state.trend], 3)-1 # make sure strategy is kept within count 3
+                weights = individual.genes[trend][trend_count]
+                individual.strategy_count[self.generation_count][trend][trend_count] += 1
+                self.process.run(weighted_policy_weights=weights)
                 score = self.objective(self.process)
+                if self.verbose: print(f"{individual.ID}: {score}")
                 self.final_scores[individual.ID].append(score)
+        if self.verbose: print(f"\n{tcolors.UNDERLINE}Mean scores:{tcolors.ENDC}")
+        for individual in pop:
             mean_score = np.mean(self.final_scores[individual.ID])
-            if self.verbose: print(f"Mean score: {mean_score:.2f}")
+            if self.verbose: print(f"{individual.ID}: {mean_score:.2f}")
             individual.mean_score = mean_score
 
     def find_best_individual(self, offsprings=False, from_start=True, convergence_test=False):
