@@ -3,7 +3,7 @@ import numpy as np
 from utils import generate_weighted_contact_matrix
 
 class Policy:
-    def __init__(self, config, policy, population, contact_matrices, age_flow_scaling):
+    def __init__(self, config, policy, population, contact_matrices, age_flow_scaling, GA):
         """ Defining vaccine allocation pollicy
 
         Args:
@@ -29,6 +29,7 @@ class Policy:
         self.contact_matrices = contact_matrices
         self.age_flow_scaling = age_flow_scaling
         self.fhi_vaccine_plan = None
+        self.GA = GA
 
     def get_decision(self, state, vaccines, weights):
         """ Retrieves a vaccine allocation
@@ -191,6 +192,10 @@ class Policy:
         """
         if weights is None:
             return self._no_vaccines()
+        if self.GA:
+            trend = {"U": 0, "D": 1, "N": 2}[state.trend]
+            trend_count = min(state.trend_count[state.trend], 3) # make sure strategy is kept within count 3
+            weights = weights[trend][trend_count-1]
         weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first", "contact_based"]
         vaccine_allocation = np.zeros(self.population.shape)
         if M > 0:

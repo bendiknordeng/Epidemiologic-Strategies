@@ -69,6 +69,7 @@ class MarkovDecisionProcess:
         self.measures_timeline_generated = False
         self.state = deepcopy(self.start_state)
         self.state.trend_count = dict.fromkeys(self.state.trend_count, 0)
+        self.state.trend_count[self.state.trend] += 1
         self.epidemic_function.reset(self.state.time_step//self.config.periods_per_day)
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period

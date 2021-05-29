@@ -165,12 +165,8 @@ class SimpleGeneticAlgorithm:
             if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run} ({'offsprings' if offsprings else 'individuals'}){tcolors.ENDC}")
             for individual in pop:
                 self.process.reset(reset_measures=False)
-                state = self.process.state
-                trend = {"U": 0, "D": 1, "N": 2}[state.trend]
-                trend_count = min(state.trend_count[state.trend], 3)-1 # make sure strategy is kept within count 3
-                weights = individual.genes[trend][trend_count]
-                individual.strategy_count[self.generation_count][trend][trend_count] += 1
-                self.process.run(weighted_policy_weights=weights)
+                self.process.run(weighted_policy_weights=individual.genes)
+                individual.update_strategy_count(self.generation_count, self.process.state)
                 score = self.objective(self.process)
                 if self.verbose: print(f"{individual.ID}: {score}")
                 self.final_scores[individual.ID].append(score)
@@ -502,6 +498,11 @@ class Individual:
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
+
+    def update_strategy_count(self, gen, state):
+        for trend, count in state.trend_count.items():
+            for i in range(count):
+                self.strategy_count[gen][trend][i] += 1
 
     def __str__(self):
         return self.ID

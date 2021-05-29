@@ -41,22 +41,23 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     stochastic = True
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
-    write_simulations_to_file = True
+    write_simulations_to_file = False
 
     vaccine_policy = Policy(
                     config=config,
                     policy='weighted' if run_GA else policies[policy_number],
                     population=population[population.columns[2:-1]].values,
                     contact_matrices=contact_matrices,
-                    age_flow_scaling=age_group_flow_scaling)
+                    age_flow_scaling=age_group_flow_scaling,
+                    GA=run_GA)
 
     epidemic_function = SEAIR(
                     commuters=commuters,
