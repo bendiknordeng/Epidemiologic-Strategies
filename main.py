@@ -20,7 +20,7 @@ if __name__ == '__main__':
     end_day, end_month, end_year = 31, 7, 2021  # 1,1,2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
-    initial_infected = 50
+    initial_infected = 150
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     include_flow = True
     stochastic = True
     use_wave_factor = True
-    use_response_measures = False
+    use_response_measures = True
     verbose = False
     plot_results = True
     plot_geo = False
@@ -53,11 +53,10 @@ if __name__ == '__main__':
 
     vaccine_policy = Policy(
                     config=config,
-                    policy=policies[policy_number],
+                    policy='weighted' if run_GA else policies[policy_number],
                     population=population[population.columns[2:-1]].values,
                     contact_matrices=contact_matrices,
-                    age_flow_scaling=age_group_flow_scaling,
-                    GA=run_GA)
+                    age_flow_scaling=age_group_flow_scaling)
 
     epidemic_function = SEAIR(
                     commuters=commuters,
@@ -85,6 +84,7 @@ if __name__ == '__main__':
                     initial_state=initial_state,
                     response_measure_model=response_measure_model, 
                     use_response_measures=use_response_measures,
+                    use_wave_factor=use_wave_factor,
                     horizon=horizon,
                     end_date=end_date,
                     policy=vaccine_policy,
@@ -107,17 +107,16 @@ if __name__ == '__main__':
     else:
         results = []
         run_paths = []
-        r_effs = []
+        mdp.init()
         #seeds = np.arange(runs)
         for i in tqdm(range(runs)):
             #np.random.seed(seeds[i])
-            mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
             run_paths.append(mdp.path)
-            r_effs.append(mdp.wave_timeline)
-            #utils.print_results(mdp.state, population, age_labels, vaccine_policy)
+            utils.print_results(mdp.state, population, age_labels, vaccine_policy)
+            print("\n",mdp.state.trend_count,"\n")
 
         avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
         
@@ -127,15 +126,12 @@ if __name__ == '__main__':
             folder_path = os.getcwd() + run_folder
             start_date_population_age_labels_path = folder_path + "/start_date_population_age_labels.pkl"
             mdp_paths_path = folder_path + "/mdp_paths.pkl"
-            mdp_reffs_path = folder_path + "/mdp_reffs.pkl"
             os.mkdir(folder_path)
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
             utils.write_pickle(mdp_paths_path, run_paths)
-            utils.write_pickle(mdp_reffs_path, r_effs)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
-        R_eff = mdp.wave_timeline
         results_age = history.sum(axis=2)
         results_regions = history.sum(axis=3)
         infection_results_age = new_infections.sum(axis=1)
@@ -144,8 +140,12 @@ if __name__ == '__main__':
         comps_to_plot = ["E2", "A", "I"]
 
         if use_response_measures:
-            plot.plot_control_measures(mdp.path, all=False)
-        plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=False)
+            plot.plot_control_measures(mdp.path, all=True)
+        if use_wave_factor:
+            R_eff = mdp.wave_timeline
+            plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
+        else:
+            plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, include_R=False)
         plot.plot_R_t(epidemic_function.daily_cases)
         #plot.age_group_infected_plot_weekly_cumulative(infection_results_age, start_date, age_labels)
         #plot.seir_plot_weekly_several_regions(results_regions, start_date, comps_to_plot, regions_to_plot, paths.municipalities_names)

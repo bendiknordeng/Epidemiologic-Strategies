@@ -28,7 +28,7 @@ color_scheme = {
     "V": '#00e8e0'
 }
 
-def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=False):
+def age_group_infected_plot_weekly(res, start_date, labels, R_eff=None, include_R=False):
     """ plots infection for different age groups per week
     
     Parameters
@@ -111,6 +111,7 @@ def plot_control_measures(path, all=False):
         c_weights_school = [s.contact_weights[1] for s in path]
         c_weights_work = [s.contact_weights[2] for s in path]
         c_weights_public = [s.contact_weights[3] for s in path]
+        flow_scales = [s.flow_scale for s in path]
         weeks = [s.date.isocalendar()[1] for s in path]
         ticks = min(len(path), 20)
         step = int(np.ceil(len(path)/ticks))
@@ -127,16 +128,17 @@ def plot_control_measures(path, all=False):
         ln3 = ax2.plot(c_weights_school, label="School")
         ln4 = ax2.plot(c_weights_work, label="Work")
         ln5 = ax2.plot(c_weights_public, label="Public")
+        ln6 = ax2.plot(flow_scales, label="Flow scale")
         
-        lines = ln1+ln2+ln3+ln4+ln5
-        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3, ln4, ln5]]
+        lines = ln1+ln2+ln3+ln4+ln5+ln6
+        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3, ln4, ln5, ln6]]
         plt.legend(lines, labels)
         plt.xticks(np.arange(0, len(path), step), weeks[::step])
         plt.grid()
         plt.show()
     else:
         mean_weights = np.array([s.contact_weights for s in path]).mean(axis=1)
-        
+        flow_scales = [s.flow_scale for s in path]
         weeks = [s.date.isocalendar()[1] for s in path]
         ticks = min(len(path), 20)
         step = int(np.ceil(len(path)/ticks))
@@ -146,13 +148,14 @@ def plot_control_measures(path, all=False):
         ax1.set_xlabel('Week')
         ax1.set_ylabel('New infected')
         ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
-        
+
         ax2 = ax1.twinx()
         ax2.set_ylabel('Weight')
         ln2 = ax2.plot(mean_weights, label="Mean weighting")
+        ln3 = ax2.plot(flow_scales, label="Flow scale")
         
-        lines = ln1+ln2
-        labels = [ln[0].get_label() for ln in [ln1, ln2]]
+        lines = ln1+ln2+ln3
+        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3]]
         plt.legend(lines, labels)
         plt.xticks(np.arange(0, len(path), step), weeks[::step])
         plt.grid()
