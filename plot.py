@@ -431,7 +431,7 @@ def plot_commuters(population, fpath_muncipalities_geo, fpath_commuters):
     gdf2.plot(ax=ax1, color='black', linewidth=0.01)
     gdf['center'].plot(ax=ax1, color='red', markersize=8)
     plt.draw()
-    plt.savefig("plots/commuters.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.savefig("plots/case/commuters.jpg", dpi=fig.dpi, bbox_inches = 'tight')
     plt.close()
 
 def plot_population():
@@ -452,7 +452,7 @@ def plot_population():
     ax.yaxis.set_major_formatter(lambda x, pos: '{0:g} M'.format(x/1e6))
     plt.xlim(0)
     plt.draw()
-    plt.savefig("plots/population.jpg", bbox_inches = 'tight')
+    plt.savefig("plots/case/population.jpg", bbox_inches = 'tight')
     plt.close()
 
 def plot_norway_map(population, fpath_muncipalities_geo):
@@ -468,5 +468,5 @@ def plot_norway_map(population, fpath_muncipalities_geo):
     ax.set_ylim(south, north)
     ax.axis('off')
     plt.draw()
-    plt.savefig("plots/norway.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.savefig("plots/case/norway.jpg", dpi=fig.dpi, bbox_inches = 'tight')
     plt.close()
