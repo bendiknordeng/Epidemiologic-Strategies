@@ -1,14 +1,15 @@
 import numpy as np
+from numpy.testing._private.utils import measure
 from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
-import time
 from utils import get_wave_timeline, tcolors
 from copy import copy, deepcopy
 
 class MarkovDecisionProcess:
-    def __init__(self, config, decision_period, population, epidemic_function, initial_state,
-                response_measure_model, use_response_measures, horizon, end_date, policy, verbose, historic_data=None):
+    def __init__(self, config, decision_period, population, epidemic_function, 
+                initial_state, response_measure_model, use_response_measures, 
+                use_wave_factor, horizon, end_date, policy, verbose, historic_data=None):
         """ A Markov decision process adminestering states, decisions and exogeneous information for an epidemic
 
         Args:
@@ -30,6 +31,7 @@ class MarkovDecisionProcess:
         self.epidemic_function = epidemic_function
         self.response_measure_model = response_measure_model
         self.use_response_measures = use_response_measures
+        self.use_wave_factor = use_wave_factor
         self.horizon = horizon
         self.end_date = end_date
         self.policy = policy
@@ -42,7 +44,10 @@ class MarkovDecisionProcess:
         self.path = [self.state]
         self.simulation_period = 0
         self.epidemic_function.daily_cases = []
-        self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
+        if self.use_response_measures:
+            self.measures_timeline_generated = False
+        if self.use_wave_factor:
+            self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, self.config.periods_per_day)
         initial_run = True
         while initial_run:
             initial_run = self.update_state()
@@ -54,21 +59,27 @@ class MarkovDecisionProcess:
         self.start_state = self.state
         self.start_path = self.path
         self.start_simulation_period = self.simulation_period
-        self.start_wave_timeline = self.wave_timeline
-        self.start_wave_state_timeline = self.wave_state_timeline
+        if self.use_wave_factor:
+            self.start_wave_timeline = self.wave_timeline
+            self.start_wave_state_timeline = self.wave_state_timeline
         if self.verbose: print(f"\n{tcolors.BOLD}Starting state:\n{self.start_state}{tcolors.ENDC}")
 
-    def reset(self):
+    def reset(self, measures_run=True):
         """ Resets the MarkovDecisionProcess to make multible runs possible"""
+        self.measures_timeline_generated = False
         self.state = deepcopy(self.start_state)
         self.state.trend_count = dict.fromkeys(self.state.trend_count, 0)
         self.epidemic_function.reset(self.state.time_step//self.config.periods_per_day)
         self.path = copy(self.start_path)
         self.simulation_period = self.start_simulation_period
-        self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
+        self.policy.fhi_vaccine_plan = pd.read_csv("data/fhi_vaccine_plan.csv")
+        if self.use_response_measures and measures_run:
+            self._reset_measures_timeline()
+            self.measures_timeline_generated = True
+        if self.use_wave_factor:
+            self.wave_timeline, self.wave_state_timeline = get_wave_timeline(self.horizon, self.decision_period, 
                                                                         self.config.periods_per_day, self.start_wave_timeline, 
                                                                         self.start_wave_state_timeline, self.simulation_period)                                                                    
-        self.policy.fhi_vaccine_plan = pd.read_csv("data/fhi_vaccine_plan.csv")
 
     def run(self, weighted_policy_weights=None):
         """ Updates states from current time_step until horizon is reached"""
@@ -109,14 +120,23 @@ class MarkovDecisionProcess:
             vaccine_supply = np.zeros(self.state.S.shape)
         else:
             vaccine_supply = int(decision_period_data['vaccine_supply_new'].sum()/2) # supplied vaccines need two doses, model uses only one dose
+        information = {'vaccine_supply': vaccine_supply}
+                            
         if self.use_response_measures:
-            contact_weights, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.flow_scale)
+            if self.measures_timeline_generated:
+                timeline_period = self.simulation_period-self.start_simulation_period
+                contact_weights = self.measures_timeline['contact_weights'][timeline_period]
+                flow_scale = self.measures_timeline['flow_scale'][timeline_period]
+            else:
+                contact_weights, flow_scale = self._map_infection_to_response_measures(self.state.contact_weights, self.state.flow_scale)
         else:
             contact_weights, flow_scale = self.config.initial_contact_weights, self.config.initial_flow_scale
-        return {'vaccine_supply': vaccine_supply,
-                'wave_factor': self.wave_timeline[self.simulation_period],
-                'contact_weights': contact_weights,
-                'flow_scale': flow_scale}
+        if self.use_wave_factor:
+            information['wave_factor'] = self.wave_timeline[self.simulation_period]
+
+        information["contact_weights"] = contact_weights
+        information["flow_scale"] = flow_scale
+        return information
 
     def update_state(self, weighted_policy_weights=None):
         """ Updates the state
@@ -165,10 +185,10 @@ class MarkovDecisionProcess:
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] + x * (1-initial_cw[0])/15,
-                'school': lambda x: initial_cw[1] - x * initial_cw[1]/6,
-                'work': lambda x: initial_cw[2] - x * initial_cw[2]/6,
-                'public': lambda x: initial_cw[3] - x * initial_cw[3]/7
+                'home': lambda x: initial_cw[0] + x * (1-initial_cw[0])/10,
+                'school': lambda x: initial_cw[1] - x * initial_cw[1]/5,
+                'work': lambda x: initial_cw[2] - x * initial_cw[2]/5,
+                'public': lambda x: initial_cw[3] - x * initial_cw[3]/6
             }
             
             new_cw = []
@@ -179,7 +199,7 @@ class MarkovDecisionProcess:
 
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/5
+            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/3
 
             if self.verbose:
                 print("Per 100k:")
@@ -194,12 +214,25 @@ class MarkovDecisionProcess:
                 print(f"New weights: {new_cw}")
                 print(f"Previous flow scale: {previous_flow_scale}")
                 print(f"New flow scale: {new_flow_scale}\n\n")
-                time.sleep(0.2)
 
             return new_cw, new_flow_scale
         
         return previous_cw, previous_flow_scale
 
+    def _reset_measures_timeline(self):
+        current_policy = self.policy.vaccine_allocation
+        self.policy.vaccine_allocation = self.policy.policies['fhi_policy']
+        self.measures_timeline = {"contact_weights": [], "flow_scale": []}
+        while not self.reached_stop_criteria():
+            if self.verbose: print(self.state, end="\n"*2)
+            self.update_state(weighted_policy_weights=None)
+            self.measures_timeline["contact_weights"].append(self.state.contact_weights)
+            self.measures_timeline["flow_scale"].append(self.state.flow_scale)
+            self.path.append(self.state)
+            self.simulation_period += 1
+        self.reset(measures_run=False)
+        self.policy.vaccine_allocation = current_policy
+        
     def __str__(self):
         status = f"{tcolors.BOLD}MarkovDecisionProcess object.{tcolors.ENDC}\n"
         status = f"Horizon: {self.horizon}\n"

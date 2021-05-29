@@ -61,7 +61,7 @@ class SEAIR:
         if self.use_wave_factor:
             wave_factor = information['wave_factor'] * self.periods_per_day
         else:
-            wave_factor = self.config.R0 * self.periods_per_day
+            wave_factor = self.R0 * self.periods_per_day
         C = generate_weighted_contact_matrix(self.contact_matrices, information['contact_weights'])
         visitors = self.commuters[0]
         commuters = self.commuters[1] * information['flow_scale']
@@ -82,7 +82,6 @@ class SEAIR:
         alpha = 1/(self.presymptomatic_period * self.periods_per_day)
         omega = 1/(self.postsymptomatic_period * self.periods_per_day)
         gamma = 1/(self.recovery_period * self.periods_per_day)
-
         # Run simulation
         for i in range(decision_period):
             timestep = (state.date.weekday() * self.periods_per_day + i) % decision_period
