@@ -7,7 +7,7 @@ from copy import copy
 
 class State:
     def __init__(self, S, E1, E2, A, I, R, D, V, contact_weights, flow_scale, vaccines_available, new_infected, 
-                total_infected, new_deaths, trend, trend_count, date, time_step=0):
+                total_infected, new_deaths, trend, trend_count, R_t, date, time_step=0):
         """State object for the Markov Decision Process. Keeps track of relevant information for running simulations and making decisions.
 
         Args:
@@ -47,6 +47,7 @@ class State:
         self.new_deaths = new_deaths
         self.trend = trend
         self.trend_count = trend_count
+        self.R_t = R_t
         self.date = date
         self.time_step = time_step
 
@@ -67,7 +68,7 @@ class State:
         flow_scale = information['flow_scale']
 
         # Update compartment values
-        S, E1, E2, A, I, R, D, V, new_infected, new_deaths, trend = epidemic_function(self, decision, decision_period, information)
+        S, E1, E2, A, I, R, D, V, new_infected, new_deaths, trend, R_t = epidemic_function(self, decision, decision_period, information)
         
         if trend != self.trend and self.vaccines_available > 0:
             self.trend = trend
@@ -83,7 +84,7 @@ class State:
         date = self.date + timedelta(decision_period//4)
 
         return State(S, E1, E2, A, I, R, D, V, contact_weights, flow_scale, vaccines_available, new_infected, 
-                    self.total_infected+new_infected, new_deaths, trend, self.trend_count, date, time_step)
+                    self.total_infected+new_infected, new_deaths, trend, self.trend_count, R_t, date, time_step)
     
     def get_compartments_values(self):
         """Retrieves compartments
@@ -162,4 +163,4 @@ class State:
                 I[region][age_group] += 1 
 
         return State(S, E1, E2, A, I, R, D, V, contact_weights, flow_scale, 0,
-                    I.copy(), I.copy(), 0, None, {"U": 0, "D": 0, "N": 0}, start_date, time_step)
+                    I.copy(), I.copy(), 0, None, {"U": 0, "D": 0, "N": 0}, None, start_date, time_step)

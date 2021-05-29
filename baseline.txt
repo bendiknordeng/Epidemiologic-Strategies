@@ -1,5 +1,5 @@
 {
-"R0": 2.5,
+"R0": 3.1,
 "periods_per_day": 4,
 "time_delta": 6,
 "efficacy":0.95,
