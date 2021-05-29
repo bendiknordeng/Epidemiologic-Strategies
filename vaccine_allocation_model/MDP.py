@@ -142,7 +142,7 @@ class MarkovDecisionProcess:
             (numpy.ndarray): new contact weights 
             (numpy.ndarray): new mobility scales
         """
-        if len(self.path) > 2:
+        if len(self.path) > 3:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
             cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()
@@ -154,18 +154,21 @@ class MarkovDecisionProcess:
             deaths_past_week = np.sum(self.state.new_deaths) * 1e5/self.population.population.sum()
             deaths_2w_ago = np.sum(self.path[-1].new_deaths) * 1e5/self.population.population.sum()
 
+            # Effective reproduction number feature
+            R_t = self.state.R_t
+
             features = np.array([active_cases, cumulative_total_cases, cases_past_week, cases_2w_ago, 
-                                cumulative_total_deaths, deaths_past_week, deaths_2w_ago])
+                                cumulative_total_deaths, deaths_past_week, deaths_2w_ago, R_t])
 
             models, scalers = self.response_measure_model
 
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] + x * (1-initial_cw[0])/10,
-                'school': lambda x: initial_cw[1] - x * initial_cw[1]/3,
-                'work': lambda x: initial_cw[2] - x * initial_cw[2]/3,
-                'public': lambda x: initial_cw[3] - x * initial_cw[3]/4
+                'home': lambda x: initial_cw[0] + x * (1-initial_cw[0])/15,
+                'school': lambda x: initial_cw[1] - x * initial_cw[1]/6,
+                'work': lambda x: initial_cw[2] - x * initial_cw[2]/6,
+                'public': lambda x: initial_cw[3] - x * initial_cw[3]/7
             }
             
             new_cw = []
@@ -176,7 +179,7 @@ class MarkovDecisionProcess:
 
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/2
+            new_flow_scale = self.config.initial_flow_scale - measure * self.config.initial_flow_scale/5
 
             if self.verbose:
                 print("Per 100k:")
