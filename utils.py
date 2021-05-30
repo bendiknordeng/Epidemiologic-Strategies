@@ -11,6 +11,7 @@ from scipy.stats import skewnorm
 import json
 from collections import Counter
 import epyestim
+from tqdm import tqdm
 # import geopandas as gpd
 
 class tcolors:
@@ -227,7 +228,7 @@ def get_date(start_date, time_step=0):
         start_date: str indicating start date of simulation in the format 'YYYYMMDD' 
         time_delta: int indicating number of days from simulation start
     Returns
-        datdatetime.date object with a given date
+        datetime.date object with a given date
     """
     dt = datetime.strptime(start_date, '%Y%m%d').date()
     dt += timedelta(days=time_step)
@@ -504,3 +505,106 @@ def get_GA_params():
         params["min_generations"] = int(input("Number of minimum generations (int): "))
         params["individuals_from_file"] = None
     return params
+
+def write_csv(run_paths, folder_path, population, age_labels):
+    print("Storing results ...")
+    S = np.array(list(map(lambda x: list(map(lambda y: y.S, x)), run_paths)))
+    I = np.array(list(map(lambda x: list(map(lambda y: y.I, x)), run_paths)))
+    new_infected = np.array(list(map(lambda x: list(map(lambda y: y.new_infected, x)), run_paths)))
+    new_deaths = np.array(list(map(lambda x: list(map(lambda y: y.new_deaths, x)), run_paths)))
+    vaccines_available = np.array(list(map(lambda x: list(map(lambda y: y.vaccines_available, x)), run_paths)))
+    vaccinated = np.array(list(map(lambda x: list(map(lambda y: y.V, x)), run_paths)))
+    contact_weights = np.array(list(map(lambda x: list(map(lambda y: y.contact_weights, x)), run_paths)))
+    flow_scale = np.array(list(map(lambda x: list(map(lambda y: y.flow_scale, x)), run_paths)))
+    dates = np.array(list(map(lambda x: list(map(lambda y: y.date, x)), run_paths)))
+    num_sims, num_weeks = S.shape[0], S.shape[1]
+
+    div_filepath = folder_path + "/div.csv"
+    S_filepath = folder_path + "/S.csv" 
+    I_filepath = folder_path + "/I.csv" 
+    new_infected_filepath = folder_path + "/new_infected.csv" 
+    new_deaths_filepath = folder_path + "/new_deaths.csv" 
+    vaccinated_filepath = folder_path + "/vaccinated.csv" 
+    
+    identifying_columns = ["date", "simulation_nr", "week_nr"]
+    div_columns = ["vaccines_available", "flow_scale", "contact_weight_1", "contact_weight_2", "contact_weight_3", "contact_weight_4"]
+    S_region_columns = []
+    I_region_columns = []
+    new_infected_region_columns = []
+    new_deaths_region_columns = []
+    vaccinated_region_columns = []
+
+    S_age_groups_columns = []
+    I_age_groups_columns = []
+    new_infected_age_groups_columns = []
+    new_deaths_age_groups_columns = []
+    vaccinated_age_groups_columns = []
+    
+    for i in range(population.shape[0]):
+        S_region_columns += [f"S_region_{i+1}"]
+        I_region_columns += [f"I_region_{i+1}"]
+        new_infected_region_columns += [f"new_infected_region_{i+1}"]
+        new_deaths_region_columns += [f"new_deaths_region_{i+1}"]
+        vaccinated_region_columns += [f"vaccinated_region_{i+1}"]
+    for i in range(len(age_labels)):
+        S_age_groups_columns += [f"S_age_groups_{i+1}"]
+        I_age_groups_columns += [f"I_age_groups_{i+1}"]
+        new_infected_age_groups_columns += [f"new_infected_age_groups_{i+1}"]
+        new_deaths_age_groups_columns += [f"new_deaths_age_groups_{i+1}"]
+        vaccinated_age_groups_columns += [f"vaccinated_age_groups_{i+1}"]
+
+    div_df = pd.DataFrame(columns=identifying_columns+div_columns) 
+    S_df = pd.DataFrame(columns=identifying_columns+S_region_columns+S_age_groups_columns)
+    I_df = pd.DataFrame(columns=identifying_columns+I_region_columns+I_age_groups_columns)
+    new_infected_df = pd.DataFrame(columns=identifying_columns+new_infected_region_columns+new_infected_age_groups_columns)
+    new_deaths_df = pd.DataFrame(columns=identifying_columns+new_deaths_region_columns+new_deaths_age_groups_columns)
+    vaccinated_df = pd.DataFrame(columns=identifying_columns+vaccinated_region_columns+vaccinated_age_groups_columns)
+    for i in tqdm(range(num_sims)):
+        for j in range(num_weeks):
+            S_regions = list(S[i][j].sum(axis=1))
+            I_regions = list(I[i][j].sum(axis=1))
+            new_infected_regions = list(new_infected[i][j].sum(axis=1))
+            new_deaths_regions = list(new_deaths[i][j].sum(axis=1))
+            vaccinated_regions = list(vaccinated[i][j].sum(axis=1))
+
+            S_age_groups = list(S[i][j].sum(axis=0))
+            I_age_groups = list(I[i][j].sum(axis=0))
+            new_infected_age_groups = list(new_infected[i][j].sum(axis=0))
+            new_deaths_age_groups = list(new_deaths[i][j].sum(axis=0))
+            vaccinated_age_groups = list(vaccinated[i][j].sum(axis=0))
+            
+            div_entry = {}
+            S_entry = {}
+            I_entry = {}
+            new_infected_entry = {}
+            new_deaths_entry = {}
+            vaccinated_entry = {}
+            identifying_data = [dates[i][j], i+1, j+1]
+            div_data = identifying_data + [vaccines_available[i][j], flow_scale[i][j], contact_weights[i][j][0], contact_weights[i][j][1], contact_weights[i][j][2], contact_weights[i][j][3]]
+            S_data = identifying_data + S_regions + S_age_groups
+            I_data = identifying_data + I_regions + I_age_groups
+            new_infected_data = identifying_data + new_infected_regions + new_infected_age_groups
+            new_deaths_data = identifying_data + new_deaths_regions + new_deaths_age_groups
+            vaccinated_data = identifying_data + vaccinated_regions + vaccinated_age_groups
+
+            for k in range(len(div_df.columns)):
+                div_entry[div_df.columns[k]] = div_data[k]
+            for k in range(len(S_df.columns)):
+                S_entry[S_df.columns[k]] = S_data[k]
+                I_entry[I_df.columns[k]] = I_data[k]
+                new_infected_entry[new_infected_df.columns[k]] = new_infected_data[k]
+                new_deaths_entry[new_deaths_df.columns[k]] = new_deaths_data[k]
+                vaccinated_entry[vaccinated_df.columns[k]] = vaccinated_data[k]
+            
+            div_df = div_df.append(div_entry, ignore_index=True) 
+            S_df = S_df.append(S_entry, ignore_index=True)
+            I_df = I_df.append(I_entry, ignore_index=True)
+            new_infected_df = new_infected_df.append(new_infected_entry, ignore_index=True)
+            new_deaths_df = new_deaths_df.append(new_deaths_entry, ignore_index=True)
+            vaccinated_df = vaccinated_df.append(vaccinated_entry, ignore_index=True)
+    div_df.to_csv(div_filepath)
+    S_df.to_csv(S_filepath)
+    I_df.to_csv(I_filepath)
+    new_infected_df.to_csv(new_infected_filepath)
+    new_deaths_df.to_csv(new_deaths_filepath)
+    vaccinated_df.to_csv(vaccinated_filepath)
