@@ -47,7 +47,7 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
     write_simulations_to_file = False
 

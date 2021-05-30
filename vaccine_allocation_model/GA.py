@@ -45,7 +45,7 @@ class SimpleGeneticAlgorithm:
         self._generate_output_dirs()
         self.verbose = verbose
         self.heat = 1
-        self.cooling_factor = np.exp(np.log(0.5)/(min_generations/2))
+        self.cooling_factor = np.exp(np.log(0.5)/max(min_generations/2, 1))
 
     def _set_objective(self, objective):
         return {"deaths": lambda process: np.sum(process.state.D),
@@ -87,7 +87,7 @@ class SimpleGeneticAlgorithm:
             self.find_fitness(offsprings, from_start=False)
             significant_best = self.find_best_individual(offsprings, from_start=False)
             count += 1
-        self.find_runs(count)
+
         if self.verbose:
             if significant_best:
                 print(f"{tcolors.OKGREEN}Significant best {'offspring' if offsprings else 'individual'} found{tcolors.ENDC}")
@@ -144,6 +144,7 @@ class SimpleGeneticAlgorithm:
                     print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
                     return True
         write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
+        self.final_scores = defaultdict(list)
         return False
 
     def find_fitness(self, offsprings=False, from_start=True):
@@ -197,7 +198,7 @@ class SimpleGeneticAlgorithm:
             first = pop[i]
             for j in range(i+1, range2):
                 second = pop[j]
-                if not self.t_test(first, second, significance=0.1 if convergence_test else 0.5):
+                if not self.t_test(first, second, significance=0.25 if convergence_test else 0.5):
                     if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
                     return False
         return True
@@ -216,11 +217,10 @@ class SimpleGeneticAlgorithm:
         significant_best = False
         s1 = np.array(self.final_scores[first.ID])
         s2 = np.array(self.final_scores[second.ID])
-        if len(s1) > 1 and len(s2) > 1:
-            if not (s1==s2).all():
-                z = s1 - s2
-                p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
-                significant_best = p < significance
+        if not (s1==s2).all():
+            z = s1 - s2
+            p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
+            significant_best = p < significance
         return significant_best
 
     def crossover(self, generation_count):
@@ -256,7 +256,7 @@ class SimpleGeneticAlgorithm:
             o2_genes = np.zeros(shape)
             unique_child = False
             count = 0
-            while not unique_child and count < 5: # don't make copy of parents
+            while not unique_child and count < 10: # don't make copy of parents
                 c_row = np.random.randint(0, high=shape[1])
                 c_col = np.random.randint(0, high=shape[2])
                 vertical_cross = np.random.random() < 0.5
@@ -297,6 +297,17 @@ class SimpleGeneticAlgorithm:
                     self.population.offsprings += [o1,o2,o3,o4,o5]
             else:
                 if self.verbose: print(f"{tcolors.WARNING}Unique child not found between {parent1} and {parent2}{tcolors.ENDC}")
+                o1 = Individual(generation=generation_count, offspring=True)
+                o1.genes = np.divide(p1+p2, 2)
+                o2 = Individual(generation=generation_count, offspring=True)
+                o2.genes = np.divide(p1+3*p2, 4)
+                o3 = Individual(generation=generation_count, offspring=True)
+                o3.genes = np.divide(3*p1+p2, 4)
+                if i==0: 
+                    self.population.offsprings = [o1,o2,o3]
+                else: 
+                    self.population.offsprings += [o1,o2,o3]
+
     def mutation(self):
         """ Randomly altering the genes of offsprings """
         for offspring in self.population.offsprings:
@@ -326,17 +337,6 @@ class SimpleGeneticAlgorithm:
                 offspring.genes[i,j,:] = np.array([1,0,0,0,0])
                 norm = np.sum(offspring.genes, axis=2, keepdims=True)
             offspring.genes = np.divide(offspring.genes, norm)
-
-    def find_runs(self, count):
-        """ Find number of runs needed before significance is needed.
-
-        Args:
-            count (int)): how many extra iterations needed to reach significant
-        """
-        number_runs = self.simulations
-        if count > 0:
-            for _ in range(count): number_runs += int(self.simulations/2)
-        self.number_of_runs.append(number_runs)
 
     def _generate_output_dirs(self):
         start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")

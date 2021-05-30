@@ -99,7 +99,8 @@ class SEAIR:
 
             # Update population to account for new deaths
             N = sum([S, E1, E2, A, I, R])
-
+            
+            # Calculate beta
             beta = (np.sum(N)/np.sum(S)) * wave_factor/(p*(r_e/alpha + 1/alpha)+(r_a-p*r_a)/gamma)
 
             # Calculate new infected from commuting
