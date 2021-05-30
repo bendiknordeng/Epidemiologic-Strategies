@@ -5,6 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime
 from tqdm import tqdm
+import random
 from collections import defaultdict
 from functools import partial
 from datetime import datetime
@@ -43,6 +44,8 @@ class SimpleGeneticAlgorithm:
         self.number_of_runs = []
         self._generate_output_dirs()
         self.verbose = verbose
+        self.heat = 1
+        self.cooling_factor = np.exp(np.log(0.5)/(min_generations/2))
 
     def _set_objective(self, objective):
         return {"deaths": lambda process: np.sum(process.state.D),
@@ -64,6 +67,7 @@ class SimpleGeneticAlgorithm:
             self.run_population(offsprings=True)
             self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
+            self.heat *= self.cooling_factor
 
     def run_population(self, offsprings=False):
         """ For current population, simulate
@@ -133,7 +137,7 @@ class SimpleGeneticAlgorithm:
                 self.best_individual = candidate
                 self.generations_since_new_best = 0
             else:
-                if self.verbose: print(f"{tcolors.FAIL}Candidate individual worse than all-time best: {candidate}{tcolors.ENDC}")
+                if self.verbose: print(f"{tcolors.FAIL}Candidate individual ({candidate}) worse than all-time best ({self.best_individual}){tcolors.ENDC}")
                 write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                 self.generations_since_new_best += 1
                 if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
@@ -171,7 +175,7 @@ class SimpleGeneticAlgorithm:
                 if self.verbose: print(f"{individual.ID}: {score}")
                 self.final_scores[individual.ID].append(score)
         if self.verbose: print(f"\n{tcolors.UNDERLINE}Mean scores:{tcolors.ENDC}")
-        for individual in pop:
+        for individual in sorted(pop, key=lambda i: np.mean(self.final_scores[i.ID])):
             mean_score = np.mean(self.final_scores[individual.ID])
             if self.verbose: print(f"{individual.ID}: {mean_score:.2f}")
             individual.mean_score = mean_score
@@ -187,13 +191,13 @@ class SimpleGeneticAlgorithm:
         """
         pop = self.population.offsprings if offsprings else self.population.individuals
         if not convergence_test: pop = self.population.sort_by_mean(pop, offsprings, from_start)
-        if self.verbose: print(f"\nFinding best {'offspring' if offsprings else 'individual'}...")
+        if self.verbose: print(f"\nFinding best {'offspring' if offsprings and not convergence_test else 'individual'}...")
         range1, range2 = (1 if offsprings else 2, len(pop))
         for i in range(range1): # test two best
             first = pop[i]
             for j in range(i+1, range2):
                 second = pop[j]
-                if not self.t_test(first, second, significance=0.05 if convergence_test else 0.5):
+                if not self.t_test(first, second, significance=0.1 if convergence_test else 0.5):
                     if self.verbose: print(f"{tcolors.WARNING}Significance not fulfilled between {first} and {second}.{tcolors.ENDC}")
                     return False
         return True
@@ -212,10 +216,11 @@ class SimpleGeneticAlgorithm:
         significant_best = False
         s1 = np.array(self.final_scores[first.ID])
         s2 = np.array(self.final_scores[second.ID])
-        if not (s1==s2).all():
-            z = s1 - s2
-            p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
-            significant_best = p < significance
+        if len(s1) > 1 and len(s2) > 1:
+            if not (s1==s2).all():
+                z = s1 - s2
+                p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
+                significant_best = p < significance
         return significant_best
 
     def crossover(self, generation_count):
@@ -224,13 +229,28 @@ class SimpleGeneticAlgorithm:
         Args:
             generation_count (int): what generation that is creating offsprings
         """
-        parent_combinations = list(combinations(self.population.individuals[:3], 2))
-        for i in range(3):
-            parent1 = parent_combinations[i][0]
-            parent2 = parent_combinations[i][1]
+        # Select parents for crossover based on current heat
+        print(f"{tcolors.OKCYAN}Selecting parents for crossover (Heat = {self.heat:.3f}){tcolors.ENDC}")
+        if self.heat > 2/3:
+            parent_combinations = list(combinations(self.population.individuals[:5], 2))
+            parents = []
+            for _ in range(3):
+                cross = random.choice(parent_combinations)
+                while cross in parents:
+                    cross = random.choice(parent_combinations)
+                parents.append(cross)
+        elif self.heat > 1/3:
+            parents = list(combinations(self.population.individuals[:3], 2))
+        else:
+            parents = list(combinations(self.population.individuals[:2], 2))
+
+        for i, combination in enumerate(parents):
+            parent1 = combination[0]
+            parent2 = combination[1]
             if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
             p1 = parent1.genes
             p2 = parent2.genes
+            if (p1 == p2).all(): continue 
             shape = p1.shape
             o1_genes = np.zeros(shape)
             o2_genes = np.zeros(shape)
@@ -239,7 +259,7 @@ class SimpleGeneticAlgorithm:
             while not unique_child and count < 5: # don't make copy of parents
                 c_row = np.random.randint(0, high=shape[1])
                 c_col = np.random.randint(0, high=shape[2])
-                vertical_cross = np.random.random() <= 0.5
+                vertical_cross = np.random.random() < 0.5
                 if vertical_cross:
                     o1_genes[:, :, :c_col] = p1[:, :, :c_col]
                     o1_genes[:, :c_row, c_col] = p1[:, :c_row, c_col]
@@ -260,21 +280,23 @@ class SimpleGeneticAlgorithm:
                     o2_genes[:, c_row+1:, :] = p1[:, c_row+1:, :]
                 unique_child = not ((p1 == o1_genes).all() or (p1 == o2_genes).all() or (p2 == o1_genes).all() or (p2 == o2_genes).all())
                 count += 1
-            o1 = Individual(generation=generation_count, offspring=True)
-            o1.genes = o1_genes
-            o2 = Individual(generation=generation_count, offspring=True)
-            o2.genes = o2_genes
-            o3 = Individual(generation=generation_count, offspring=True)
-            o3.genes = np.divide(p1+p2, 2)
-            o4 = Individual(generation=generation_count, offspring=True)
-            o4.genes = np.divide(p1+3*p2, 4)
-            o5 = Individual(generation=generation_count, offspring=True)
-            o5.genes = np.divide(3*p1+p2, 4)
-            if i==0: 
-                self.population.offsprings = [o1,o2,o3,o4,o5]
-            else: 
-                self.population.offsprings += [o1,o2,o3,o4,o5]
-
+            if unique_child:
+                o1 = Individual(generation=generation_count, offspring=True)
+                o1.genes = o1_genes
+                o2 = Individual(generation=generation_count, offspring=True)
+                o2.genes = o2_genes
+                o3 = Individual(generation=generation_count, offspring=True)
+                o3.genes = np.divide(p1+p2, 2)
+                o4 = Individual(generation=generation_count, offspring=True)
+                o4.genes = np.divide(p1+3*p2, 4)
+                o5 = Individual(generation=generation_count, offspring=True)
+                o5.genes = np.divide(3*p1+p2, 4)
+                if i==0: 
+                    self.population.offsprings = [o1,o2,o3,o4,o5]
+                else: 
+                    self.population.offsprings += [o1,o2,o3,o4,o5]
+            else:
+                if self.verbose: print(f"{tcolors.WARNING}Unique child not found between {parent1} and {parent2}{tcolors.ENDC}")
     def mutation(self):
         """ Randomly altering the genes of offsprings """
         for offspring in self.population.offsprings:

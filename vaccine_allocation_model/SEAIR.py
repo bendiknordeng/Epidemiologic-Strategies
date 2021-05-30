@@ -82,6 +82,7 @@ class SEAIR:
         alpha = 1/(self.presymptomatic_period * self.periods_per_day)
         omega = 1/(self.postsymptomatic_period * self.periods_per_day)
         gamma = 1/(self.recovery_period * self.periods_per_day)
+        
         # Run simulation
         for i in range(decision_period):
             timestep = (state.date.weekday() * self.periods_per_day + i) % decision_period
@@ -99,9 +100,7 @@ class SEAIR:
             # Update population to account for new deaths
             N = sum([S, E1, E2, A, I, R])
 
-            # Calculate beta
-            N_infectious = np.sum([E2, A, I])
-            beta = wave_factor * N_infectious/(np.sum(E2) * (1/omega + r_e/alpha) + np.sum(A) * r_a/gamma + np.sum(I) * 1/omega)
+            beta = (np.sum(N)/np.sum(S)) * wave_factor/(p*(r_e/alpha + 1/alpha)+(r_a-p*r_a)/gamma)
 
             # Calculate new infected from commuting
             commuter_cases = 0

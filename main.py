@@ -13,14 +13,14 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 10
+    runs = 15
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
     end_day, end_month, end_year = 31, 7, 2021  # 1,1,2021
     end_date = utils.get_date(f"{end_year}{end_month:02}{end_day:02}")
     horizon = int(Timedelta(end_date-start_date).days // (decision_period/4))
-    initial_infected = 150
+    initial_infected = 10
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
     write_simulations_to_file = False
 
@@ -108,10 +108,10 @@ if __name__ == '__main__':
     else:
         results = []
         run_paths = []
-        mdp.init()
         #seeds = np.arange(runs)
         for i in tqdm(range(runs)):
             #np.random.seed(seeds[i])
+            mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)

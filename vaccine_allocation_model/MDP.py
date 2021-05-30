@@ -53,9 +53,9 @@ class MarkovDecisionProcess:
             initial_run = self.update_state()
             self.path.append(self.state)
             self.simulation_period += 1
-        #if self.reached_stop_criteria():# or np.sum(self.state.total_infected) < 5e4:
-        #    print(self.state)
-        #    self.init()
+        if self.reached_stop_criteria() or np.sum(self.state.total_infected) < 4e4:
+            print(f"{tcolors.WARNING}Total infected for start state < 40 000 ({np.sum(self.state.total_infected)}).{tcolors.ENDC}")
+            self.init()
         self.start_state = self.state
         self.start_path = self.path
         self.start_simulation_period = self.simulation_period
