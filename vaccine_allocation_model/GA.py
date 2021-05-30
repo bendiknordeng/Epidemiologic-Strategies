@@ -15,7 +15,7 @@ from itertools import combinations
 class SimpleGeneticAlgorithm:
     def __init__(self, simulations, population_size, process, objective, min_generations, 
                 random_individuals, expected_years_remaining, verbose, individuals_from_file=None):
-        """initializes a simple genetic algorithm instance
+        """ Initializes a simple genetic algorithm instance
 
         Args:
             simulations (int): number specifying number of simulations
@@ -122,6 +122,7 @@ class SimpleGeneticAlgorithm:
                 if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
                     print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
                     return True
+                self.final_scores = defaultdict(list)
                 return False
             if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
             self.population.offsprings = [candidate, self.best_individual]
