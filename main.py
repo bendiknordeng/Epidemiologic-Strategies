@@ -24,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 2
+    policy_number = 4
     weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
