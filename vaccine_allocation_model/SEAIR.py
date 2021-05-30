@@ -1,6 +1,5 @@
 import numpy as np
 from utils import generate_weighted_contact_matrix, get_R_t
-import pandas as pd
 
 class SEAIR:
     def __init__(self, commuters, contact_matrices, population, age_group_flow_scaling, 
@@ -83,7 +82,6 @@ class SEAIR:
         alpha = 1/(self.presymptomatic_period * self.periods_per_day)
         omega = 1/(self.postsymptomatic_period * self.periods_per_day)
         gamma = 1/(self.recovery_period * self.periods_per_day)
-
         # Run simulation
         for i in range(decision_period):
             timestep = (state.date.weekday() * self.periods_per_day + i) % decision_period
@@ -151,8 +149,10 @@ class SEAIR:
                 self.daily_cases.append(np.sum(total_new_infected[timestep-self.periods_per_day:timestep]))
         
         trend = None
-        if information['vaccine_supply'] > 0:
+        effective_reproduction_number = None
+        if len(self.daily_cases) > 14:
             R_t = get_R_t(self.daily_cases).tail(14)
             trend = "U" if (R_t['Q0.5'] > 1).all() else "D" if (R_t['Q0.5'] < 1).all() else "N"
+            effective_reproduction_number = R_t['Q0.5'].mean()
 
-        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0), trend
+        return S, E1, E2, A, I, R, D, V, total_new_infected.sum(axis=0), total_new_deaths.sum(axis=0), trend, effective_reproduction_number

@@ -24,12 +24,12 @@ class Policy:
             "weighted": self._weighted_policy,
             "fhi_policy": self._fhi_policy,
             }
-        self.vaccine_allocation = self.policies['weighted'] if GA else self.policies[policy]
+        self.vaccine_allocation = self.policies[policy]
         self.population = population
         self.contact_matrices = contact_matrices
         self.age_flow_scaling = age_flow_scaling
-        self.GA = GA
         self.fhi_vaccine_plan = None
+        self.GA = GA
 
     def get_decision(self, state, vaccines, weights):
         """ Retrieves a vaccine allocation
@@ -193,9 +193,9 @@ class Policy:
         if weights is None:
             return self._no_vaccines()
         if self.GA:
-            i = {"U": 0, "D": 1, "N": 2}[state.trend]
-            j = min(state.trend_count[state.trend], 3) # make sure strategy is kept within count 3
-            weights = weights[i][j-1]
+            trend = {"U": 0, "D": 1, "N": 2}[state.trend]
+            trend_count = min(state.trend_count[state.trend], 3) # make sure strategy is kept within count 3
+            weights = weights[trend][trend_count-1]
         weighted_policies = ["no_vaccines", "susceptible_based", "infection_based", "oldest_first", "contact_based"]
         vaccine_allocation = np.zeros(self.population.shape)
         if M > 0:

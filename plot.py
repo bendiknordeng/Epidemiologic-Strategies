@@ -28,7 +28,7 @@ color_scheme = {
     "V": '#00e8e0'
 }
 
-def age_group_infected_plot_weekly(res, start_date, labels, R_eff, include_R=False):
+def age_group_infected_plot_weekly(res, start_date, labels, R_eff=None, include_R=False):
     """ plots infection for different age groups per week
     
     Parameters
@@ -111,6 +111,7 @@ def plot_control_measures(path, all=False):
         c_weights_school = [s.contact_weights[1] for s in path]
         c_weights_work = [s.contact_weights[2] for s in path]
         c_weights_public = [s.contact_weights[3] for s in path]
+        flow_scales = [s.flow_scale for s in path]
         weeks = [s.date.isocalendar()[1] for s in path]
         ticks = min(len(path), 20)
         step = int(np.ceil(len(path)/ticks))
@@ -127,16 +128,17 @@ def plot_control_measures(path, all=False):
         ln3 = ax2.plot(c_weights_school, label="School")
         ln4 = ax2.plot(c_weights_work, label="Work")
         ln5 = ax2.plot(c_weights_public, label="Public")
+        ln6 = ax2.plot(flow_scales, label="Flow scale")
         
-        lines = ln1+ln2+ln3+ln4+ln5
-        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3, ln4, ln5]]
+        lines = ln1+ln2+ln3+ln4+ln5+ln6
+        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3, ln4, ln5, ln6]]
         plt.legend(lines, labels)
         plt.xticks(np.arange(0, len(path), step), weeks[::step])
         plt.grid()
         plt.show()
     else:
         mean_weights = np.array([s.contact_weights for s in path]).mean(axis=1)
-        
+        flow_scales = [s.flow_scale for s in path]
         weeks = [s.date.isocalendar()[1] for s in path]
         ticks = min(len(path), 20)
         step = int(np.ceil(len(path)/ticks))
@@ -146,13 +148,14 @@ def plot_control_measures(path, all=False):
         ax1.set_xlabel('Week')
         ax1.set_ylabel('New infected')
         ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
-        
+
         ax2 = ax1.twinx()
         ax2.set_ylabel('Weight')
         ln2 = ax2.plot(mean_weights, label="Mean weighting")
+        ln3 = ax2.plot(flow_scales, label="Flow scale")
         
-        lines = ln1+ln2
-        labels = [ln[0].get_label() for ln in [ln1, ln2]]
+        lines = ln1+ln2+ln3
+        labels = [ln[0].get_label() for ln in [ln1, ln2, ln3]]
         plt.legend(lines, labels)
         plt.xticks(np.arange(0, len(path), step), weeks[::step])
         plt.grid()
@@ -431,5 +434,42 @@ def plot_commuters(population, fpath_muncipalities_geo, fpath_commuters):
     gdf2.plot(ax=ax1, color='black', linewidth=0.01)
     gdf['center'].plot(ax=ax1, color='red', markersize=8)
     plt.draw()
-    plt.savefig("plots/commuter_network.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.savefig("plots/case/commuters.jpg", dpi=fig.dpi, bbox_inches = 'tight')
+    plt.close()
+
+def plot_population():
+    """ Generate demographics histogram for different age groups
+    """
+    df = pd.read_csv('data/age_groups/age_divided_population.csv')
+    df = df[['age', 'population']]
+    df = df.groupby('age').sum().reset_index()
+    plt.style.use('seaborn')
+    csfont = {'fontname':'Times New Roman'}
+    bins = [0, 18, 45, 55, 65, 75, 85, 100]
+    _, ax = plt.subplots(figsize=(18,6), dpi=80)
+    plt.hist(df.age, histtype='bar', weights=df.population, bins=bins, edgecolor='black')  
+    plt.xlabel('Age', **csfont, fontsize=16)
+    plt.ylabel('Population', **csfont, fontsize=14)
+    plt.xticks(**csfont, fontsize=12, ticks=bins)
+    plt.yticks(**csfont, fontsize=12)
+    ax.yaxis.set_major_formatter(lambda x, pos: '{0:g} M'.format(x/1e6))
+    plt.xlim(0)
+    plt.draw()
+    plt.savefig("plots/case/population.jpg", bbox_inches = 'tight')
+    plt.close()
+
+def plot_norway_map(population, fpath_muncipalities_geo):
+    """ plots Norway map without data
+    """
+    fig, ax = plt.subplots(figsize=(28,28), dpi=60)
+    gdf = utils.generate_geopandas(population, fpath_muncipalities_geo)
+    gdf.plot(ax=ax, facecolor='white', edgecolor='black', alpha=0.5, linewidth=0.5, zorder=2)
+    ctx.add_basemap(ax, zoom='auto', crs=3857, source=ctx.providers.Stamen.TonerLite, alpha=0.6, attribution="")
+    ax.set_axis_off()
+    west, south, east, north = gdf.total_bounds
+    ax.set_xlim(west, east)
+    ax.set_ylim(south, north)
+    ax.axis('off')
+    plt.draw()
+    plt.savefig("plots/case/norway.jpg", dpi=fig.dpi, bbox_inches = 'tight')
     plt.close()

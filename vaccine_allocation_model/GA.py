@@ -159,17 +159,21 @@ class SimpleGeneticAlgorithm:
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(100, 1e+6) for _ in range(runs)]
-        ordinal = lambda n: "%d%s" % (n,"tsnrhtdd"[(n//10%10!=1)*(n%10<4)*n%10::4])
-        for i, individual in enumerate(pop):
-            if self.verbose: print(f"\nFinding score for {'offspring' if offsprings else 'individual'} in {ordinal(i+1)} place: {individual.ID}")
-            for j in tqdm(range(runs), ascii=True):
-                np.random.seed(seeds[j])
-                self.process.reset()
+        for run in range(runs):
+            np.random.seed(seeds[run])
+            self.process.reset()
+            if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run} ({'offsprings' if offsprings else 'individuals'}){tcolors.ENDC}")
+            for individual in pop:
+                self.process.reset(reset_measures=False)
                 self.process.run(weighted_policy_weights=individual.genes)
+                individual.update_strategy_count(self.generation_count, self.process.state)
                 score = self.objective(self.process)
+                if self.verbose: print(f"{individual.ID}: {score}")
                 self.final_scores[individual.ID].append(score)
+        if self.verbose: print(f"\n{tcolors.UNDERLINE}Mean scores:{tcolors.ENDC}")
+        for individual in pop:
             mean_score = np.mean(self.final_scores[individual.ID])
-            if self.verbose: print(f"Mean score: {mean_score:.2f}")
+            if self.verbose: print(f"{individual.ID}: {mean_score:.2f}")
             individual.mean_score = mean_score
 
     def find_best_individual(self, offsprings=False, from_start=True, convergence_test=False):
@@ -494,6 +498,11 @@ class Individual:
             norm = np.sum(genes, axis=2, keepdims=True)
             genes = np.divide(genes, norm)
         return genes
+
+    def update_strategy_count(self, gen, state):
+        for trend, count in state.trend_count.items():
+            for i in range(count):
+                self.strategy_count[gen][trend][i] += 1
 
     def __str__(self):
         return self.ID
