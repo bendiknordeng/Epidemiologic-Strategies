@@ -23,8 +23,8 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 2 #int(input("Policy number: "))
-    runs = 1 if (not policy_number == 0) else 15
+    policy_number = int(input("Policy number: "))
+    runs = 5 if (not policy_number == 0) else 3
     weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
@@ -130,8 +130,6 @@ if __name__ == '__main__':
             os.mkdir(folder_path)
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
             utils.write_csv(run_paths, folder_path, population, age_labels)
-            import pdb;pdb.set_trace()
-            
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)

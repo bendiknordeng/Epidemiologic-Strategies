@@ -507,17 +507,20 @@ def get_GA_params():
     return params
 
 def write_csv(run_paths, folder_path, population, age_labels):
-    print("Storing results ...")
-    S = np.array(list(map(lambda x: list(map(lambda y: y.S, x)), run_paths)))
-    I = np.array(list(map(lambda x: list(map(lambda y: y.I, x)), run_paths)))
-    new_infected = np.array(list(map(lambda x: list(map(lambda y: y.new_infected, x)), run_paths)))
-    new_deaths = np.array(list(map(lambda x: list(map(lambda y: y.new_deaths, x)), run_paths)))
-    vaccines_available = np.array(list(map(lambda x: list(map(lambda y: y.vaccines_available, x)), run_paths)))
-    vaccinated = np.array(list(map(lambda x: list(map(lambda y: y.V, x)), run_paths)))
-    contact_weights = np.array(list(map(lambda x: list(map(lambda y: y.contact_weights, x)), run_paths)))
-    flow_scale = np.array(list(map(lambda x: list(map(lambda y: y.flow_scale, x)), run_paths)))
-    dates = np.array(list(map(lambda x: list(map(lambda y: y.date, x)), run_paths)))
-    num_sims, num_weeks = S.shape[0], S.shape[1]
+    print("Storing results ... ")
+    S = np.array(list(map(lambda x: list(map(lambda y: y.S, x)), run_paths)), dtype = object)
+    I = np.array(list(map(lambda x: list(map(lambda y: y.I, x)), run_paths)), dtype = object)
+    new_infected = np.array(list(map(lambda x: list(map(lambda y: y.new_infected, x)), run_paths)), dtype = object)
+    new_deaths = np.array(list(map(lambda x: list(map(lambda y: y.new_deaths, x)), run_paths)), dtype = object)
+    vaccines_available = np.array(list(map(lambda x: list(map(lambda y: y.vaccines_available, x)), run_paths)), dtype = object)
+    vaccinated = np.array(list(map(lambda x: list(map(lambda y: y.V, x)), run_paths)), dtype = object)
+    contact_weights = np.array(list(map(lambda x: list(map(lambda y: y.contact_weights, x)), run_paths)), dtype = object)
+    flow_scale = np.array(list(map(lambda x: list(map(lambda y: y.flow_scale, x)), run_paths)), dtype = object)
+    dates = np.array(list(map(lambda x: list(map(lambda y: y.date, x)), run_paths)), dtype = object)
+    try:
+        num_sims, num_weeks = S.shape[0], S.shape[1]
+    except:
+        import pdb;pdb.set_trace()
 
     div_filepath = folder_path + "/div.csv"
     S_filepath = folder_path + "/S.csv" 
@@ -559,6 +562,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
     new_infected_df = pd.DataFrame(columns=identifying_columns+new_infected_region_columns+new_infected_age_groups_columns)
     new_deaths_df = pd.DataFrame(columns=identifying_columns+new_deaths_region_columns+new_deaths_age_groups_columns)
     vaccinated_df = pd.DataFrame(columns=identifying_columns+vaccinated_region_columns+vaccinated_age_groups_columns)
+
     for i in tqdm(range(num_sims)):
         for j in range(num_weeks):
             S_regions = list(S[i][j].sum(axis=1))
@@ -602,6 +606,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
             new_infected_df = new_infected_df.append(new_infected_entry, ignore_index=True)
             new_deaths_df = new_deaths_df.append(new_deaths_entry, ignore_index=True)
             vaccinated_df = vaccinated_df.append(vaccinated_entry, ignore_index=True)
+
     div_df.to_csv(div_filepath)
     S_df.to_csv(S_filepath)
     I_df.to_csv(I_filepath)
