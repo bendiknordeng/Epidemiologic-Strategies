@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 200
+    runs = 2
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = -4
+    policy_number = 3
     weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
     write_simulations_to_file = True
 
@@ -109,13 +109,16 @@ if __name__ == '__main__':
         print("Running pure policy with policy " + policies[policy_number] + f" with {runs} simulations.")
         results = []
         run_paths = []
-        seeds = np.arange(runs)
+        seeds = np.arange(138, 138+runs)
         for i in tqdm(range(runs)):
             np.random.seed(seeds[i])
+            print(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)
             results.append(mdp.state)
+            while len(mdp.path) < horizon+1: #Ensure all paths are equal length
+                mdp.path.append(mdp.state)
             run_paths.append(mdp.path)
             utils.print_results(mdp.state, population, age_labels, vaccine_policy)
             print("\n",mdp.state.trend_count,"\n")

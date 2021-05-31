@@ -525,10 +525,8 @@ def get_GA_params():
     return params
 
 def write_csv(run_paths, folder_path, population, age_labels):
-
     print("Storing results ... ")
-    S = np.array(list(map(lambda x: list(map(lambda y: y.S, x)), run_paths)), dtype = object)
-    import pdb;pdb.set_trace()
+    S = np.array(list(map(lambda x: list(map(lambda y: y.S, x)), run_paths)))
     I = np.array(list(map(lambda x: list(map(lambda y: y.I, x)), run_paths)), dtype = object)
     new_infected = np.array(list(map(lambda x: list(map(lambda y: y.new_infected, x)), run_paths)), dtype = object)
     new_deaths = np.array(list(map(lambda x: list(map(lambda y: y.new_deaths, x)), run_paths)), dtype = object)
