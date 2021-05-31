@@ -7,6 +7,7 @@ import os
 from datetime import datetime, timedelta
 from scipy import stats as sps
 import plot
+from pprint import pprint
 from scipy.stats import skewnorm
 import json
 from collections import Counter
@@ -475,7 +476,7 @@ def get_GA_params():
         files = os.listdir(dir_path)
         dates = sort_filenames_by_date(files)
         runs = dict(zip(range(1,len(files)+1),dates))
-        print("Available runs:")
+        print(f"{tcolors.BOLD}Available runs:{tcolors.ENDC}")
         for k, v in runs.items(): print(f"{k}: {v.strftime('%Y/%m/%d %H:%M:%S')}")
         file_nr = int(input("File (int): "))
         run = f"GA_{runs[file_nr].strftime('%Y_%m_%d_%H_%M_%S')}"
@@ -489,18 +490,35 @@ def get_GA_params():
                 continue
             break
         params["individuals_from_file"] = individuals_from_file
-        print(f"{tcolors.OKGREEN}Running {runs[file_nr]} from generation {gen}{tcolors.ENDC}")
+        print(f"{tcolors.OKGREEN}Running {runs[file_nr]} from generation {gen}{tcolors.ENDC}\nParams:")
+        pprint(params)
     else:
-        params = {}
-        params["gen"] = 0
-        ga_objectives = {1: "deaths", 2: "infected", 3: "weighted", 4: "yll"}
-        print("Choose objective for genetic algorithm.")
-        for k, v in ga_objectives.items(): print(f"{k}: {v}")
-        ga_objective_number = int(input("\nGA Objective (int): "))
-        params["objective"] = ga_objectives[ga_objective_number]
-        params["random_individuals"] = bool(int(input("Random individual genes (bool): ")))
-        params["population_size"] = int(input("Initial population size (int): "))
-        params["simulations"] = int(input("Number of simulations (int): "))
-        params["min_generations"] = int(input("Number of minimum generations (int): "))
-        params["individuals_from_file"] = None
+        instance_based = bool(int(input("Run instances (bool): ")))
+        if instance_based:
+            dir_path = "instances/"
+            files = os.listdir(dir_path)
+            instances = [load_json(dir_path + f) for f in sorted(files)]
+            print(f"{tcolors.BOLD}Instances:{tcolors.ENDC}")
+            for i, instance in enumerate(instances):
+                print(f"{i+1}: Objective: {instance['objective']:>8},\tRandom individuals: {instance['random_individuals']}")
+            selected = int(input("Run from instance: "))
+            params = instances[selected-1]
+            params['individuals_from_file'] = None
+            print(f"{tcolors.OKGREEN}Running instance {selected}{tcolors.ENDC}\nParams:")
+            pprint(params)
+        else:
+            params = {}
+            params["gen"] = 0
+            ga_objectives = {1: "deaths", 2: "infected", 3: "weighted", 4: "yll"}
+            print("Choose objective for genetic algorithm.")
+            for k, v in ga_objectives.items(): print(f"{k}: {v}")
+            ga_objective_number = int(input("\nGA Objective (int): "))
+            params["objective"] = ga_objectives[ga_objective_number]
+            params["random_individuals"] = bool(int(input("Random individual genes (bool): ")))
+            params["population_size"] = int(input("Initial population size (int): "))
+            params["simulations"] = int(input("Number of simulations (int): "))
+            params["min_generations"] = int(input("Number of minimum generations (int): "))
+            params["individuals_from_file"] = None
+            print(f"{tcolors.OKGREEN}Running GA from start{tcolors.ENDC}\nParams:")
+            pprint(params)
     return params

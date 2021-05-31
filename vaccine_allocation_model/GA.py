@@ -5,7 +5,6 @@ import pandas as pd
 import os
 from datetime import datetime
 from tqdm import tqdm
-import random
 from collections import defaultdict
 from functools import partial
 from datetime import datetime
@@ -44,8 +43,6 @@ class SimpleGeneticAlgorithm:
         self.number_of_runs = []
         self._generate_output_dirs()
         self.verbose = verbose
-        self.heat = 1
-        self.cooling_factor = np.exp(np.log(0.5)/max(min_generations/2, 1))
 
     def _set_objective(self, objective):
         return {"deaths": lambda process: np.sum(process.state.D),
@@ -67,7 +64,6 @@ class SimpleGeneticAlgorithm:
             self.run_population(offsprings=True)
             self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
-            self.heat *= self.cooling_factor
 
     def run_population(self, offsprings=False):
         """ For current population, simulate
@@ -126,11 +122,11 @@ class SimpleGeneticAlgorithm:
                 return False
             if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
             self.population.offsprings = [candidate, self.best_individual]
-            self.find_fitness(offsprings=True)
+            self.find_fitness(offsprings=True, convergence_test=True)
             new_best = self.find_best_individual(offsprings=True, convergence_test=True)
             count = 0
             while not new_best and count <= 5:
-                self.find_fitness(offsprings=True, from_start=False)
+                self.find_fitness(offsprings=True, from_start=False, convergence_test=True)
                 new_best = self.find_best_individual(offsprings=True, convergence_test=True)
                 count += 1
             if new_best:
@@ -148,7 +144,7 @@ class SimpleGeneticAlgorithm:
         self.final_scores = defaultdict(list)
         return False
 
-    def find_fitness(self, offsprings=False, from_start=True):
+    def find_fitness(self, offsprings=False, from_start=True, convergence_test=False):
         """ Find estimated fitness of every individual through simulation of process
 
         Args:
@@ -161,20 +157,22 @@ class SimpleGeneticAlgorithm:
             if self.verbose: print(f"{tcolors.BOLD}Initial state:\n{tcolors.ENDC}{self.process.state}")
         else:
             pop = pop[:5]
-            if self.verbose: print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
+            if self.verbose: 
+                if convergence_test:
+                    print(f"Finding fitness for convergence test individuals")
+                else:
+                    print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
         self.final_scores = defaultdict(list) if from_start else self.final_scores
         runs = self.simulations if from_start else int(self.simulations/2)
         seeds = [np.random.randint(100, 1e+6) for _ in range(runs)]
-        for run in range(runs):
+        for run in tqdm(range(runs), ascii=True):
             np.random.seed(seeds[run])
             self.process.reset()
-            if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run} ({'offsprings' if offsprings else 'individuals'}){tcolors.ENDC}")
             for individual in pop:
                 self.process.reset(reset_measures=False)
                 self.process.run(weighted_policy_weights=individual.genes)
                 individual.update_strategy_count(self.generation_count, self.process.state)
                 score = self.objective(self.process)
-                if self.verbose: print(f"{individual.ID}: {score}")
                 self.final_scores[individual.ID].append(score)
         if self.verbose: print(f"\n{tcolors.UNDERLINE}Mean scores:{tcolors.ENDC}")
         for individual in sorted(pop, key=lambda i: np.mean(self.final_scores[i.ID])):
@@ -231,21 +229,9 @@ class SimpleGeneticAlgorithm:
             generation_count (int): what generation that is creating offsprings
         """
         # Select parents for crossover based on current heat
-        print(f"{tcolors.OKCYAN}Selecting parents for crossover (Heat = {self.heat:.3f}){tcolors.ENDC}")
-        if self.heat > 2/3:
-            parent_combinations = list(combinations(self.population.individuals[:5], 2))
-            parents = []
-            for _ in range(3):
-                cross = random.choice(parent_combinations)
-                while cross in parents:
-                    cross = random.choice(parent_combinations)
-                parents.append(cross)
-        elif self.heat > 1/3:
-            parents = list(combinations(self.population.individuals[:3], 2))
-        else:
-            parents = list(combinations(self.population.individuals[:2], 2))
-
-        for i, combination in enumerate(parents):
+        parents = list(combinations(self.population.individuals[:3], 2))
+        new_offsprings = True
+        for combination in parents:
             parent1 = combination[0]
             parent2 = combination[1]
             if self.verbose: print(f"{tcolors.OKCYAN}Crossing parents {parent1} and {parent2}{tcolors.ENDC}")
@@ -257,7 +243,7 @@ class SimpleGeneticAlgorithm:
             o2_genes = np.zeros(shape)
             unique_child = False
             count = 0
-            while not unique_child and count < 10: # don't make copy of parents
+            while not unique_child and count < 5: # don't make copy of parents
                 c_row = np.random.randint(0, high=shape[1])
                 c_col = np.random.randint(0, high=shape[2])
                 vertical_cross = np.random.random() < 0.5
@@ -292,8 +278,9 @@ class SimpleGeneticAlgorithm:
                 o4.genes = np.divide(p1+3*p2, 4)
                 o5 = Individual(generation=generation_count, offspring=True)
                 o5.genes = np.divide(3*p1+p2, 4)
-                if i==0: 
+                if new_offsprings: 
                     self.population.offsprings = [o1,o2,o3,o4,o5]
+                    new_offsprings = False
                 else: 
                     self.population.offsprings += [o1,o2,o3,o4,o5]
             else:
@@ -304,8 +291,9 @@ class SimpleGeneticAlgorithm:
                 o2.genes = np.divide(p1+3*p2, 4)
                 o3 = Individual(generation=generation_count, offspring=True)
                 o3.genes = np.divide(3*p1+p2, 4)
-                if i==0: 
+                if new_offsprings:
                     self.population.offsprings = [o1,o2,o3]
+                    new_offsprings = False
                 else: 
                     self.population.offsprings += [o1,o2,o3]
 

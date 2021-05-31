@@ -1,0 +1,12 @@
+{
+    "objective": "infected",
+    "simulations": 15,
+    "process": {
+        "horizon": 74,
+        "decision_period": 28,
+        "policy": "weighted"
+    },
+    "population_size": 30,
+    "random_individuals": false,
+    "min_generations": 30
+}

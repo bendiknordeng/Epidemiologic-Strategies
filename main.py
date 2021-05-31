@@ -41,7 +41,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     stochastic = True
     use_wave_factor = True
