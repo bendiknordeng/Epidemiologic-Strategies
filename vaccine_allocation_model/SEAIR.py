@@ -63,6 +63,7 @@ class SEAIR:
         else:
             wave_factor = self.R0 * self.periods_per_day
         C = generate_weighted_contact_matrix(self.contact_matrices, information['contact_weights'])
+        C_W = self.contact_matrices[2]
         visitors = self.commuters[0]
         commuters = self.commuters[1] * information['flow_scale']
 
@@ -101,7 +102,7 @@ class SEAIR:
             N = sum([S, E1, E2, A, I, R])
             
             # Calculate beta
-            beta = (np.sum(N)/np.sum(S)) * wave_factor/(p*(r_e/alpha + 1/alpha)+(r_a-p*r_a)/gamma)
+            beta = (np.sum(N)/np.sum(S)) * wave_factor/(p*(r_e/alpha + 1/omega)+(r_a*(1-p))/gamma)
 
             # Calculate new infected from commuting
             commuter_cases = 0
@@ -111,7 +112,7 @@ class SEAIR:
                 infectious_commuters = np.matmul(commuters.T, beta * (E2 + A + I)/N)
                 infectious_commuters = np.array([infectious_commuters[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
                 lam_j = np.clip(infectious_commuters/visitors, 0, 1)
-                lam_j = np.matmul(lam_j, self.contact_matrices[2]) # only use work matrix
+                lam_j = np.matmul(lam_j, C_W) # only use work matrix
                 lam_j = np.array([lam_j[:,a] * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
                 commuter_cases = S/N * np.matmul(commuters, lam_j)
                 if self.stochastic:
