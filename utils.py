@@ -507,8 +507,10 @@ def get_GA_params():
     return params
 
 def write_csv(run_paths, folder_path, population, age_labels):
+
     print("Storing results ... ")
     S = np.array(list(map(lambda x: list(map(lambda y: y.S, x)), run_paths)), dtype = object)
+    import pdb;pdb.set_trace()
     I = np.array(list(map(lambda x: list(map(lambda y: y.I, x)), run_paths)), dtype = object)
     new_infected = np.array(list(map(lambda x: list(map(lambda y: y.new_infected, x)), run_paths)), dtype = object)
     new_deaths = np.array(list(map(lambda x: list(map(lambda y: y.new_deaths, x)), run_paths)), dtype = object)
@@ -613,3 +615,73 @@ def write_csv(run_paths, folder_path, population, age_labels):
     new_infected_df.to_csv(new_infected_filepath)
     new_deaths_df.to_csv(new_deaths_filepath)
     vaccinated_df.to_csv(vaccinated_filepath)
+
+def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_23_24_11"):
+    dir_path = "../"
+    folder_path = dir_path + relative_path
+    div_filepath = folder_path + "/div.csv"
+    S_filepath = folder_path + "/S.csv" 
+    I_filepath = folder_path + "/I.csv" 
+    new_infected_filepath = folder_path + "/new_infected.csv" 
+    new_deaths_filepath = folder_path + "/new_deaths.csv" 
+    vaccinated_filepath = folder_path + "/vaccinated.csv"
+    pop_age_info_filepath = folder_path + "/start_date_population_age_labels.pkl"
+    _, population, age_labels = read_pickle(pop_age_info_filepath)
+
+    div_df = pd.read_csv(div_filepath, index_col=0)
+    S_df = pd.read_csv(S_filepath, index_col=0)
+    I_df = pd.read_csv(I_filepath, index_col=0)
+    new_infected_df = pd.read_csv(new_infected_filepath, index_col=0)
+    new_deaths_df = pd.read_csv(new_deaths_filepath, index_col=0)
+    vaccinated_df = pd.read_csv(vaccinated_filepath, index_col=0)
+
+    nr_simulations = div_df.loc[len(div_df)-1].simulation_nr
+    nr_weeks = div_df.loc[len(div_df)-1].week_nr
+    nr_regions = len(population)
+    nr_age_groups = len(age_labels)
+
+    vaccines_available = np.zeros((nr_simulations, nr_weeks))
+    flow_scale = np.zeros((nr_simulations, nr_weeks))
+    contact_weights = np.zeros((nr_simulations, nr_weeks, 4))
+    print("Reading results ..")
+    for i in tqdm(range(nr_simulations)):
+        vaccines_available[i, :] = div_df.loc[(i)*75:(i+1)*75 -1].to_numpy()[:,3]
+        flow_scale[i, :] = div_df.loc[(i)*75:(i+1)*75-1].to_numpy()[:,4] 
+        contact_weights[i, :, :] = div_df.loc[(i)*75:(i+1)*75-1].to_numpy()[:,5:]
+
+    S_regions = np.zeros((nr_simulations, nr_weeks, nr_regions))
+    I_regions = np.zeros((nr_simulations, nr_weeks, nr_regions))
+    new_infected_regions = np.zeros((nr_simulations, nr_weeks, nr_regions))
+    new_deaths_regions = np.zeros((nr_simulations, nr_weeks, nr_regions))
+    vaccinated_regions = np.zeros((nr_simulations, nr_weeks, nr_regions))
+    S_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
+    I_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
+    new_infected_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
+    new_deaths_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
+    vaccinated_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
+    print("Reading results ..")
+    for i in tqdm(range(nr_simulations)):
+        S_regions[i, :, :] = S_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
+        S_age_groups[i, :, :] = S_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
+        I_regions[i, :, :] = I_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
+        I_age_groups[i, :, :] = I_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
+        new_infected_regions[i, :, :] = new_infected_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
+        new_infected_age_groups[i, :, :] = new_infected_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
+        new_deaths_regions[i, :, :] = new_deaths_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
+        new_deaths_age_groups[i, :, :] = new_deaths_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
+        vaccinated_regions[i, :, :] = vaccinated_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
+        vaccinated_age_groups[i, :, :] = vaccinated_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
+    
+    return (vaccines_available, 
+            flow_scale,
+            contact_weights,
+            S_regions,
+            I_regions,
+            new_infected_regions,
+            new_deaths_regions,
+            vaccinated_regions,
+            S_age_groups,
+            I_age_groups,
+            new_infected_age_groups,
+            new_deaths_age_groups,
+            vaccinated_age_groups)
