@@ -1,5 +1,5 @@
 {
-    "objective": "yll",
+    "objective": "weighted",
     "simulations": 15,
     "process": {
         "horizon": 74,

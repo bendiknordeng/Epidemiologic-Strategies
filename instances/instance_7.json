@@ -7,6 +7,6 @@
         "policy": "weighted"
     },
     "population_size": 30,
-    "random_individuals": false,
+    "random_individuals": true,
     "min_generations": 30
 }

@@ -1,5 +1,5 @@
 {
-    "objective": "deaths",
+    "objective": "yll",
     "simulations": 15,
     "process": {
         "horizon": 74,
@@ -7,6 +7,6 @@
         "policy": "weighted"
     },
     "population_size": 30,
-    "random_individuals": true,
+    "random_individuals": false,
     "min_generations": 30
 }
