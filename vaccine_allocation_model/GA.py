@@ -120,7 +120,7 @@ class SimpleGeneticAlgorithm:
                     return True
                 self.final_scores = defaultdict(list)
                 return False
-            if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high{tcolors.ENDC}")
+            if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high {self.best_individual}{tcolors.ENDC}")
             self.population.offsprings = [candidate, self.best_individual]
             self.find_fitness(offsprings=True, convergence_test=True)
             new_best = self.find_best_individual(offsprings=True, convergence_test=True)
