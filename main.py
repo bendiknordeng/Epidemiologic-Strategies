@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 10
+    runs = 200
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     verbose = False
     plot_results = True
     plot_geo = False
-    write_simulations_to_file = False
+    write_simulations_to_file = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -106,11 +106,12 @@ if __name__ == '__main__':
                 individuals_from_file=params["individuals_from_file"])
         GA.run()
     else:
+        print("Running pure policy with policy " + policies[policy_number] + f" with {runs} simulations.")
         results = []
         run_paths = []
-        #seeds = np.arange(runs)
+        seeds = np.arange(runs)
         for i in tqdm(range(runs)):
-            #np.random.seed(seeds[i])
+            np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)
@@ -126,10 +127,9 @@ if __name__ == '__main__':
             run_folder = f"/results/{runs}_simulations_{policies[policy_number]}_{start_of_run}"
             folder_path = os.getcwd() + run_folder
             start_date_population_age_labels_path = folder_path + "/start_date_population_age_labels.pkl"
-            mdp_paths_path = folder_path + "/mdp_paths.pkl"
             os.mkdir(folder_path)
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
-            utils.write_pickle(mdp_paths_path, run_paths)
+            utils.write_csv(run_paths, folder_path, population, age_labels)
 
     if plot_results:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
