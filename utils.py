@@ -13,7 +13,7 @@ import json
 from collections import Counter
 import epyestim
 from tqdm import tqdm
-# import geopandas as gpd
+import geopandas as gpd
 
 class tcolors:
     HEADER = '\033[95m'
@@ -87,11 +87,17 @@ def generate_custom_population(bins, labels):
     Returns
         dataframe with age divided population
     """
-    total_pop = pd.read_csv(paths.age_divided_population)
+    try: 
+        total_pop = pd.read_csv(paths.age_divided_population)
+    except:
+        total_pop = pd.read_csv("../" + paths.age_divided_population)
     age_divided = pd.DataFrame(total_pop.groupby(['region_id', pd.cut(total_pop["age"], bins=bins+[110], labels=labels, include_lowest=True)]).sum('population')['population'])
     age_divided.reset_index(inplace=True)
     age_divided = age_divided.pivot(index='region_id', columns=['age'])['population']
-    region_names_id = pd.read_csv(paths.municipalities_names, delimiter=",").drop_duplicates()
+    try:
+        region_names_id = pd.read_csv(paths.municipalities_names, delimiter=",").drop_duplicates()
+    except:
+        region_names_id = pd.read_csv("../" + paths.municipalities_names, delimiter=",").drop_duplicates()
     df = pd.merge(region_names_id, age_divided, on="region_id", how='right', sort=True)
     df['population'] = df.loc[:,df.columns[2:2+len(labels)]].sum(axis=1)
     return df
@@ -406,7 +412,10 @@ def get_expected_yll(age_bins, age_labels):
     Returns:
         int: yll
     """
-    df = pd.read_csv(paths.expected_years)
+    try:
+        df = pd.read_csv(paths.expected_years)
+    except:
+        df = pd.read_csv("../" + paths.expected_years)
     df.age = pd.cut(df['age'], bins=age_bins+[110], labels=age_labels, include_lowest=True)
     expected_years_remaining = df.groupby('age').mean()['expected_years_remaining'].to_numpy()
     return expected_years_remaining
@@ -447,7 +456,10 @@ def generate_geopandas(pop, fpath_spatial_data):
     pop['region_id'] = pop['region_id'].astype('str')
     pop['region_id'] = pop['region_id'].apply(lambda x: '{0:0>4}'.format(x))
     pop = pop[['region_id', 'population', 'region_name']]
-    gdf = gpd.read_file(fpath_spatial_data)
+    try:
+        gdf = gpd.read_file(fpath_spatial_data)
+    except:
+        gdf = gpd.read_file("../" + fpath_spatial_data)
     gdf = gdf[['region_id', 'geometry']]
     df = pd.DataFrame(gdf)
     gdf = gpd.GeoDataFrame(df.merge(pop, right_on='region_id', left_on='region_id',  suffixes=('', '_y')), geometry='geometry')
@@ -633,6 +645,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
     vaccinated_df.to_csv(vaccinated_filepath)
 
 def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_23_24_11"):
+    print("Reading results ..")
     dir_path = "../"
     folder_path = dir_path + relative_path
     div_filepath = folder_path + "/div.csv"
@@ -659,7 +672,6 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
     vaccines_available = np.zeros((nr_simulations, nr_weeks))
     flow_scale = np.zeros((nr_simulations, nr_weeks))
     contact_weights = np.zeros((nr_simulations, nr_weeks, 4))
-    print("Reading results ..")
     for i in tqdm(range(nr_simulations)):
         vaccines_available[i, :] = div_df.loc[(i)*75:(i+1)*75 -1].to_numpy()[:,3]
         flow_scale[i, :] = div_df.loc[(i)*75:(i+1)*75-1].to_numpy()[:,4] 
@@ -675,7 +687,6 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
     new_infected_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
     new_deaths_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
     vaccinated_age_groups = np.zeros((nr_simulations, nr_weeks, nr_age_groups))
-    print("Reading results ..")
     for i in tqdm(range(nr_simulations)):
         S_regions[i, :, :] = S_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
         S_age_groups[i, :, :] = S_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
@@ -688,7 +699,8 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
         vaccinated_regions[i, :, :] = vaccinated_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,3:-7]
         vaccinated_age_groups[i, :, :] = vaccinated_df.loc[(i)*75:(i+1)*75 - 1].to_numpy()[:,-7:]
     
-    return (vaccines_available, 
+    return (age_labels,
+            vaccines_available, 
             flow_scale,
             contact_weights,
             S_regions,
