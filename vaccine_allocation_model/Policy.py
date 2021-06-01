@@ -80,14 +80,15 @@ class Policy:
         Returns
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
-        vaccine_allocation = np.zeros(self.population.shape)
         demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
         demand = demand[:,1:] # remove first age group
+        vaccine_allocation = np.zeros(demand.shape)
         if M > 0:
             vaccine_allocation = M * demand/np.sum(demand)
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             decision = np.insert(decision, 0, 0, axis=1)
             return decision
+        vaccine_allocation = np.insert(vaccine_allocation, 0, 0, axis=1)
         return vaccine_allocation
 
     def _infection_based_policy(self, state, M, *args):
@@ -134,6 +135,7 @@ class Policy:
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
             decision = np.insert(decision, 0, 0, axis=1)
             return decision
+        vaccine_allocation = np.insert(vaccine_allocation, 0, 0, axis=1)
         return vaccine_allocation
 
     def _contact_based_policy(self, state, M, *args):
