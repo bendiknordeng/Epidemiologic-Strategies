@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 2
+    runs = 1
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -24,8 +24,8 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 3
-    weights = np.array([0, 0, 0, 1, 0])
+    policy_number = 6
+    weights = np.array([0, 0, 0.5, 0.5, 0])
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -47,9 +47,9 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
-    write_simulations_to_file = True
+    write_simulations_to_file = False
 
     vaccine_policy = Policy(
                     config=config,
@@ -106,13 +106,12 @@ if __name__ == '__main__':
                 individuals_from_file=params["individuals_from_file"])
         GA.run()
     else:
-        print("Running pure policy with policy " + policies[policy_number] + f" with {runs} simulations.")
+        print(f"Running {policies[policy_number]} policy ({runs} simulations).")
         results = []
         run_paths = []
-        seeds = np.arange(138, 138+runs)
+        seeds = np.arange(200,runs+200)
         for i in tqdm(range(runs)):
             np.random.seed(seeds[i])
-            print(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)
