@@ -20,7 +20,6 @@ class Policy:
             "infection_based": self._infection_based_policy,
             "oldest_first": self._oldest_first_policy,
             "contact_based": self._contact_based_policy,
-            "commuter_based": self._commuter_based_policy,
             "weighted": self._weighted_policy,
             "fhi_policy": self._fhi_policy,
             }
@@ -56,11 +55,11 @@ class Policy:
         vaccine_allocation = np.zeros((n_regions, n_age_groups))
         demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
         while M > 0:
-            possible_regions = np.nonzero(demand > 0)[0]
-            region = np.random.choice(possible_regions)
-            possible_age_groups = np.nonzero(demand[region] > 0)[0]
+            possible_age_groups = np.delete(np.nonzero(demand.sum(axis=0) > 0)[0], 0)
             age_group = np.random.choice(possible_age_groups)
-            allocation = np.min([M, demand[region][age_group], 1]) # consider fractional populations
+            possible_regions = np.nonzero(demand[:,age_group] > 0)[0]
+            region = np.random.choice(possible_regions)
+            allocation = np.min([M, demand[region][age_group], 100]) # consider fractional populations
             M -= allocation
             vaccine_allocation[region][age_group] += allocation
             demand[region][age_group] -= allocation
@@ -81,12 +80,15 @@ class Policy:
         Returns
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
-        vaccine_allocation = np.zeros(self.population.shape)
         demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+        demand = demand[:,1:] # remove first age group
+        vaccine_allocation = np.zeros(demand.shape)
         if M > 0:
             vaccine_allocation = M * demand/np.sum(demand)
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            decision = np.insert(decision, 0, 0, axis=1)
             return decision
+        vaccine_allocation = np.insert(vaccine_allocation, 0, 0, axis=1)
         return vaccine_allocation
 
     def _infection_based_policy(self, state, M, *args):
@@ -100,11 +102,13 @@ class Policy:
         if M > 0:
             if total_infection > 0:
                 demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+                demand = demand[:,1:] # remove first age group
                 infection_density = state.I.sum(axis=1)/total_infection
                 regional_allocation = M * infection_density
                 total_regional_demand = demand.sum(axis=1).reshape(-1,1)
                 vaccine_allocation = demand * regional_allocation.reshape(-1,1)/np.where(total_regional_demand==0, np.inf, total_regional_demand) 
                 decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+                decision = np.insert(decision, 0, 0, axis=1)
                 return decision
         return vaccine_allocation
 
@@ -114,22 +118,24 @@ class Policy:
         Returns
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
-        vaccine_allocation = np.zeros(self.population.shape)
+        demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+        demand = demand[:,1:] # remove first age group
+        vaccine_allocation = np.zeros(demand.shape)
         if M > 0:
-            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
-            for age_group in range(self.population.shape[1]-1,0,-1):
+            for age_group in range(demand.shape[1]-1,0,-1):
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
                 if M < total_age_group_demand:
                     vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
-                    decision = np.minimum(demand, vaccine_allocation).clip(min=0)
-                    return decision
+                    break
                 else:
                     vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
                     M -= total_age_group_demand
                     demand[:,age_group] -= age_group_demand
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
+            decision = np.insert(decision, 0, 0, axis=1)
             return decision
+        vaccine_allocation = np.insert(vaccine_allocation, 0, 0, axis=1)
         return vaccine_allocation
 
     def _contact_based_policy(self, state, M, *args):
@@ -138,44 +144,18 @@ class Policy:
         Returns
             numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
         """
-        C = generate_weighted_contact_matrix(self.contact_matrices, self.config.initial_contact_weights)
+        demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
+        vaccine_allocation = np.zeros(demand.shape)
+        C = generate_weighted_contact_matrix(self.contact_matrices, state.contact_weights)[1:]
         contact_sum = C.sum(axis=1)
-        priority = sorted(zip(range(len(contact_sum)), contact_sum), key=lambda x: x[1], reverse=True)
-        vaccine_allocation = np.zeros(self.population.shape)
+        priority = sorted(zip(range(1,len(contact_sum)), contact_sum), key=lambda x: x[1], reverse=True)
         if M > 0:
-            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
             for age_group in tuple(zip(*priority))[0]:
                 age_group_demand = demand[:,age_group]
                 total_age_group_demand = np.sum(age_group_demand)
                 if M < total_age_group_demand:
                     vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
-                    decision = np.minimum(demand, vaccine_allocation).clip(min=0)
-                    return decision
-                else:
-                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
-                    M -= total_age_group_demand
-                    demand[:,age_group] -= age_group_demand
-            decision = np.minimum(demand, vaccine_allocation).clip(min=0)
-            return decision
-        return vaccine_allocation
-
-    def _commuter_based_policy(self, state, M, *args):   
-        """ Define allocation of vaccines based on amount of contact, prioritize age group with most contact
-
-        Returns
-            numpy.ndarray: a vaccine allocation of shape (#regions, #age_groups)
-        """
-        priority = sorted(zip(range(len(self.age_flow_scaling)), self.age_flow_scaling), key=lambda x: x[1], reverse=True)
-        vaccine_allocation = np.zeros(self.population.shape)
-        if M > 0:
-            demand = state.S.copy()-(1-self.config.efficacy)*state.V.copy()
-            for age_group in tuple(zip(*priority))[0]:
-                age_group_demand = demand[:,age_group]
-                total_age_group_demand = np.sum(age_group_demand)
-                if M < total_age_group_demand:
-                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
-                    decision = np.minimum(demand, vaccine_allocation).clip(min=0)
-                    return decision
+                    break
                 else:
                     vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
                     M -= total_age_group_demand
