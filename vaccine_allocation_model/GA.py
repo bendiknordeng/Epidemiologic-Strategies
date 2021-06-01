@@ -32,19 +32,18 @@ class SimpleGeneticAlgorithm:
             self.population = Population(population_size, verbose, random_individuals, individuals_from_file[1])
             self.generation_count = individuals_from_file[0]
             Individual.GENERATION = individuals_from_file[0]
-        self.final_scores = defaultdict(list)
+        self.final_scores = defaultdict(partial(defaultdict, list))
         self.best_individual = None
         self.generations_since_new_best = 0
         self.expected_years_remaining = expected_years_remaining
-        self.objective_name = objective
-        self.objective = self._set_objective(objective)
+        self.objective = objective
         self.random_individuals = random_individuals
         self.min_generations = min_generations
         self.number_of_runs = []
         self._generate_output_dirs()
         self.verbose = verbose
 
-    def _set_objective(self, objective):
+    def get_objective(self, objective):
         return {"deaths": lambda process: np.sum(process.state.D),
                 "infected": lambda process: np.sum(process.state.total_infected),
                 "weighted": lambda process: np.sum(process.state.total_infected)*0.01 + np.sum(process.state.D),
@@ -64,6 +63,7 @@ class SimpleGeneticAlgorithm:
             self.run_population(offsprings=True)
             self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
+            self.reset_final_scores(new_generation=True)
 
     def run_population(self, offsprings=False):
         """ For current population, simulate
@@ -75,7 +75,7 @@ class SimpleGeneticAlgorithm:
             bool: True if the two best scores of the population also is significant best
         """
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
-        self.find_fitness(offsprings)
+        if offsprings or self.generation_count == 0: self.find_fitness(offsprings)
         count = 0
         significant_best = self.find_best_individual(offsprings)
         while not significant_best and count <= 2:
@@ -118,11 +118,9 @@ class SimpleGeneticAlgorithm:
                 if self.generations_since_new_best > 2 and self.generation_count > self.min_generations:
                     print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
                     return True
-                self.final_scores = defaultdict(list)
                 return False
             if self.verbose: print(f"{tcolors.HEADER}Testing {candidate} against all-time high {self.best_individual}{tcolors.ENDC}")
             self.population.offsprings = [candidate, self.best_individual]
-            self.find_fitness(offsprings=True, convergence_test=True)
             new_best = self.find_best_individual(offsprings=True, convergence_test=True)
             count = 0
             while not new_best and count <= 5:
@@ -141,7 +139,6 @@ class SimpleGeneticAlgorithm:
                     print(f"{tcolors.OKGREEN}Converged. Best individual: {self.best_individual.ID}{tcolors.ENDC}")
                     return True
         write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
-        self.final_scores = defaultdict(list)
         return False
 
     def find_fitness(self, offsprings=False, from_start=True, convergence_test=False):
@@ -152,32 +149,36 @@ class SimpleGeneticAlgorithm:
             from_start (bool, optional): if fitness is to be estimated from scratch. Defaults to True.
         """
         pop = self.population.offsprings if offsprings else self.population.individuals
-        if from_start: 
-            self.process.init()
-            if self.verbose: print(f"{tcolors.BOLD}Initial state:\n{tcolors.ENDC}{self.process.state}")
+        if from_start:
+            runs = self.simulations
+            seeds = [seed for seed in range(runs)]
         else:
+            runs = int(self.simulations/2)
+            seeds = [np.random.randint(self.simulations, 1e+6) for _ in range(runs)]
             pop = pop[:5]
-            if self.verbose: 
-                if convergence_test:
-                    print(f"Finding fitness for convergence test individuals")
-                else:
-                    print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
-        self.final_scores = defaultdict(list) if from_start else self.final_scores
-        runs = self.simulations if from_start else int(self.simulations/2)
-        seeds = [np.random.randint(100, 1e+6) for _ in range(runs)]
-        for run in tqdm(range(runs), ascii=True):
+        if self.verbose: 
+            if convergence_test:
+                print(f"Finding fitness for convergence test individuals")
+            else:
+                print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
+        if from_start: self.reset_final_scores()
+        for run in range(runs):
             np.random.seed(seeds[run])
+            self.process.init()
             self.process.reset()
+            if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run+1}{tcolors.ENDC}:")
             for individual in pop:
                 self.process.reset(reset_measures=False)
                 self.process.run(weighted_policy_weights=individual.genes)
-                individual.update_strategy_count(self.generation_count, self.process.state)
-                score = self.objective(self.process)
-                self.final_scores[individual.ID].append(score)
+                if not convergence_test: individual.update_strategy_count(self.process.state)
+                for obj in ['deaths', 'infected', 'weighted', 'yll']:
+                    score = self.get_objective(obj)(self.process)
+                    self.final_scores[individual.ID][obj].append(score)
+                    if self.verbose and obj == self.objective: print(f"{individual}: {score}")
         if self.verbose: print(f"\n{tcolors.UNDERLINE}Mean scores:{tcolors.ENDC}")
-        for individual in sorted(pop, key=lambda i: np.mean(self.final_scores[i.ID])):
-            mean_score = np.mean(self.final_scores[individual.ID])
-            if self.verbose: print(f"{individual.ID}: {mean_score:.2f}")
+        for individual in sorted(pop, key=lambda i: np.mean(self.final_scores[i.ID][self.objective])):
+            mean_score = np.mean(self.final_scores[individual.ID][self.objective])
+            if self.verbose: print(f"{individual}: {mean_score:.2f}")
             individual.mean_score = mean_score
 
     def find_best_individual(self, offsprings=False, from_start=True, convergence_test=False):
@@ -214,8 +215,8 @@ class SimpleGeneticAlgorithm:
             bool: True if significance is achieved
         """
         significant_best = False
-        s1 = np.array(self.final_scores[first.ID])
-        s2 = np.array(self.final_scores[second.ID])
+        s1 = np.array(self.final_scores[first.ID][self.objective])
+        s2 = np.array(self.final_scores[second.ID][self.objective])
         if not (s1==s2).all():
             z = s1 - s2
             p = scipy.stats.ttest_ind(z, np.zeros(len(s1)), alternative="less").pvalue
@@ -243,7 +244,7 @@ class SimpleGeneticAlgorithm:
             o2_genes = np.zeros(shape)
             unique_child = False
             count = 0
-            while not unique_child and count < 5: # don't make copy of parents
+            while not unique_child and count < 10: # don't make copy of parents
                 c_row = np.random.randint(0, high=shape[1])
                 c_col = np.random.randint(0, high=shape[2])
                 vertical_cross = np.random.random() < 0.5
@@ -327,6 +328,20 @@ class SimpleGeneticAlgorithm:
                 norm = np.sum(offspring.genes, axis=2, keepdims=True)
             offspring.genes = np.divide(offspring.genes, norm)
 
+    def reset_final_scores(self, new_generation=False):
+        if new_generation:
+            pop_ids = [individual.ID for individual in self.population.individuals]
+            individuals_to_remove = []
+            for i in self.final_scores.keys():
+                if i not in pop_ids:
+                    individuals_to_remove.append(i)
+            for i in individuals_to_remove:
+                del self.final_scores[i]
+        else:
+            for i, scores in self.final_scores.items():
+                for obj in ["deaths", "infected", "weighted", "yll"]:
+                    self.final_scores[i][obj] = scores[obj][:self.simulations]
+
     def _generate_output_dirs(self):
         start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         run_folder = f"/results/GA_{start_of_run}"
@@ -365,7 +380,7 @@ class SimpleGeneticAlgorithm:
 
     def __str__(self):
         out = f"Time: {datetime.now().strftime('%d.%m.%Y (%H:%M:%S)')}\n"
-        out += f"Objective: {self.objective_name}\n"
+        out += f"Objective: {self.objective}\n"
         out += f"Number of simulations: {self.simulations}\n"
         process_string = str(self.process).replace('\n', ', ')
         out += f"MDP params: ({process_string})\n"
@@ -376,7 +391,7 @@ class SimpleGeneticAlgorithm:
     
     def __repr__(self):
         out = {}
-        out["objective"] = self.objective_name
+        out["objective"] = self.objective
         out["simulations"] = self.simulations
         mdp = self.process
         out["process"] = {"horizon": mdp.horizon, "decision_period": mdp.decision_period, "policy": str(mdp.policy)}
@@ -450,7 +465,7 @@ class Individual:
         self.mean_score = 0
         self.genetype = i
         self.genes = self.create_genes(i)
-        self.strategy_count = defaultdict(partial(defaultdict, partial(defaultdict, int)))
+        self.strategy_count = defaultdict(partial(defaultdict, int))
     
     def get_id(self, generation, offspring):
         """ Generate id for an individual
@@ -510,10 +525,10 @@ class Individual:
             genes = np.divide(genes, norm)
         return genes
 
-    def update_strategy_count(self, gen, state):
+    def update_strategy_count(self, state):
         for trend, count in state.trend_count.items():
             for i in range(count):
-                self.strategy_count[gen][trend][i] += 1
+                self.strategy_count[trend][i] += 1
 
     def __str__(self):
         return self.ID

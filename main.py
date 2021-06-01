@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 500
+    runs = 3
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
     policy_number = 6
-    weights = np.array([0, 0, 0.5, 0.5, 0])
+    weights = np.array([0, 0, 0, 1, 0])
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -41,7 +41,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     stochastic = True
     use_wave_factor = True
@@ -113,14 +113,14 @@ if __name__ == '__main__':
         for i in tqdm(range(runs)):
             np.random.seed(seeds[i])
             mdp.init()
-            mdp.reset()
-            mdp.run(weights)
-            results.append(mdp.state)
-            while len(mdp.path) < horizon+1: # Ensure all paths are equal length
-                mdp.path.append(mdp.state)
-            run_paths.append(mdp.path)
-            utils.print_results(mdp.state, population, age_labels, vaccine_policy)
-            print("\n",mdp.state.trend_count,"\n")
+            #mdp.reset()
+            #mdp.run(weights)
+            #results.append(mdp.state)
+            #while len(mdp.path) < horizon+1: # Ensure all paths are equal length
+            #    mdp.path.append(mdp.state)
+            #run_paths.append(mdp.path)
+            #utils.print_results(mdp.state, population, age_labels, vaccine_policy)
+            #print("\n",mdp.state.trend_count,"\n")
 
         avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
         
@@ -133,7 +133,7 @@ if __name__ == '__main__':
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
             utils.write_csv(run_paths, folder_path, population, age_labels)
 
-    if plot_results:
+    if plot_results and not run_GA:
         history, new_infections = utils.transform_path_to_numpy(mdp.path)
         results_age = history.sum(axis=2)
         results_regions = history.sum(axis=3)
