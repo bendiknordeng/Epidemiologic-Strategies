@@ -24,8 +24,8 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 6
-    weights = np.array([0, 0, 0, 1, 0])
+    policy_number = -2
+    weights = np.array([0, 0, 0.5, 0.5, 0])
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -47,7 +47,7 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
     write_simulations_to_file = False
 
@@ -107,20 +107,21 @@ if __name__ == '__main__':
         GA.run()
     else:
         print(f"Running {policies[policy_number]} policy ({runs} simulations).")
+        print(f"Storing results to csv is set to {str(write_simulations_to_file)}.")
         results = []
         run_paths = []
         seeds = np.arange(runs)
         for i in tqdm(range(runs)):
             np.random.seed(seeds[i])
             mdp.init()
-            #mdp.reset()
-            #mdp.run(weights)
-            #results.append(mdp.state)
-            #while len(mdp.path) < horizon+1: # Ensure all paths are equal length
-            #    mdp.path.append(mdp.state)
-            #run_paths.append(mdp.path)
-            #utils.print_results(mdp.state, population, age_labels, vaccine_policy)
-            #print("\n",mdp.state.trend_count,"\n")
+            mdp.reset()
+            mdp.run(weights)
+            results.append(mdp.state)
+            while len(mdp.path) < horizon+1: # Ensure all paths are equal length
+                mdp.path.append(mdp.state)
+            run_paths.append(mdp.path)
+            utils.print_results(mdp.state, population, age_labels, vaccine_policy)
+            print("\n",mdp.state.trend_count,"\n")
 
         avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
         
