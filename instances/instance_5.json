@@ -6,7 +6,7 @@
         "decision_period": 28,
         "policy": "weighted"
     },
-    "population_size": 30,
+    "population_size": 50,
     "random_individuals": true,
-    "min_generations": 30
+    "min_generations": 50
 }

@@ -113,14 +113,14 @@ if __name__ == '__main__':
         for i in tqdm(range(runs)):
             np.random.seed(seeds[i])
             mdp.init()
-            #mdp.reset()
-            #mdp.run(weights)
-            #results.append(mdp.state)
-            #while len(mdp.path) < horizon+1: # Ensure all paths are equal length
-            #    mdp.path.append(mdp.state)
-            #run_paths.append(mdp.path)
-            #utils.print_results(mdp.state, population, age_labels, vaccine_policy)
-            #print("\n",mdp.state.trend_count,"\n")
+            mdp.reset()
+            mdp.run(weights)
+            results.append(mdp.state)
+            while len(mdp.path) < horizon+1: # Ensure all paths are equal length
+                mdp.path.append(mdp.state)
+            run_paths.append(mdp.path)
+            utils.print_results(mdp.state, population, age_labels, vaccine_policy)
+            print("\n",mdp.state.trend_count,"\n")
 
         avg_results = utils.get_average_results(results, population, age_labels, vaccine_policy)
         

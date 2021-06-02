@@ -54,6 +54,7 @@ class SimpleGeneticAlgorithm:
         """ Function to evaluate current generation, create offsprings, evaluate offsprings, and generate new generations if not converged """
         while True:
             self.run_population()
+            self.reset_final_scores()
             self.write_to_file()
             if self.check_convergence():
                 break
