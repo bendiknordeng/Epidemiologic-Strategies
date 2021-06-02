@@ -24,8 +24,8 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 6
-    weights = np.array([0, 0, 0, 1, 0])
+    policy_number = int(input("choose policy: "))
+    weights = np.array([0, 0, 0.5, 0.5, 0])
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -49,7 +49,7 @@ if __name__ == '__main__':
     verbose = False
     plot_results = True
     plot_geo = False
-    write_simulations_to_file = False
+    write_simulations_to_file = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -107,6 +107,7 @@ if __name__ == '__main__':
         GA.run()
     else:
         print(f"Running {policies[policy_number]} policy ({runs} simulations).")
+        print(f"Storing results to csv is set to {str(write_simulations_to_file)}.")
         results = []
         run_paths = []
         seeds = np.arange(runs)
