@@ -24,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = int(input("choose policy: "))
+    policy_number = -2
     weights = np.array([0, 0, 0.5, 0.5, 0])
 
     # Read data and generate parameters
@@ -47,9 +47,9 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
-    write_simulations_to_file = True
+    write_simulations_to_file = False
 
     vaccine_policy = Policy(
                     config=config,

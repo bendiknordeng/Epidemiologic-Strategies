@@ -65,7 +65,7 @@ class SimpleGeneticAlgorithm:
             self.population.new_generation(self.generation_count, self.min_generations)
             self.generation_count += 1
             self.reset_final_scores(new_generation=True)
-
+            
     def run_population(self, offsprings=False):
         """ For current population, simulate
 
