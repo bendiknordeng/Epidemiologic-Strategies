@@ -41,13 +41,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     stochastic = True
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
     write_simulations_to_file = False
 
