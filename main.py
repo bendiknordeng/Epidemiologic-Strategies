@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 3
+    runs = 10
     decision_period = 28
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -41,13 +41,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     stochastic = True
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
     write_simulations_to_file = False
 

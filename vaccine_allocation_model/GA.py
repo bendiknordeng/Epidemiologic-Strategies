@@ -76,7 +76,7 @@ class SimpleGeneticAlgorithm:
             bool: True if the two best scores of the population also is significant best
         """
         if self.verbose: print(f"\n\n{tcolors.OKBLUE}Running{' offsprings of ' if offsprings else ' '}generation {self.generation_count}{tcolors.ENDC}")
-        if offsprings or self.generation_count == 0: self.find_fitness(offsprings)
+        self.find_fitness(offsprings)
         count = 0
         significant_best = self.find_best_individual(offsprings)
         while not significant_best and count <= 2:
@@ -162,20 +162,21 @@ class SimpleGeneticAlgorithm:
                 print(f"Finding fitness for convergence test individuals")
             else:
                 print(f"Finding fitness for top 5 {'offsprings' if offsprings else 'individuals'}: {pop}")
-        if from_start: self.reset_final_scores()
-        for run in range(runs):
-            np.random.seed(seeds[run])
-            self.process.init()
-            self.process.reset()
-            if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run+1}{tcolors.ENDC}:")
-            for individual in pop:
-                self.process.reset(reset_measures=False)
-                self.process.run(weighted_policy_weights=individual.genes)
-                if not convergence_test: individual.update_strategy_count(self.process.state)
-                for obj in ['deaths', 'infected', 'weighted', 'yll']:
-                    score = self.get_objective(obj)(self.process)
-                    self.final_scores[individual.ID][obj].append(score)
-                    if self.verbose and obj == self.objective: print(f"{individual}: {score}")
+        if not from_start or self.generation_count == 0 or offsprings:
+            self.reset_final_scores()
+            for run in range(runs):
+                np.random.seed(seeds[run])
+                self.process.init()
+                self.process.reset()
+                if self.verbose: print(f"\n{tcolors.BOLD}Finding score for run {run+1}{tcolors.ENDC}:")
+                for individual in pop:
+                    self.process.reset(reset_measures=False)
+                    self.process.run(weighted_policy_weights=individual.genes)
+                    if not convergence_test: individual.update_strategy_count(self.process.state)
+                    for obj in ['deaths', 'infected', 'weighted', 'yll']:
+                        score = self.get_objective(obj)(self.process)
+                        self.final_scores[individual.ID][obj].append(score)
+                        if self.verbose and obj == self.objective: print(f"{individual}: {score}")
         if self.verbose: print(f"\n{tcolors.UNDERLINE}Mean scores:{tcolors.ENDC}")
         for individual in sorted(pop, key=lambda i: np.mean(self.final_scores[i.ID][self.objective])):
             mean_score = np.mean(self.final_scores[individual.ID][self.objective])
