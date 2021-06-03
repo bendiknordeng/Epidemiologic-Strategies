@@ -53,9 +53,10 @@ def generate_commuter_matrix(age_flow_scaling):
     """
     df = pd.read_csv(paths.municipalities_commuters)
     commuters = df.pivot(columns='to', index='from', values='n').fillna(0).values
-    visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+    visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
     visitors[np.where(visitors == 0)] = np.inf
-    return visitors, commuters
+    age_divided_inflow = np.array([commuters.sum(axis=0) * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
+    return visitors, commuters, age_divided_inflow
 
 def write_pickle(filepath, object):
     """ writes an array to file as a pickle
@@ -547,10 +548,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
     contact_weights = np.array(list(map(lambda x: list(map(lambda y: y.contact_weights, x)), run_paths)), dtype = object)
     flow_scale = np.array(list(map(lambda x: list(map(lambda y: y.flow_scale, x)), run_paths)), dtype = object)
     dates = np.array(list(map(lambda x: list(map(lambda y: y.date, x)), run_paths)), dtype = object)
-    try:
-        num_sims, num_weeks = S.shape[0], S.shape[1]
-    except:
-        import pdb;pdb.set_trace()
+    num_sims, num_weeks = S.shape[0], S.shape[1]
 
     div_filepath = folder_path + "/div.csv"
     S_filepath = folder_path + "/S.csv" 
@@ -699,6 +697,9 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
         vaccinated_regions[i, :, :] = vaccinated_df.loc[(i)*nr_weeks:(i+1)*nr_weeks - 1].to_numpy()[:,3:-7]
         vaccinated_age_groups[i, :, :] = vaccinated_df.loc[(i)*nr_weeks:(i+1)*nr_weeks - 1].to_numpy()[:,-7:]
     
+    S_df['date'] = pd.to_datetime(S_df['date'], format='%Y-%m-%d')
+    dates = S_df['date'].iloc[:nr_weeks]
+    
     return (age_labels,
             vaccines_available, 
             flow_scale,
@@ -712,4 +713,5 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
             I_age_groups,
             new_infected_age_groups,
             new_deaths_age_groups,
-            vaccinated_age_groups)
+            vaccinated_age_groups,
+            dates)

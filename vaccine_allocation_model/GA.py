@@ -3,6 +3,7 @@ import scipy
 from utils import tcolors, write_pickle, calculate_yll
 import pandas as pd
 import os
+from copy import copy
 from datetime import datetime
 from tqdm import tqdm
 from collections import defaultdict
@@ -59,6 +60,7 @@ class SimpleGeneticAlgorithm:
             if self.check_convergence():
                 break
             self.crossover(self.generation_count)
+            self.repair_offsprings()
             self.mutation()
             self.repair_offsprings()
             self.run_population(offsprings=True)
@@ -305,7 +307,7 @@ class SimpleGeneticAlgorithm:
         for offspring in self.population.offsprings:
             shape = offspring.genes.shape
             draw = np.random.random() 
-            if draw > 0.1:
+            if draw < 0.1:
                 i1 = np.random.randint(0, high=shape[0])
                 j1 = np.random.randint(0, high=shape[1])
                 k1 = np.random.randint(0, high=shape[2])
@@ -315,10 +317,19 @@ class SimpleGeneticAlgorithm:
                 while j1 == j2: j2 = np.random.randint(0, high=shape[1])
                 k2 = np.random.randint(0, high=shape[2])
                 while k1 == k2: k2 = np.random.randint(0, high=shape[2])
-                value = offspring.genes[i1, j1, k1]
+                value = copy(offspring.genes[i1, j1, k1])
                 offspring.genes[i1, j1, k1] = offspring.genes[i2, j2, k2]
                 offspring.genes[i2, j2, k2] = value
-    
+                vertical_mutation = np.random.random() > 0.5
+                if vertical_mutation:
+                    values = copy(offspring.genes[i1, :, k1])
+                    offspring.genes[i1, :, k1] = offspring.genes[i2, :, k2]
+                    offspring.genes[i2, :, k2] = values
+                else:
+                    values = copy(offspring.genes[i1, j1, :])
+                    offspring.genes[i1, j1, :] = offspring.genes[i2, j2, :]
+                    offspring.genes[i2, j2, :] = values
+            
     def repair_offsprings(self):
         """ Make sure the genes of offsprings are feasible, i.e. normalize. """
         for offspring in self.population.offsprings:

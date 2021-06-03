@@ -3,7 +3,7 @@
     "simulations": 15,
     "process": {
         "horizon": 74,
-        "decision_period": 28,
+        "decision_period": 56,
         "policy": "weighted"
     },
     "population_size": 50,
