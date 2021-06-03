@@ -700,6 +700,9 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
         vaccinated_regions[i, :, :] = vaccinated_df.loc[(i)*nr_weeks:(i+1)*nr_weeks - 1].to_numpy()[:,3:-7]
         vaccinated_age_groups[i, :, :] = vaccinated_df.loc[(i)*nr_weeks:(i+1)*nr_weeks - 1].to_numpy()[:,-7:]
     
+    S_df['date'] = pd.to_datetime(S_df['date'], format='%Y-%m-%d')
+    dates = S_df['date'].iloc[:nr_weeks]
+    
     return (age_labels,
             vaccines_available, 
             flow_scale,
@@ -713,4 +716,5 @@ def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_2
             I_age_groups,
             new_infected_age_groups,
             new_deaths_age_groups,
-            vaccinated_age_groups)
+            vaccinated_age_groups,
+            dates)
