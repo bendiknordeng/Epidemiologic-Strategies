@@ -53,9 +53,10 @@ def generate_commuter_matrix(age_flow_scaling):
     """
     df = pd.read_csv(paths.municipalities_commuters)
     commuters = df.pivot(columns='to', index='from', values='n').fillna(0).values
-    visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[i] for i in range(len(age_flow_scaling))]).T
+    visitors = np.array([commuters.sum(axis=0) * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
     visitors[np.where(visitors == 0)] = np.inf
-    return visitors, commuters
+    age_divided_inflow = np.array([commuters.sum(axis=0) * age_flow_scaling[a] for a in range(len(age_flow_scaling))]).T
+    return visitors, commuters, age_divided_inflow
 
 def write_pickle(filepath, object):
     """ writes an array to file as a pickle

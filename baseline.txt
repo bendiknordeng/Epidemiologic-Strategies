@@ -1,5 +1,5 @@
 {
-"R0": 2,
+"R0": 2.1,
 "periods_per_day": 4,
 "time_delta": 6,
 "efficacy":0.95,
@@ -10,6 +10,6 @@
 "proportion_symptomatic_infections": 0.6,
 "asymptomatic_infectiousness": 0.1,
 "age_bins": [0, 17, 44, 54, 64, 74, 84],
-"initial_contact_weights": [0.31, 0.24, 0.16, 0.29],
+"initial_contact_weights": [1, 1, 1, 1],
 "initial_flow_scale": 1
 }

@@ -101,7 +101,7 @@ class MarkovDecisionProcess:
             if self.verbose: print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Recovered population > 70%.{tcolors.ENDC}\n")
             return True
         
-        if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 0.1: # stop if infections are zero
+        if np.sum([self.state.E1, self.state.E2, self.state.A, self.state.I]) < 1: # stop if infections are zero
             if self.verbose: print(f"{tcolors.BOLD}Reached stop-criteria in decision period {self.simulation_period}. Infected population is zero.{tcolors.ENDC}\n")
             return True
         return False
@@ -162,7 +162,7 @@ class MarkovDecisionProcess:
             (numpy.ndarray): new contact weights 
             (numpy.ndarray): new mobility scales
         """
-        if len(self.path) > 3:
+        if len(self.path) > 2:
             # Features for cases of infection
             active_cases = np.sum(self.state.I) * 1e5/self.population.population.sum()
             cumulative_total_cases = np.sum(self.state.total_infected) * 1e5/self.population.population.sum()
@@ -185,10 +185,10 @@ class MarkovDecisionProcess:
             # Contact weights
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
-                'home': lambda x: initial_cw[0] * (1 + x * 0.5), # x in [0, 1, 2, 3]
-                'school': lambda x: initial_cw[1] * (1 - x * 0.07), # x in [0, 1, 2, 3]
-                'work': lambda x: initial_cw[2] * (1 - x * 0.07), # x in [0, 1, 2, 3]
-                'public': lambda x: initial_cw[3] * (1 - x * 0.06) # x in [0, 1, 2, 3, 4]
+                'home': lambda x: initial_cw[0] * (1 + x * 0.07), # x in [0, 1, 2, 3]
+                'school': lambda x: initial_cw[1] * (1 - x * 0.34), # x in [0, 1, 2, 3]
+                'work': lambda x: initial_cw[2] * (1 - x * 0.41), # x in [0, 1, 2, 3]
+                'public': lambda x: initial_cw[3] * (1 - x * 0.29) # x in [0, 1, 2, 3, 4]
             }
             
             new_cw = []
@@ -223,7 +223,7 @@ class MarkovDecisionProcess:
         current_policy = self.policy.vaccine_allocation
         self.policy.vaccine_allocation = self.policy.policies['fhi_policy']
         self.measures_timeline = {"contact_weights": [], "flow_scale": []}
-        while not self.reached_stop_criteria():
+        while self.simulation_period < self.horizon:
             if self.verbose: print(self.state, end="\n"*2)
             self.update_state(weighted_policy_weights=None)
             self.measures_timeline["contact_weights"].append(self.state.contact_weights)

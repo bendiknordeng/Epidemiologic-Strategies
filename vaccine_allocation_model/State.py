@@ -160,7 +160,7 @@ class State:
             if S[region][age_group] > 0:
                 num_initial_infected -= 1
                 S[region][age_group] -= 1
-                E1[region][age_group] += 1 
+                I[region][age_group] += 1 
 
         return State(S, E1, E2, A, I, R, D, V, contact_weights, flow_scale, 0,
                     I.copy(), I.copy(), np.zeros(pop.shape), None, {"U": 0, "D": 0, "N": 0}, None, start_date, time_step)
