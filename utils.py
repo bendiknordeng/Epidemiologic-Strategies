@@ -362,7 +362,10 @@ def get_wave_timeline(horizon, decision_period, periods_per_day, *args):
         wave_state_timeline = args[1][:i]
         current_state = wave_state_timeline[-1]
         previous_states = list(set(wave_state_timeline)-{current_state})
-        len_current_state = min([wave_state_timeline[::-1].index(state) for state in previous_states]) // decision_period_days
+        if len(previous_states) > 0:
+            len_current_state = min([wave_state_timeline[::-1].index(state) for state in previous_states]) // decision_period_days
+        else:
+            len_current_state = len(wave_state_timeline)
         wave_state_count = [wave_state_timeline[0]]
         for ws in wave_state_timeline[1:]:
             if ws != wave_state_count[-1]:
