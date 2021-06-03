@@ -8,5 +8,5 @@
     },
     "population_size": 50,
     "random_individuals": true,
-    "min_generations": 50
+    "min_generations": 1000
 }

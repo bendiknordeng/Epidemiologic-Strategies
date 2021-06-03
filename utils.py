@@ -5,15 +5,13 @@ import ast
 from collections import namedtuple
 import os
 from datetime import datetime, timedelta
-from scipy import stats as sps
-import plot
 from pprint import pprint
 from scipy.stats import skewnorm
 import json
 from collections import Counter
 import epyestim
 from tqdm import tqdm
-import geopandas as gpd
+# import geopandas as gpd
 
 class tcolors:
     HEADER = '\033[95m'
