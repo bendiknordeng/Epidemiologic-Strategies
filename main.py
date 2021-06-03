@@ -24,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = -2
+    policy_number = -1
     weights = np.array([0, 0, 0.5, 0.5, 0])
 
     # Read data and generate parameters
@@ -41,13 +41,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     stochastic = True
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
     write_simulations_to_file = False
 
@@ -110,9 +110,9 @@ if __name__ == '__main__':
         print(f"Storing results to csv is set to {str(write_simulations_to_file)}.")
         results = []
         run_paths = []
-        #seeds = np.arange(runs)
+        seeds = np.arange(runs)
         for i in tqdm(range(runs)):
-            #np.random.seed(seeds[i])
+            np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)

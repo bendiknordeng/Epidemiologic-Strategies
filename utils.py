@@ -548,10 +548,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
     contact_weights = np.array(list(map(lambda x: list(map(lambda y: y.contact_weights, x)), run_paths)), dtype = object)
     flow_scale = np.array(list(map(lambda x: list(map(lambda y: y.flow_scale, x)), run_paths)), dtype = object)
     dates = np.array(list(map(lambda x: list(map(lambda y: y.date, x)), run_paths)), dtype = object)
-    try:
-        num_sims, num_weeks = S.shape[0], S.shape[1]
-    except:
-        import pdb;pdb.set_trace()
+    num_sims, num_weeks = S.shape[0], S.shape[1]
 
     div_filepath = folder_path + "/div.csv"
     S_filepath = folder_path + "/S.csv" 
