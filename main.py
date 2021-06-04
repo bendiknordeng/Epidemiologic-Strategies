@@ -25,8 +25,12 @@ if __name__ == '__main__':
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
     policy_number = -2
+<<<<<<< HEAD
     individual = Individual()
     weights = individual.genes
+=======
+    weights = np.array([0, 0, 0.5, 0.5, 0])
+>>>>>>> fc1287279636e6a8755d04f7db7c9475a7dadbd7
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
