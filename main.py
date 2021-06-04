@@ -10,10 +10,11 @@ from pandas import Timedelta
 from tqdm import tqdm
 from datetime import datetime
 import os
+np.random.seed(42)
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 100
+    runs = 500
     decision_period = 56
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -24,7 +25,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = -2
+    policy_number = int(input("choose policy: "))
     individual = Individual()
     weights = individual.genes
 
@@ -42,7 +43,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     stochastic = True
     use_wave_factor = True
@@ -50,7 +51,7 @@ if __name__ == '__main__':
     verbose = False
     plot_results = False
     plot_geo = False
-    write_simulations_to_file = False
+    write_simulations_to_file = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -58,7 +59,7 @@ if __name__ == '__main__':
                     population=population[population.columns[2:-1]].values,
                     contact_matrices=contact_matrices,
                     age_flow_scaling=age_group_flow_scaling,
-                    GA=run_GA)
+                    GA=True)
 
     epidemic_function = SEAIR(
                     commuters=commuters,
@@ -107,8 +108,14 @@ if __name__ == '__main__':
                 individuals_from_file=params["individuals_from_file"])
         GA.run()
     else:
-        print(f"Running {policies[policy_number]} policy ({runs} simulations).")
+        weighted = policies[policy_number] == 'weighted'
+        print(f"Running {policies[policy_number] if not weighted else 'GA_individual'} policy ({runs} simulations).")
         print(f"Storing results to csv is set to {str(write_simulations_to_file)}.")
+        if weighted: 
+            print(f"Genes: ")
+            for weight in weights:
+                print()
+                print(weight)
         results = []
         run_paths = []
         seeds = np.arange(runs)
