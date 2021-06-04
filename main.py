@@ -2,7 +2,7 @@ import plot
 import utils
 from vaccine_allocation_model.State import State
 from vaccine_allocation_model.MDP import MarkovDecisionProcess
-from vaccine_allocation_model.GA import SimpleGeneticAlgorithm
+from vaccine_allocation_model.GA import SimpleGeneticAlgorithm, Individual
 from vaccine_allocation_model.Policy import Policy
 from vaccine_allocation_model.SEAIR import SEAIR
 import numpy as np
@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 10
+    runs = 100
     decision_period = 56
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -24,8 +24,9 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = -1
-    weights = np.array([0, 0, 0.5, 0.5, 0])
+    policy_number = -2
+    individual = Individual()
+    weights = individual.genes
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -41,7 +42,7 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = False
+    run_GA = True
     include_flow = True
     stochastic = True
     use_wave_factor = True
