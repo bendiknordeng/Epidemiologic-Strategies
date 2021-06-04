@@ -234,7 +234,12 @@ class SimpleGeneticAlgorithm:
             generation_count (int): what generation that is creating offsprings
         """
         # Select parents for crossover based on current heat
-        parents = list(combinations(self.population.individuals[:3], 2))
+        n = len(self.population.individuals)
+        ranks = np.arange(1,n+1)
+        c = (n*2*(n-1))/(6*(n-1)+n)
+        probs = np.exp(-ranks/c)
+        selected = np.random.choice(self.population.individuals, 3, p=probs/sum(probs), replace=False)
+        parents = list(combinations(selected, 2))
         new_offsprings = True
         for combination in parents:
             parent1 = combination[0]
@@ -329,6 +334,11 @@ class SimpleGeneticAlgorithm:
                     values = copy(offspring.genes[i1, j1, :])
                     offspring.genes[i1, j1, :] = offspring.genes[i2, j2, :]
                     offspring.genes[i2, j2, :] = values
+            if draw > 0.9:
+                i = np.random.randint(0, high=shape[0])
+                j = np.random.randint(0, high=shape[1])
+                k = np.random.randint(0, high=shape[2])
+                offspring.genes[i, j, k] = int(np.random.random() > 0.5)
             
     def repair_offsprings(self):
         """ Make sure the genes of offsprings are feasible, i.e. normalize. """
