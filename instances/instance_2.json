@@ -1,6 +1,6 @@
 {
     "objective": "weighted",
-    "simulations": 15,
+    "simulations": 30,
     "process": {
         "horizon": 74,
         "decision_period": 56,
@@ -8,5 +8,5 @@
     },
     "population_size": 30,
     "random_individuals": false,
-    "min_generations": 1000
+    "min_generations": 200
 }
