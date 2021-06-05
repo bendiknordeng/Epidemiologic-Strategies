@@ -154,7 +154,7 @@ class SimpleGeneticAlgorithm:
         pop = self.population.offsprings if offsprings else self.population.individuals
         if from_start:
             runs = self.simulations
-            seeds = [seed for seed in range(runs)]
+            seeds = [np.arange(runs)]
         else:
             runs = int(self.simulations/2)
             seeds = [np.random.randint(self.simulations, 1e+6) for _ in range(runs)]

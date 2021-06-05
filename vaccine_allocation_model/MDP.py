@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.testing._private.utils import measure
 from tqdm import tqdm
 import pandas as pd
 from datetime import timedelta
