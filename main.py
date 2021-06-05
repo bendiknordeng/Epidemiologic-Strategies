@@ -10,6 +10,7 @@ from pandas import Timedelta
 from tqdm import tqdm
 from datetime import datetime
 import os
+np.random.seed(42)
 
 if __name__ == '__main__':
     # Set initial parameters
