@@ -644,7 +644,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
     vaccinated_df.to_csv(vaccinated_filepath)
 
 def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_23_24_11"):
-    print("Reading results ..")
+    print(f"Reading results from {relative_path.split('/')[2].split('_')[2:]} ..")
     dir_path = "../"
     folder_path = dir_path + relative_path
     div_filepath = folder_path + "/div.csv"
