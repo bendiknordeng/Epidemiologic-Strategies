@@ -29,11 +29,12 @@ class SimpleGeneticAlgorithm:
         if individuals_from_file is None:
             self.population = Population(population_size, verbose, random_individuals)
             self.generation_count = 0 if individuals_from_file is None else individuals_from_file[0]
+            self.final_scores = defaultdict(partial(defaultdict, list))
         else:
             self.population = Population(population_size, verbose, random_individuals, individuals_from_file[1])
+            self.final_scores = individuals_from_file[2]
             self.generation_count = individuals_from_file[0]
             Individual.GENERATION = individuals_from_file[0]
-        self.final_scores = defaultdict(partial(defaultdict, list))
         self.best_individual = None
         self.generations_since_new_best = 0
         self.expected_years_remaining = expected_years_remaining
@@ -154,7 +155,7 @@ class SimpleGeneticAlgorithm:
         pop = self.population.offsprings if offsprings else self.population.individuals
         if from_start:
             runs = self.simulations
-            seeds = [np.arange(runs)]
+            seeds = [seed for seed in range(runs)]
         else:
             runs = int(self.simulations/2)
             seeds = [np.random.randint(self.simulations, 1e+6) for _ in range(runs)]

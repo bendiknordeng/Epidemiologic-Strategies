@@ -498,15 +498,16 @@ def get_GA_params():
         while True:
             try:
                 gen = int(input("Run from generation: "))
-                individuals_from_file = (gen, read_pickle(f'results/{run}/individuals/individuals_{gen}.pkl'))
+                individuals_from_file = (gen, read_pickle(f'results/{run}/individuals/individuals_{gen}.pkl'),
+                                        read_pickle(f'results/{run}/final_scores/final_score_{gen}.pkl'))
                 params = load_json(f'results/{run}/run_params.json')
-            except:
+            except FileNotFoundError:
                 print(f"{tcolors.FAIL}Generation not available{tcolors.ENDC}")
                 continue
             break
-        params["individuals_from_file"] = individuals_from_file
         print(f"{tcolors.OKGREEN}Running {runs[file_nr]} from generation {gen}{tcolors.ENDC}\nParams:")
         pprint(params)
+        params["individuals_from_file"] = individuals_from_file
     else:
         instance_based = bool(int(input("Run instances (bool): ")))
         if instance_based:
