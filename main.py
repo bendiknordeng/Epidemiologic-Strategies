@@ -10,7 +10,6 @@ from pandas import Timedelta
 from tqdm import tqdm
 from datetime import datetime
 import os
-np.random.seed(42)
 
 if __name__ == '__main__':
     # Set initial parameters
@@ -28,6 +27,7 @@ if __name__ == '__main__':
     policy_number = -2
     individual = utils.read_pickle('results/GA_2021_06_05_13_18_22/best_individuals/best_individual_54.pkl')
     weights = individual.genes
+    np.random.seed(42)
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -94,6 +94,8 @@ if __name__ == '__main__':
                     historic_data=historic_data,
                     verbose=verbose)
 
+    
+
     if run_GA:
         params = utils.get_GA_params()
         GA = SimpleGeneticAlgorithm(
@@ -120,6 +122,8 @@ if __name__ == '__main__':
         run_paths = []
         seeds = np.arange(runs)
         for i in tqdm(range(runs)):
+            
+
             np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
