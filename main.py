@@ -34,6 +34,10 @@ if __name__ == '__main__':
     config = utils.create_named_tuple('config', paths.config)
     age_labels = utils.generate_labels_from_bins(config.age_bins)
     population = utils.generate_custom_population(config.age_bins, age_labels)
+    import pdb; pdb.set_trace()
+
+    pop_per_age = population.sum(axis=0)
+    
     contact_matrices = utils.generate_contact_matrices(config.age_bins, age_labels, population)
     age_group_flow_scaling = utils.get_age_group_flow_scaling(config.age_bins, age_labels, population)
     death_rates = utils.get_age_group_fatality_prob(config.age_bins, age_labels)
