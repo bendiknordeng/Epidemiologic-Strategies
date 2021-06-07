@@ -46,7 +46,7 @@ class SimpleGeneticAlgorithm:
         self.verbose = verbose
 
     def get_objective(self, objective):
-        return {"deaths": lambda process: np.sum(process.state.D),
+        return {"fatalities": lambda process: np.sum(process.state.D),
                 "infected": lambda process: np.sum(process.state.total_infected),
                 "weighted": lambda process: np.sum(process.state.total_infected)*0.01 + np.sum(process.state.D),
                 "yll": lambda process: calculate_yll(self.expected_years_remaining, process.state.D.sum(axis=0))

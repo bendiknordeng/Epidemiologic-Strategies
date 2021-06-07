@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 30
+    runs = 1
     decision_period = 56
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -24,10 +24,10 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = -2
-    individual = utils.read_pickle('results/GA_2021_06_05_13_18_22/best_individuals/best_individual_54.pkl')
+    policy_number = -1
+    individual = Individual()
     weights = individual.genes
-    np.random.seed(42)
+    np.random.seed(50)
 
     # Read data and generate parameters
     paths = utils.create_named_tuple('paths', 'filepaths.txt')
@@ -43,13 +43,13 @@ if __name__ == '__main__':
     historic_data = utils.get_historic_data()
     
     # Run settings
-    run_GA = True
+    run_GA = False
     include_flow = True
     stochastic = True
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = False
+    plot_results = True
     plot_geo = False
     write_simulations_to_file = False
 
@@ -94,8 +94,6 @@ if __name__ == '__main__':
                     historic_data=historic_data,
                     verbose=verbose)
 
-    
-
     if run_GA:
         params = utils.get_GA_params()
         GA = SimpleGeneticAlgorithm(
@@ -120,11 +118,9 @@ if __name__ == '__main__':
                 print(weight)
         results = []
         run_paths = []
-        seeds = np.arange(runs)
+        #seeds = np.arange(runs)
         for i in tqdm(range(runs)):
-            
-
-            np.random.seed(seeds[i])
+            #np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)
@@ -157,6 +153,7 @@ if __name__ == '__main__':
 
         if use_response_measures:
             plot.plot_control_measures(mdp.path, all=True)
+            plot.plot_control_measures(mdp.path, all=False)
         if use_wave_factor:
             R_eff = mdp.wave_timeline
             plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
