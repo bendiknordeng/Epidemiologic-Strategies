@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 1
+    runs = 500
     decision_period = 56
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
     policy_number = -2
-    individual = Individual()
+    individual = utils.read_pickle('best_individual_201.pkl')
     weights = individual.genes
     np.random.seed(42)
 
@@ -49,9 +49,9 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
-    write_simulations_to_file = False
+    write_simulations_to_file = True
 
     vaccine_policy = Policy(
                     config=config,
@@ -118,9 +118,9 @@ if __name__ == '__main__':
                 print(weight)
         results = []
         run_paths = []
-        #seeds = np.arange(runs)
+        seeds = np.arange(runs)
         for i in tqdm(range(runs)):
-            #np.random.seed(seeds[i])
+            np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
             mdp.run(weights)
@@ -139,6 +139,7 @@ if __name__ == '__main__':
             folder_path = os.getcwd() + run_folder
             start_date_population_age_labels_path = folder_path + "/start_date_population_age_labels.pkl"
             os.mkdir(folder_path)
+            utils.write_pickle(folder_path + "/individual.pkl", individual)
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
             utils.write_csv(run_paths, folder_path, population, age_labels)
 
@@ -153,7 +154,6 @@ if __name__ == '__main__':
 
         if use_response_measures:
             plot.plot_control_measures(mdp.path, all=True)
-            plot.plot_control_measures(mdp.path, all=False)
         if use_wave_factor:
             R_eff = mdp.wave_timeline
             plot.age_group_infected_plot_weekly(results_age, start_date, age_labels, R_eff, include_R=True)
