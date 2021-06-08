@@ -31,6 +31,7 @@ class SimpleGeneticAlgorithm:
             self.generation_count = 0 if individuals_from_file is None else individuals_from_file[0]
             self.final_scores = defaultdict(partial(defaultdict, list))
             self.best_individual = None
+            run = None
         else:
             self.generation_count = individuals_from_file[0]
             Individual.GENERATION = individuals_from_file[0]
@@ -49,7 +50,7 @@ class SimpleGeneticAlgorithm:
         self.verbose = verbose
 
     def get_objective(self, objective):
-        return {"deaths": lambda process: np.sum(process.state.D),
+        return {"fatalities": lambda process: np.sum(process.state.D),
                 "infected": lambda process: np.sum(process.state.total_infected),
                 "weighted": lambda process: np.sum(process.state.total_infected)*0.01 + np.sum(process.state.D),
                 "yll": lambda process: calculate_yll(self.expected_years_remaining, process.state.D.sum(axis=0))
@@ -179,7 +180,7 @@ class SimpleGeneticAlgorithm:
                     self.process.reset(reset_measures=False)
                     self.process.run(weighted_policy_weights=individual.genes)
                     if not convergence_test: individual.update_strategy_count(self.process.state)
-                    for obj in ['deaths', 'infected', 'weighted', 'yll']:
+                    for obj in ['fatalities', 'infected', 'weighted', 'yll']:
                         score = self.get_objective(obj)(self.process)
                         self.final_scores[individual.ID][obj].append(score)
                         if self.verbose and obj == self.objective: print(f"{individual}: {score}")
@@ -372,7 +373,7 @@ class SimpleGeneticAlgorithm:
     def _generate_output_dirs(self, run):
         start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if run is None:
-            run_folder = f"/results/GA_{start_of_run}"
+            run_folder = f"/results/{self.objective}_{start_of_run}"
             folder_path = os.getcwd()+run_folder
             individuals_path = folder_path + "/individuals"
             final_scores_path = folder_path + "/final_scores"
@@ -394,7 +395,6 @@ class SimpleGeneticAlgorithm:
         self.individuals_path = individuals_path + "/individuals_"
         self.final_score_path = final_scores_path + "/final_score_"
         self.best_individual_path = best_individuals_path + "/best_individual_"
-
 
     def write_to_file(self):
         """ Dump individuals and corresponding scores as pickle """

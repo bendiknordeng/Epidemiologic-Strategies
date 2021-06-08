@@ -24,7 +24,7 @@ if __name__ == '__main__':
     policies = ['random', 'no_vaccines', 'susceptible_based', 
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
-    policy_number = 3
+    policy_number = -2
     weights = [1,0,0,0,0]
     np.random.seed(42)
 

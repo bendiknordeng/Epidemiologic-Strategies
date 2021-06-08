@@ -513,7 +513,7 @@ def get_GA_params():
             instances = [load_json(dir_path + f) for f in sorted(files)]
             print(f"{tcolors.BOLD}Instances:{tcolors.ENDC}")
             for i, instance in enumerate(instances):
-                print(f"{i+1}: Objective: {instance['objective']:>8},\tRandom individuals: {instance['random_individuals']}")
+                print(f"{i+1}: Objective: {instance['objective']:>10}, Random individuals: {instance['random_individuals']}")
             selected = int(input("Run from instance: "))
             params = instances[selected-1]
             params['individuals_from_file'] = None
