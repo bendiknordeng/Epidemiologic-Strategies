@@ -66,7 +66,7 @@ class State:
         # Update information
         contact_weights = information['contact_weights']
         flow_scale = information['flow_scale']
-
+        
         # Update compartment values
         S, E1, E2, A, I, R, D, V, new_infected, new_deaths, trend, R_t = epidemic_function(self, decision, decision_period, information)
         

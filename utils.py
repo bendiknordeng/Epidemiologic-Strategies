@@ -483,7 +483,7 @@ def get_R_t(daily_cases):
 def get_GA_params():
     run_from_file = bool(int(input("Run from file (bool): ")))
     if run_from_file:
-        dir_path = "results/"
+        dir_path = "results/ga/"
         files = os.listdir(dir_path)
         dates = sort_filenames_by_date(files)
         runs = dict(zip(range(1,len(files)+1),dates))
@@ -590,7 +590,7 @@ def write_csv(run_paths, folder_path, population, age_labels):
     new_deaths_df = pd.DataFrame(columns=identifying_columns+new_deaths_region_columns+new_deaths_age_groups_columns)
     vaccinated_df = pd.DataFrame(columns=identifying_columns+vaccinated_region_columns+vaccinated_age_groups_columns)
 
-    for i in tqdm(range(num_sims)):
+    for i in tqdm(range(num_sims), ascii=True):
         for j in range(num_weeks):
             S_regions = list(S[i][j].sum(axis=1))
             I_regions = list(I[i][j].sum(axis=1))
@@ -642,7 +642,6 @@ def write_csv(run_paths, folder_path, population, age_labels):
     vaccinated_df.to_csv(vaccinated_filepath)
 
 def read_csv(relative_path = "results/500_simulations_contact_based_2021_05_30_23_24_11"):
-    print(f"Reading results from {relative_path.split('/')[2].split('_')[2:]} ..")
     dir_path = "../"
     folder_path = dir_path + relative_path
     div_filepath = folder_path + "/div.csv"

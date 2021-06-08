@@ -52,8 +52,10 @@ class MarkovDecisionProcess:
             initial_run = self.update_state()
             self.path.append(self.state)
             self.simulation_period += 1
-        if self.reached_stop_criteria():
+        counter = 0
+        if self.reached_stop_criteria() and counter < 5:
             self.init()
+            counter += 1
         self.start_state = self.state
         self.start_path = self.path
         self.start_simulation_period = self.simulation_period
