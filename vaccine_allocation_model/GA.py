@@ -373,7 +373,7 @@ class SimpleGeneticAlgorithm:
     def _generate_output_dirs(self, run):
         start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if run is None:
-            run_folder = f"/results/{self.objective}_{start_of_run}"
+            run_folder = f"/results/ga/{self.objective}_{'non_seeded' if self.random_individuals else 'seeded'}_{start_of_run}"
             folder_path = os.getcwd()+run_folder
             individuals_path = folder_path + "/individuals"
             final_scores_path = folder_path + "/final_scores"
@@ -385,7 +385,7 @@ class SimpleGeneticAlgorithm:
             with open(folder_path + "/run_params.json", "w") as file:
                 json.dump(self.__repr__(), file, indent=4)
         else:
-            run_folder = f"/results/{run}"
+            run_folder = f"/results/ga/{run}"
             folder_path = os.getcwd()+run_folder
             individuals_path = folder_path + "/individuals"
             final_scores_path = folder_path + "/final_scores"

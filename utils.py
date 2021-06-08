@@ -466,7 +466,7 @@ def generate_geopandas(pop, fpath_spatial_data):
     return gdf
 
 def sort_filenames_by_date(files):
-    dates = tuple(map(lambda x: x.split("_")[1:], files))
+    dates = tuple(map(lambda x: x.split("_")[-6:], files))
     return sorted(tuple(map(lambda x: datetime(*map(int,x)), dates)))
 
 def get_R_t(daily_cases):
@@ -483,21 +483,20 @@ def get_R_t(daily_cases):
 def get_GA_params():
     run_from_file = bool(int(input("Run from file (bool): ")))
     if run_from_file:
-        dir_path = "results/ga/"
+        dir_path = "results/ga"
         files = os.listdir(dir_path)
-        dates = sort_filenames_by_date(files)
-        runs = dict(zip(range(1,len(files)+1),dates))
+        runs = dict(zip(range(1,len(files)+1),files))
         print(f"{tcolors.BOLD}Available runs:{tcolors.ENDC}")
-        for k, v in runs.items(): print(f"{k}: {v.strftime('%Y/%m/%d %H:%M:%S')}")
+        for k, v in runs.items(): print(f"{k}: {v}")
         file_nr = int(input("File (int): "))
-        run = f"GA_{runs[file_nr].strftime('%Y_%m_%d_%H_%M_%S')}"
+        run = runs[file_nr]
         while True:
             try:
                 gen = int(input("Run from generation: "))
-                individuals_from_file = (gen, read_pickle(f'results/{run}/individuals/individuals_{gen}.pkl'),
-                                        read_pickle(f'results/{run}/final_scores/final_score_{gen}.pkl'),
-                                        read_pickle(f'results/{run}/best_individuals/best_individual_{gen}.pkl'), run)
-                params = load_json(f'results/{run}/run_params.json')
+                individuals_from_file = (gen, read_pickle(f'results/ga/{run}/individuals/individuals_{gen}.pkl'),
+                                    read_pickle(f'results/ga/{run}/final_scores/final_score_{gen}.pkl'),
+                                        read_pickle(f'results/ga/{run}/best_individuals/best_individual_{gen}.pkl'), run)
+                params = load_json(f'results/ga/{run}/run_params.json')
             except FileNotFoundError:
                 print(f"{tcolors.FAIL}Generation not available{tcolors.ENDC}")
                 continue
@@ -522,7 +521,7 @@ def get_GA_params():
         else:
             params = {}
             params["gen"] = 0
-            ga_objectives = {1: "deaths", 2: "infected", 3: "weighted", 4: "yll"}
+            ga_objectives = {1: "fatalities", 2: "infected", 3: "weighted", 4: "yll"}
             print("Choose objective for genetic algorithm.")
             for k, v in ga_objectives.items(): print(f"{k}: {v}")
             ga_objective_number = int(input("\nGA Objective (int): "))
