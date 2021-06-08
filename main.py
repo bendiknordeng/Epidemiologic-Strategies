@@ -25,7 +25,7 @@ if __name__ == '__main__':
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
     policy_number = -2
-    individual = Individual()
+    individual = utils.read_pickle('best_individual_201.pkl')
     weights = individual.genes
     np.random.seed(42)
 
@@ -94,8 +94,6 @@ if __name__ == '__main__':
                     historic_data=historic_data,
                     verbose=verbose)
 
-    
-
     if run_GA:
         params = utils.get_GA_params()
         GA = SimpleGeneticAlgorithm(
@@ -122,8 +120,6 @@ if __name__ == '__main__':
         run_paths = []
         seeds = np.arange(runs)
         for i in tqdm(range(runs)):
-            
-
             np.random.seed(seeds[i])
             mdp.init()
             mdp.reset()
@@ -143,6 +139,7 @@ if __name__ == '__main__':
             folder_path = os.getcwd() + run_folder
             start_date_population_age_labels_path = folder_path + "/start_date_population_age_labels.pkl"
             os.mkdir(folder_path)
+            utils.write_pickle(folder_path + "/individual.pkl", individual)
             utils.write_pickle(start_date_population_age_labels_path, [start_date, population, age_labels])
             utils.write_csv(run_paths, folder_path, population, age_labels)
 

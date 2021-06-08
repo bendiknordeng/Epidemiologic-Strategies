@@ -1,5 +1,5 @@
 {
-    "objective": "deaths",
+    "objective": "fatalities",
     "simulations": 30,
     "process": {
         "horizon": 74,

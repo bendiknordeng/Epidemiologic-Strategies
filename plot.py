@@ -106,6 +106,7 @@ def age_group_infected_plot_weekly_cumulative(res, start_date, labels):
 
 def plot_control_measures(path, all=False):
     new_infected = [np.sum(s.new_infected) for s in path]
+    sns.set_style('ticks')
     if all:
         c_weights_home = [s.contact_weights[0] for s in path]
         c_weights_school = [s.contact_weights[1] for s in path]
@@ -117,7 +118,6 @@ def plot_control_measures(path, all=False):
         step = int(np.ceil(len(path)/ticks))
 
         fig, ax1 = plt.subplots(figsize=(10,5))
-        fig.suptitle('Control measures given infection')
         ax1.set_xlabel('Week')
         ax1.set_ylabel('New infected')
         ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
@@ -128,14 +128,14 @@ def plot_control_measures(path, all=False):
         ln3 = ax2.plot(c_weights_school, label="School")
         ln4 = ax2.plot(c_weights_work, label="Work")
         ln5 = ax2.plot(c_weights_public, label="Public")
-        ln6 = ax2.plot(flow_scales, label="Flow scale")
+        ln6 = ax2.plot(flow_scales, label="Internal movement")
         
         lines = ln1+ln2+ln3+ln4+ln5+ln6
         labels = [ln[0].get_label() for ln in [ln1, ln2, ln3, ln4, ln5, ln6]]
-        plt.legend(lines, labels)
+        plt.legend(lines, labels, loc=4)
         plt.xticks(np.arange(0, len(path), step), weeks[::step])
         plt.grid()
-        plt.show()
+        plt.savefig("plots/response_measures/response_measures_timeline_all.png", dpi=200)
     else:
         mean_weights = np.array([s.contact_weights for s in path]).mean(axis=1)
         flow_scales = [s.flow_scale for s in path]
@@ -144,22 +144,22 @@ def plot_control_measures(path, all=False):
         step = int(np.ceil(len(path)/ticks))
 
         fig, ax1 = plt.subplots(figsize=(10,5))
-        fig.suptitle('Control measures given infection')
         ax1.set_xlabel('Week')
         ax1.set_ylabel('New infected')
         ln1 = ax1.plot(new_infected, color='red', linestyle='dashed', label="New infected")
 
         ax2 = ax1.twinx()
         ax2.set_ylabel('Weight')
-        ln2 = ax2.plot(mean_weights, label="Mean weighting")
-        ln3 = ax2.plot(flow_scales, label="Flow scale")
+        ln2 = ax2.plot(mean_weights, label="Mean contact weighting")
+        ln3 = ax2.plot(flow_scales, label="Internal movement")
         
         lines = ln1+ln2+ln3
         labels = [ln[0].get_label() for ln in [ln1, ln2, ln3]]
-        plt.legend(lines, labels)
+        plt.legend(lines, labels, loc=4)
         plt.xticks(np.arange(0, len(path), step), weeks[::step])
         plt.grid()
-        plt.show()
+        plt.savefig("plots/response_measures/response_measures_timeline_mean.png", dpi=200)
+    plt.show()
 
 
 def plot_heatmaps(C, weights, age_labels, fpath=""):
@@ -271,14 +271,14 @@ def find_infected_limits(res, population, per_100k):
 def plot_R_t(daily_cases):
     R_t = utils.get_R_t(daily_cases)
     fig, ax = plt.subplots(1,1, figsize=(10, 5))
-    R_t.loc[:,'Q0.5'].plot(ax=ax, color='black', label=r"$R_t$")
+    R_t.loc[:,'Q0.5'].plot(ax=ax, color='black', label=r"$\mathcal{R}_t$")
     ax.fill_between(R_t.index, 
                     R_t['Q0.025'], 
                     R_t['Q0.975'], 
                     color='grey', alpha=0.2)
     ax.plot((0, len(daily_cases)), (1,1), linestyle="dashed")
     ax.set_xlabel("Days")
-    ax.set_ylabel(r"$R_t$")
+    ax.set_ylabel(r"$\mathcal{R}_t$")
     ax.set_xlim(14)
     ax.set_ylim([0.2, 2])
     ax.legend()

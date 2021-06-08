@@ -29,19 +29,23 @@ class SimpleGeneticAlgorithm:
         if individuals_from_file is None:
             self.population = Population(population_size, verbose, random_individuals)
             self.generation_count = 0 if individuals_from_file is None else individuals_from_file[0]
+            self.final_scores = defaultdict(partial(defaultdict, list))
+            self.best_individual = None
         else:
-            self.population = Population(population_size, verbose, random_individuals, individuals_from_file[1])
             self.generation_count = individuals_from_file[0]
             Individual.GENERATION = individuals_from_file[0]
-        self.final_scores = defaultdict(partial(defaultdict, list))
-        self.best_individual = None
+            self.population = Population(population_size, verbose, random_individuals, individuals_from_file[1])
+            self.final_scores = individuals_from_file[2]
+            self.best_individual = individuals_from_file[3]
+            run = individuals_from_file[4]
+
         self.generations_since_new_best = 0
         self.expected_years_remaining = expected_years_remaining
         self.objective = objective
         self.random_individuals = random_individuals
         self.min_generations = min_generations
         self.number_of_runs = []
-        self._generate_output_dirs()
+        self._generate_output_dirs(run)
         self.verbose = verbose
 
     def get_objective(self, objective):
@@ -114,7 +118,7 @@ class SimpleGeneticAlgorithm:
             print(f"{tcolors.OKGREEN}Setting all-time best individual: {candidate}{tcolors.ENDC}")
             self.best_individual = candidate
         else:
-            if candidate == self.best_individual:
+            if candidate.ID == self.best_individual.ID:
                 print(f"{tcolors.WARNING}{candidate} already all-time best. Continuing...{tcolors.ENDC}")
                 write_pickle(self.best_individual_path+str(self.generation_count)+".pkl", self.best_individual)
                 self.generations_since_new_best += 1
@@ -365,24 +369,32 @@ class SimpleGeneticAlgorithm:
                 for obj in ["deaths", "infected", "weighted", "yll"]:
                     self.final_scores[i][obj] = scores[obj][:self.simulations]
 
-    def _generate_output_dirs(self):
+    def _generate_output_dirs(self, run):
         start_of_run = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-        run_folder = f"/results/GA_{start_of_run}"
-        folder_path = os.getcwd()+run_folder
-        individuals_path = folder_path + "/individuals"
-        final_scores_path = folder_path + "/final_scores"
-        best_individuals_path = folder_path + "/best_individuals"
-        os.mkdir(folder_path)
-        os.mkdir(individuals_path)
-        os.mkdir(final_scores_path)
-        os.mkdir(best_individuals_path)
-        self.overview_path = folder_path + f"/generation_overview.csv"
-        self.individuals_path = individuals_path + f"/individuals_"
-        self.final_score_path = final_scores_path + f"/final_score_"
-        self.best_individual_path = best_individuals_path + f"/best_individual_"
+        if run is None:
+            run_folder = f"/results/GA_{start_of_run}"
+            folder_path = os.getcwd()+run_folder
+            individuals_path = folder_path + "/individuals"
+            final_scores_path = folder_path + "/final_scores"
+            best_individuals_path = folder_path + "/best_individuals"
+            os.mkdir(folder_path)
+            os.mkdir(individuals_path)
+            os.mkdir(final_scores_path)
+            os.mkdir(best_individuals_path)
+            with open(folder_path + "/run_params.json", "w") as file:
+                json.dump(self.__repr__(), file, indent=4)
+        else:
+            run_folder = f"/results/{run}"
+            folder_path = os.getcwd()+run_folder
+            individuals_path = folder_path + "/individuals"
+            final_scores_path = folder_path + "/final_scores"
+            best_individuals_path = folder_path + "/best_individuals"
 
-        with open(folder_path + "/run_params.json", "w") as file:
-            json.dump(self.__repr__(), file, indent=4)
+        self.overview_path = folder_path + "/generation_overview.csv"
+        self.individuals_path = individuals_path + "/individuals_"
+        self.final_score_path = final_scores_path + "/final_score_"
+        self.best_individual_path = best_individuals_path + "/best_individual_"
+
 
     def write_to_file(self):
         """ Dump individuals and corresponding scores as pickle """

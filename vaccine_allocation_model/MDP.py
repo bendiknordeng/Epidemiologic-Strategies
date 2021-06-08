@@ -185,9 +185,9 @@ class MarkovDecisionProcess:
             initial_cw = np.array(self.config.initial_contact_weights)
             cw_mapper = {
                 'home': lambda x: initial_cw[0] * (1 + x * 0.07), # x in [0, 1, 2, 3]
-                'school': lambda x: initial_cw[1] * (1 - x * 0.34), # x in [0, 1, 2, 3]
-                'work': lambda x: initial_cw[2] * (1 - x * 0.41), # x in [0, 1, 2, 3]
-                'public': lambda x: initial_cw[3] * (1 - x * 0.29) # x in [0, 1, 2, 3, 4]
+                'school': lambda x: initial_cw[1] * (1 - x * 0.27), # x in [0, 1, 2, 3]
+                'work': lambda x: initial_cw[2] * (1 - x * 0.25), # x in [0, 1, 2, 3]
+                'public': lambda x: initial_cw[3] * (1 - x * 0.20) # x in [0, 1, 2, 3, 4]
             }
             
             new_cw = []
@@ -198,7 +198,7 @@ class MarkovDecisionProcess:
 
             input = scalers['movement'].transform(features.reshape(1,-1))
             measure = models['movement'].predict(input)[0]
-            new_flow_scale = self.config.initial_flow_scale * (1 - measure * 0.2) # measure in [0, 1, 2]
+            new_flow_scale = self.config.initial_flow_scale * (1 - measure * 0.3) # measure in [0, 1, 2]
 
             if self.verbose:
                 print("Per 100k:")
