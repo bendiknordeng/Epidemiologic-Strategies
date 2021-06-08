@@ -495,7 +495,8 @@ def get_GA_params():
             try:
                 gen = int(input("Run from generation: "))
                 individuals_from_file = (gen, read_pickle(f'results/{run}/individuals/individuals_{gen}.pkl'),
-                                        read_pickle(f'results/{run}/final_scores/final_score_{gen}.pkl'))
+                                        read_pickle(f'results/{run}/final_scores/final_score_{gen}.pkl'),
+                                        read_pickle(f'results/{run}/best_individuals/best_individual_{gen}.pkl'), run)
                 params = load_json(f'results/{run}/run_params.json')
             except FileNotFoundError:
                 print(f"{tcolors.FAIL}Generation not available{tcolors.ENDC}")
