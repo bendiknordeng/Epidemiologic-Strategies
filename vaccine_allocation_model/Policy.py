@@ -129,7 +129,7 @@ class Policy:
                     vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
                     break
                 else:
-                    vaccine_allocation[:,age_group] = M * age_group_demand/total_age_group_demand
+                    vaccine_allocation[:,age_group] = age_group_demand
                     M -= total_age_group_demand
                     demand[:,age_group] -= age_group_demand
             decision = np.minimum(demand, vaccine_allocation).clip(min=0)
