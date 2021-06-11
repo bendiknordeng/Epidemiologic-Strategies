@@ -367,7 +367,7 @@ class SimpleGeneticAlgorithm:
                 del self.final_scores[i]
         else:
             for i, scores in self.final_scores.items():
-                for obj in ["deaths", "infected", "weighted", "yll"]:
+                for obj in ["fatalities", "infected", "weighted", "yll"]:
                     self.final_scores[i][obj] = scores[obj][:self.simulations]
 
     def _generate_output_dirs(self, run):

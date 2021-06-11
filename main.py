@@ -13,7 +13,7 @@ import os
 
 if __name__ == '__main__':
     # Set initial parameters
-    runs = 15
+    runs = 500
     decision_period = 56
     start_day, start_month, start_year = 24, 2, 2020
     start_date = utils.get_date(f"{start_year}{start_month:02}{start_day:02}")
@@ -25,7 +25,9 @@ if __name__ == '__main__':
                 'infection_based', 'oldest_first', 'contact_based', 
                 'weighted', 'fhi_policy']
     policy_number = -2
-    weights = [1,0,0,0,0]
+    individual = utils.read_pickle('best_indvidual_201.pkl')
+    weights = individual.genes.sum(axis=0).sum(axis=0)
+    weights /= sum(weights)
     np.random.seed(42)
 
     # Read data and generate parameters
@@ -48,9 +50,9 @@ if __name__ == '__main__':
     use_wave_factor = True
     use_response_measures = True
     verbose = False
-    plot_results = True
+    plot_results = False
     plot_geo = False
-    write_simulations_to_file = False
+    write_simulations_to_file = True
 
     vaccine_policy = Policy(
                     config=config,

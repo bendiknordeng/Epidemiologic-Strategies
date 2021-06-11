@@ -2,7 +2,7 @@
     "objective": "infected",
     "simulations": 30,
     "process": {
-        "horizon": 74,
+        "horizon": 38,
         "decision_period": 56,
         "policy": "weighted"
     },
